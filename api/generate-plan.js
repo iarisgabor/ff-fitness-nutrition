@@ -8,7 +8,7 @@ const {
   callClaude,
 } = require('./_lib/nutrition');
 
-const PLAN_MAX_TOKENS = 11000;
+const PLAN_MAX_TOKENS = 20000;
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {

@@ -241,7 +241,7 @@ async function callClaude({ system, userMessage, schema, maxTokens, effort }) {
 
   const data = await res.json();
   const textBlock = data.content && data.content.find((b) => b.type === 'text');
-  if (!textBlock) throw new Error('No text block in Anthropic response. RAW: ' + JSON.stringify(data).slice(0, 1500));
+  if (!textBlock) throw new Error('No text block in Anthropic response');
   return JSON.parse(textBlock.text);
 }
 
