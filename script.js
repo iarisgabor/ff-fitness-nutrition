@@ -1174,7 +1174,7 @@ function applySavedAllergyPrefs(form) {
 
 async function fetchPlanFromApi(payload) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(() => controller.abort(), 58000);
   try {
     const res = await fetch(NUTRITION_API_URL, {
       method: 'POST',
