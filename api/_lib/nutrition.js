@@ -69,8 +69,6 @@ const PLAN_JSON_SCHEMA = {
   properties: {
     days: {
       type: 'array',
-      minItems: 7,
-      maxItems: 7,
       items: {
         type: 'object',
         properties: {
