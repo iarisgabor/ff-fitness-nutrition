@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
       userMessage: buildUserMessage(body),
       schema: PLAN_JSON_SCHEMA,
       maxTokens: PLAN_MAX_TOKENS,
-      effort: 'medium',
+      effort: 'low',
     });
     res.status(200).json(plan);
   } catch (err) {
