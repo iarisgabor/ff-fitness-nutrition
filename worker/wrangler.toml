@@ -1,0 +1,14 @@
+name = "ff-fitness-nutrition"
+main = "index.js"
+compatibility_date = "2024-09-23"
+
+# Cheia API se configurează ca secret, NICIODATĂ aici:
+#   wrangler secret put ANTHROPIC_API_KEY
+#
+# Rate limiting (opțional, dar recomandat) — după rulare:
+#   wrangler kv namespace create RATE_LIMIT_KV
+# adaugă id-ul rezultat mai jos și decomentează:
+#
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT_KV"
+# id = "PUNE_ID_UL_AICI"

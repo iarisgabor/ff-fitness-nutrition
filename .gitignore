@@ -1,0 +1,10 @@
+node_modules/
+.vercel/
+.env
+.env.local
+.DS_Store
+Thumbs.db
+worker/node_modules/
+worker/.wrangler/
+.claude/
+player.gd
