@@ -10,7 +10,7 @@ const KCAL_PER_G_CARB = 4;
 const KCAL_PER_G_FAT = 9;
 const LOW_CALORIE_FLOOR = 1200;
 const ALLERGEN_TAGS = ['dairy', 'egg', 'fish', 'shellfish', 'treenut', 'peanut', 'gluten', 'soy', 'sesame'];
-const NUTRITION_API_URL = '/api/generate-plan';
+const NUTRITION_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/generate-plan';
 const RECIPE_API_URL = '/api/generate-recipe';
 const REGENERATE_COOLDOWN_MS = 15000;
 const RECIPE_FETCH_TIMEOUT_MS = 15000;
@@ -1174,7 +1174,7 @@ function applySavedAllergyPrefs(form) {
 
 async function fetchPlanFromApi(payload) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 58000);
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
   try {
     const res = await fetch(NUTRITION_API_URL, {
       method: 'POST',

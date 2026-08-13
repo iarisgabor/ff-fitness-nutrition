@@ -1,6 +1,5 @@
 {
   "functions": {
-    "api/generate-plan.js": { "maxDuration": 60 },
     "api/generate-recipe.js": { "maxDuration": 30 }
   }
 }
