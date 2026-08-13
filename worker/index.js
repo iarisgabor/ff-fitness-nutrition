@@ -76,7 +76,7 @@ const PLAN_JSON_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          day: { type: 'integer', minimum: 1, maximum: 7 },
+          day: { type: 'integer' },
           meals: {
             type: 'array',
             items: {
