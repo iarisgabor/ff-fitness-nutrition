@@ -301,7 +301,7 @@ async function handleGeneratePlan(request, env, origin, ip) {
       userMessage: buildUserMessage(body),
       schema: PLAN_JSON_SCHEMA,
       maxTokens: PLAN_MAX_TOKENS,
-      effort: 'medium',
+      effort: 'low',
     });
     return jsonResponse(plan, 200, origin);
   } catch (err) {
