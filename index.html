@@ -20,6 +20,7 @@
 
     <nav class="main-nav" id="main-nav" aria-label="Principal">
       <button type="button" class="nav-link" data-view="calculator" aria-current="page" data-i18n="nav.calculator">Calculator</button>
+      <button type="button" class="nav-link" data-view="exercises" data-i18n="nav.exercises">Exerciții</button>
       <button type="button" class="nav-link" data-view="faq" data-i18n="nav.faq">FAQ</button>
     </nav>
 
@@ -222,6 +223,167 @@
     </div>
   </section>
 
+  <section id="exercises" class="view" hidden>
+    <div class="hero">
+      <h1 data-i18n="exercises.title">Alege un mușchi și antrenează-l</h1>
+      <p class="hero-sub" data-i18n="exercises.subtitle">Dă click pe o grupă musculară de pe hartă pentru a vedea exerciții dedicate, fiecare cu un videoclip demonstrativ.</p>
+    </div>
+
+    <div class="bodymap-section">
+      <div class="bodymap-toggle" role="group" data-i18n-attr="aria-label:exercises.toggleLabel" aria-label="Vedere corp">
+        <button type="button" class="bodymap-toggle-btn" data-body-view="front" aria-pressed="true" data-i18n="exercises.frontLabel">Față</button>
+        <button type="button" class="bodymap-toggle-btn" data-body-view="back" aria-pressed="false" data-i18n="exercises.backLabel">Spate</button>
+      </div>
+
+      <div class="bodymap-wrap">
+        <svg class="bodymap" id="bodymap-front" viewBox="0 0 300 620" role="group" data-i18n-attr="aria-label:exercises.frontLabel" aria-label="Față">
+          <ellipse class="bodymap-silhouette" cx="150" cy="40" rx="26" ry="30"></ellipse>
+          <rect class="bodymap-silhouette" x="136" y="68" width="28" height="24"></rect>
+          <path class="bodymap-silhouette" d="M72,95 L228,95 L212,260 L218,300 L82,300 L88,260 Z"></path>
+          <rect class="bodymap-silhouette" x="40" y="100" width="32" height="130" rx="14"></rect>
+          <rect class="bodymap-silhouette" x="42" y="230" width="28" height="95" rx="12"></rect>
+          <ellipse class="bodymap-silhouette" cx="56" cy="335" rx="16" ry="20"></ellipse>
+          <rect class="bodymap-silhouette" x="228" y="100" width="32" height="130" rx="14"></rect>
+          <rect class="bodymap-silhouette" x="230" y="230" width="28" height="95" rx="12"></rect>
+          <ellipse class="bodymap-silhouette" cx="244" cy="335" rx="16" ry="20"></ellipse>
+          <rect class="bodymap-silhouette" x="95" y="300" width="48" height="165" rx="16"></rect>
+          <rect class="bodymap-silhouette" x="100" y="465" width="38" height="115" rx="14"></rect>
+          <ellipse class="bodymap-silhouette" cx="119" cy="598" rx="26" ry="14"></ellipse>
+          <rect class="bodymap-silhouette" x="157" y="300" width="48" height="165" rx="16"></rect>
+          <rect class="bodymap-silhouette" x="162" y="465" width="38" height="115" rx="14"></rect>
+          <ellipse class="bodymap-silhouette" cx="181" cy="598" rx="26" ry="14"></ellipse>
+
+          <ellipse class="muscle-region" data-muscle="shoulders" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.shoulders" aria-label="Umeri" cx="62" cy="110" rx="26" ry="24"><title data-i18n="exercises.muscles.shoulders">Umeri</title></ellipse>
+          <ellipse class="muscle-region" data-muscle="shoulders" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.shoulders" aria-label="Umeri" cx="238" cy="110" rx="26" ry="24"><title data-i18n="exercises.muscles.shoulders">Umeri</title></ellipse>
+          <rect class="muscle-region" data-muscle="chest" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.chest" aria-label="Piept" x="95" y="110" width="110" height="55" rx="20"><title data-i18n="exercises.muscles.chest">Piept</title></rect>
+          <rect class="muscle-region" data-muscle="biceps" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.biceps" aria-label="Biceps" x="42" y="105" width="28" height="90" rx="12"><title data-i18n="exercises.muscles.biceps">Biceps</title></rect>
+          <rect class="muscle-region" data-muscle="biceps" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.biceps" aria-label="Biceps" x="230" y="105" width="28" height="90" rx="12"><title data-i18n="exercises.muscles.biceps">Biceps</title></rect>
+          <rect class="muscle-region" data-muscle="forearms" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.forearms" aria-label="Antebrațe" x="44" y="232" width="24" height="85" rx="10"><title data-i18n="exercises.muscles.forearms">Antebrațe</title></rect>
+          <rect class="muscle-region" data-muscle="forearms" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.forearms" aria-label="Antebrațe" x="232" y="232" width="24" height="85" rx="10"><title data-i18n="exercises.muscles.forearms">Antebrațe</title></rect>
+          <rect class="muscle-region" data-muscle="abs" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.abs" aria-label="Abdomen" x="110" y="175" width="80" height="100" rx="14"><title data-i18n="exercises.muscles.abs">Abdomen</title></rect>
+          <rect class="muscle-region" data-muscle="quads" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.quads" aria-label="Cvadricepși" x="98" y="305" width="42" height="140" rx="14"><title data-i18n="exercises.muscles.quads">Cvadricepși</title></rect>
+          <rect class="muscle-region" data-muscle="quads" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.quads" aria-label="Cvadricepși" x="160" y="305" width="42" height="140" rx="14"><title data-i18n="exercises.muscles.quads">Cvadricepși</title></rect>
+          <rect class="muscle-region" data-muscle="calves" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.calves" aria-label="Gambe" x="103" y="470" width="32" height="95" rx="12"><title data-i18n="exercises.muscles.calves">Gambe</title></rect>
+          <rect class="muscle-region" data-muscle="calves" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.calves" aria-label="Gambe" x="165" y="470" width="32" height="95" rx="12"><title data-i18n="exercises.muscles.calves">Gambe</title></rect>
+        </svg>
+
+        <svg class="bodymap" id="bodymap-back" viewBox="0 0 300 620" role="group" data-i18n-attr="aria-label:exercises.backLabel" aria-label="Spate" hidden>
+          <ellipse class="bodymap-silhouette" cx="150" cy="40" rx="26" ry="30"></ellipse>
+          <rect class="bodymap-silhouette" x="136" y="68" width="28" height="24"></rect>
+          <path class="bodymap-silhouette" d="M72,95 L228,95 L212,260 L218,300 L82,300 L88,260 Z"></path>
+          <rect class="bodymap-silhouette" x="40" y="100" width="32" height="130" rx="14"></rect>
+          <rect class="bodymap-silhouette" x="42" y="230" width="28" height="95" rx="12"></rect>
+          <ellipse class="bodymap-silhouette" cx="56" cy="335" rx="16" ry="20"></ellipse>
+          <rect class="bodymap-silhouette" x="228" y="100" width="32" height="130" rx="14"></rect>
+          <rect class="bodymap-silhouette" x="230" y="230" width="28" height="95" rx="12"></rect>
+          <ellipse class="bodymap-silhouette" cx="244" cy="335" rx="16" ry="20"></ellipse>
+          <rect class="bodymap-silhouette" x="95" y="300" width="48" height="165" rx="16"></rect>
+          <rect class="bodymap-silhouette" x="100" y="465" width="38" height="115" rx="14"></rect>
+          <ellipse class="bodymap-silhouette" cx="119" cy="598" rx="26" ry="14"></ellipse>
+          <rect class="bodymap-silhouette" x="157" y="300" width="48" height="165" rx="16"></rect>
+          <rect class="bodymap-silhouette" x="162" y="465" width="38" height="115" rx="14"></rect>
+          <ellipse class="bodymap-silhouette" cx="181" cy="598" rx="26" ry="14"></ellipse>
+
+          <rect class="muscle-region" data-muscle="traps" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.traps" aria-label="Trapez" x="110" y="90" width="80" height="50" rx="10"><title data-i18n="exercises.muscles.traps">Trapez</title></rect>
+          <rect class="muscle-region" data-muscle="back" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.back" aria-label="Spate" x="90" y="140" width="120" height="120" rx="18"><title data-i18n="exercises.muscles.back">Spate</title></rect>
+          <rect class="muscle-region" data-muscle="triceps" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.triceps" aria-label="Triceps" x="42" y="105" width="28" height="90" rx="12"><title data-i18n="exercises.muscles.triceps">Triceps</title></rect>
+          <rect class="muscle-region" data-muscle="triceps" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.triceps" aria-label="Triceps" x="230" y="105" width="28" height="90" rx="12"><title data-i18n="exercises.muscles.triceps">Triceps</title></rect>
+          <rect class="muscle-region" data-muscle="glutes" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.glutes" aria-label="Fesieri" x="95" y="270" width="110" height="55" rx="20"><title data-i18n="exercises.muscles.glutes">Fesieri</title></rect>
+          <rect class="muscle-region" data-muscle="hamstrings" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.hamstrings" aria-label="Ischio-gambieri" x="98" y="330" width="42" height="120" rx="14"><title data-i18n="exercises.muscles.hamstrings">Ischio-gambieri</title></rect>
+          <rect class="muscle-region" data-muscle="hamstrings" tabindex="0" role="button" data-i18n-attr="aria-label:exercises.muscles.hamstrings" aria-label="Ischio-gambieri" x="160" y="330" width="42" height="120" rx="14"><title data-i18n="exercises.muscles.hamstrings">Ischio-gambieri</title></rect>
+        </svg>
+      </div>
+
+      <p class="bodymap-caption" id="bodymap-caption" data-i18n="exercises.selectHint">Alege o grupă musculară…</p>
+    </div>
+
+    <div class="ai-plan-section" id="ai-workout-plan-section">
+      <div class="ai-plan-header">
+        <svg class="ai-badge" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
+        </svg>
+        <h2 data-i18n="aiWorkoutPlan.title">Plan de antrenament cu AI</h2>
+      </div>
+      <p class="ai-plan-intro" data-i18n="aiWorkoutPlan.intro">Generează un plan de antrenament personalizat, potrivit obiectivului, nivelului și echipamentului tău.</p>
+
+      <form id="workout-plan-form" novalidate>
+        <fieldset class="field-group">
+          <legend data-i18n="aiWorkoutPlan.goalLabel">Obiectiv</legend>
+          <div class="pill-group" role="radiogroup" aria-label="Obiectiv antrenament">
+            <label class="pill"><input type="radio" name="workoutGoal" value="lose_fat" required><span data-i18n="aiWorkoutPlan.goal.loseFat">Slăbire</span></label>
+            <label class="pill"><input type="radio" name="workoutGoal" value="strength" required><span data-i18n="aiWorkoutPlan.goal.strength">Forță</span></label>
+            <label class="pill"><input type="radio" name="workoutGoal" value="build_muscle" required><span data-i18n="aiWorkoutPlan.goal.buildMuscle">Masă musculară</span></label>
+            <label class="pill"><input type="radio" name="workoutGoal" value="endurance" required><span data-i18n="aiWorkoutPlan.goal.endurance">Rezistență</span></label>
+          </div>
+          <p class="field-error" id="workoutGoal-error" role="alert"></p>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend data-i18n="aiWorkoutPlan.daysLabel">Zile de antrenament pe săptămână</legend>
+          <div class="pill-group" role="radiogroup" aria-label="Zile pe săptămână">
+            <label class="pill"><input type="radio" name="workoutDays" value="2" required><span>2</span></label>
+            <label class="pill"><input type="radio" name="workoutDays" value="3" required><span>3</span></label>
+            <label class="pill"><input type="radio" name="workoutDays" value="4" required><span>4</span></label>
+            <label class="pill"><input type="radio" name="workoutDays" value="5" required><span>5</span></label>
+            <label class="pill"><input type="radio" name="workoutDays" value="6" required><span>6</span></label>
+          </div>
+          <p class="field-error" id="workoutDays-error" role="alert"></p>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend data-i18n="aiWorkoutPlan.equipmentLabel">Echipament disponibil</legend>
+          <div class="pill-group" role="radiogroup" aria-label="Echipament disponibil">
+            <label class="pill"><input type="radio" name="workoutEquipment" value="gym" required><span data-i18n="aiWorkoutPlan.equipment.gym">Sală completă</span></label>
+            <label class="pill"><input type="radio" name="workoutEquipment" value="home_basic" required><span data-i18n="aiWorkoutPlan.equipment.homeBasic">Acasă (gantere/benzi)</span></label>
+            <label class="pill"><input type="radio" name="workoutEquipment" value="bodyweight" required><span data-i18n="aiWorkoutPlan.equipment.bodyweight">Doar greutate corporală</span></label>
+          </div>
+          <p class="field-error" id="workoutEquipment-error" role="alert"></p>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend data-i18n="aiWorkoutPlan.experienceLabel">Nivel de experiență</legend>
+          <div class="pill-group" role="radiogroup" aria-label="Nivel de experiență">
+            <label class="pill"><input type="radio" name="workoutExperience" value="beginner" required><span data-i18n="aiWorkoutPlan.experience.beginner">Începător</span></label>
+            <label class="pill"><input type="radio" name="workoutExperience" value="intermediate" required><span data-i18n="aiWorkoutPlan.experience.intermediate">Intermediar</span></label>
+            <label class="pill"><input type="radio" name="workoutExperience" value="advanced" required><span data-i18n="aiWorkoutPlan.experience.advanced">Avansat</span></label>
+          </div>
+          <p class="field-error" id="workoutExperience-error" role="alert"></p>
+        </fieldset>
+
+        <div class="field">
+          <label for="workout-injuries" data-i18n="aiWorkoutPlan.injuriesLabel">Accidentări sau limitări</label>
+          <p class="field-hint" data-i18n="aiWorkoutPlan.injuriesHint">Opțional. Menționăm mișcările de evitat, dar nu înlocuiește sfatul unui specialist.</p>
+          <input type="text" id="workout-injuries" name="injuries" data-i18n-attr="placeholder:aiWorkoutPlan.injuriesPlaceholder" placeholder="ex: genunchi, umăr…">
+        </div>
+
+        <button type="submit" class="btn-primary" id="workout-plan-generate-btn" data-i18n="aiWorkoutPlan.generateButton">Generează planul</button>
+      </form>
+
+      <div id="workout-plan-loading" class="plan-loading" hidden>
+        <svg class="ai-badge ai-badge--thinking" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
+        </svg>
+        <span id="workout-plan-loading-text"></span>
+        <span id="workout-plan-loading-announce" class="visually-hidden" aria-live="polite"></span>
+      </div>
+
+      <p id="workout-plan-error" class="field-error" role="alert"></p>
+
+      <div id="workout-plan-output" hidden>
+        <div class="accordion" id="workout-plan-accordion"></div>
+        <button type="button" class="btn-primary" id="workout-plan-regenerate-btn" data-i18n="aiWorkoutPlan.regenerateButton" hidden>Regenerează planul</button>
+      </div>
+
+      <p class="disclaimer" data-i18n="aiWorkoutPlan.disclaimer">Planul de antrenament este generat automat și nu este creat sau verificat de un antrenor sau fizioterapeut — nu constituie sfat medical personalizat. Respectă tehnica corectă la fiecare exercițiu; dacă ești începător, ia în calcul îndrumare de la un specialist. Dacă ai o accidentare, o afecțiune medicală sau dureri, consultă un medic înainte de a începe.</p>
+    </div>
+  </section>
+
+  <section id="exercise-list" class="view" hidden>
+    <button type="button" class="link-back" data-view="exercises" data-i18n="exercises.backToMap">← Înapoi la harta corpului</button>
+    <h2 id="exercise-list-heading"></h2>
+    <div class="exercise-cards" id="exercise-list-container"></div>
+  </section>
+
   <section id="faq" class="view" hidden>
     <h2 data-i18n="faq.title">Întrebări frecvente</h2>
     <div class="accordion" id="accordion"></div>
@@ -238,6 +400,7 @@
 
     <nav class="footer-nav" aria-label="Footer">
       <button type="button" class="footer-link" data-view="calculator" data-i18n="nav.calculator">Calculator</button>
+      <button type="button" class="footer-link" data-view="exercises" data-i18n="nav.exercises">Exerciții</button>
       <button type="button" class="footer-link" data-view="faq" data-i18n="nav.faq">FAQ</button>
     </nav>
 
@@ -272,6 +435,7 @@
   </div>
 </dialog>
 
+<script src="exercises-data.js" defer></script>
 <script src="script.js" defer></script>
 </body>
 </html>

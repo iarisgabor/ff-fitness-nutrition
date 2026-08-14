@@ -10,6 +10,11 @@ const RECIPE_RATE_LIMIT_PER_HOUR = 30;
 const TRANSLATE_MAX_TOKENS = 4000;
 const TRANSLATE_RATE_LIMIT_PER_HOUR = 20;
 const TRANSLATE_MEALS_MAX = 40;
+const WORKOUT_PLAN_MAX_TOKENS = 8000;
+const WORKOUT_RATE_LIMIT_PER_HOUR = 8;
+const TRANSLATE_WORKOUT_RATE_LIMIT_PER_HOUR = 20;
+const TRANSLATE_WORKOUT_ITEMS_MAX = 150;
+const WORKOUT_MUSCLE_GROUPS = ['chest', 'shoulders', 'biceps', 'forearms', 'abs', 'quads', 'calves', 'back', 'traps', 'triceps', 'glutes', 'hamstrings'];
 
 const INGREDIENT_TABLE = `
 Chicken breast (cooked): 165 kcal, 31g protein, 0g carbs, 3.6g fat / 100g
@@ -62,6 +67,10 @@ const ALLERGEN_NAMES = {
 const GOAL_NAMES = {
   ro: { lose: 'slăbire', maintain: 'menținere', gain: 'masă musculară' },
   en: { lose: 'lose weight', maintain: 'maintain', gain: 'build muscle' },
+};
+
+const WORKOUT_GOAL_NAMES = {
+  en: { lose_fat: 'lose fat', strength: 'build strength', build_muscle: 'build muscle', endurance: 'build endurance' },
 };
 
 const LANGUAGE_NAMES = { ro: 'Romanian', en: 'English' };
@@ -154,6 +163,51 @@ const TRANSLATE_MEALS_SCHEMA = {
   additionalProperties: false,
 };
 
+const WORKOUT_PLAN_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    days: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          day: { type: 'integer' },
+          focus: { type: 'string' },
+          exercises: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                muscleGroup: { type: 'string', enum: WORKOUT_MUSCLE_GROUPS },
+                sets: { type: 'integer' },
+                reps: { type: 'string' },
+                restSeconds: { type: 'integer' },
+                notes: { type: 'string' },
+              },
+              required: ['name', 'muscleGroup', 'sets', 'reps', 'restSeconds', 'notes'],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ['day', 'focus', 'exercises'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['days'],
+  additionalProperties: false,
+};
+
+const TRANSLATE_ITEMS_SCHEMA = {
+  type: 'object',
+  properties: {
+    items: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
 function buildSystemPrompt(lang) {
   const languageName = LANGUAGE_NAMES[lang] || 'English';
   const sampleText = SAMPLE_MEALS.map((m) => `- ${m[lang] || m.en}`).join('\n');
@@ -188,6 +242,38 @@ function buildUserMessage(payload) {
     allergenNames.length ? `STRICTLY EXCLUDE any meal containing: ${allergenNames.join(', ')}.` : 'No allergies to exclude.',
     payload.dislikeText ? `Avoid if possible: ${payload.dislikeText}.` : '',
     'Generate the 7-day plan.',
+  ].filter(Boolean).join('\n');
+}
+
+function buildWorkoutSystemPrompt(lang) {
+  const languageName = LANGUAGE_NAMES[lang] || 'English';
+
+  return `You are a strength & conditioning assistant for FF Fitness. You design realistic, structured workout plans for a user based on their goal, weekly availability, equipment access, and experience level.
+
+STRICT RULES:
+1. Output exactly the requested number of "days" day objects, numbered sequentially starting at 1.
+2. Choose a sensible weekly split for the "focus" field based on the number of training days: 2-3 days/week → full-body sessions; 4 days/week → an upper/lower split; 5-6 days/week → a push/pull/legs or body-part split.
+3. Every exercise's "muscleGroup" must be exactly one of: ${WORKOUT_MUSCLE_GROUPS.join(', ')}.
+4. Respect the equipment tier strictly: "gym" allows any equipment; "home_basic" allows only bodyweight, dumbbell, or resistance-band exercises; "bodyweight" allows only bodyweight exercises, zero equipment.
+5. Respect the experience level: beginners get simpler, safer movements (machines/bodyweight-friendly) at moderate volume; intermediate/advanced can include free weights and higher volume/intensity.
+6. Respect any injuries or limitations the user lists — avoid or substitute movements that would aggravate that body part.
+7. Pick realistic "sets" (2-5), "reps" (a range string like "8-12", or time/rep-based like "30s" or "AMRAP"), and "restSeconds" (30-180) matched to the goal: strength = lower reps, longer rest; endurance = higher reps, shorter rest; build_muscle = moderate reps/rest; lose_fat = moderate-to-high reps, shorter rest.
+8. "notes" is a short, optional coaching cue — use an empty string "" if there is nothing useful to add, never invent filler text.
+9. For EVERY exercise, write "name" and "notes" in ${languageName} only. Write "focus" in ${languageName} only.
+
+Respond ONLY with the structured plan per the requested JSON schema.`;
+}
+
+function buildWorkoutUserMessage(payload) {
+  const goalName = (WORKOUT_GOAL_NAMES.en && WORKOUT_GOAL_NAMES.en[payload.goal]) || payload.goal;
+
+  return [
+    `Goal: ${goalName}.`,
+    `Training days per week: ${payload.days}.`,
+    `Equipment access: ${payload.equipment}.`,
+    `Experience level: ${payload.experience}.`,
+    payload.injuriesText ? `Injuries or limitations to work around: ${payload.injuriesText}.` : 'No injuries or limitations reported.',
+    'Generate the workout plan.',
   ].filter(Boolean).join('\n');
 }
 
@@ -232,6 +318,24 @@ function buildTranslateUserMessage(meals) {
     .map((m, i) => `${i + 1}. Name: ${m.name}\n   Description: ${m.description}`)
     .join('\n');
   return `Translate each of these ${meals.length} meals. Return them in the same order, one entry per input meal:\n\n${numbered}`;
+}
+
+function buildTranslateWorkoutSystemPrompt(targetLang) {
+  const languageName = LANGUAGE_NAMES[targetLang] || 'English';
+  return `You are a translation assistant for FF Fitness. You translate workout-plan text (day focus labels, exercise names, and short coaching notes) into ${languageName}.
+
+STRICT RULES:
+1. Preserve the exact meaning and all exercise/training terminology — do not invent, omit, or add information.
+2. Return EXACTLY the same number of items you were given, in the SAME order — item N in your response must be the translation of item N in the input.
+3. Some items may be an empty string — for those, return an empty string back, never invent content for an empty input.
+4. Keep the tone concise and consistent with a workout plan (short labels/names, brief coaching cues).
+
+Respond ONLY with the structured translation per the requested JSON schema.`;
+}
+
+function buildTranslateWorkoutUserMessage(items) {
+  const numbered = items.map((item, i) => `${i + 1}. ${item === '' ? '(empty)' : item}`).join('\n');
+  return `Translate each of these ${items.length} items. Return them in the same order, one entry per input item (return an empty string for any item marked "(empty)"):\n\n${numbered}`;
 }
 
 function corsHeaders(origin) {
@@ -286,6 +390,24 @@ function validateTranslatePayload(body) {
   return body.meals.every((m) => m && isNonEmptyString(m.name, 200) && isNonEmptyString(m.description, 500));
 }
 
+function validateWorkoutPayload(body) {
+  if (!body || typeof body !== 'object') return false;
+  if (!['lose_fat', 'strength', 'build_muscle', 'endurance'].includes(body.goal)) return false;
+  if (!Number.isInteger(body.days) || body.days < 2 || body.days > 6) return false;
+  if (!['gym', 'home_basic', 'bodyweight'].includes(body.equipment)) return false;
+  if (!['beginner', 'intermediate', 'advanced'].includes(body.experience)) return false;
+  if (!['ro', 'en'].includes(body.lang)) return false;
+  if (typeof body.injuriesText !== 'string' || body.injuriesText.length > 300) return false;
+  return true;
+}
+
+function validateTranslateWorkoutPayload(body) {
+  if (!body || typeof body !== 'object') return false;
+  if (!['ro', 'en'].includes(body.targetLang)) return false;
+  if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > TRANSLATE_WORKOUT_ITEMS_MAX) return false;
+  return body.items.every((item) => typeof item === 'string' && item.length <= 500);
+}
+
 async function checkRateLimit(env, ip, kind, limitPerHour) {
   if (!env.RATE_LIMIT_KV) return true; // KV nelegat încă -> fără limitare
   const hourBucket = Math.floor(Date.now() / 3600000);
@@ -335,6 +457,18 @@ function toBilingualDay(day) {
   };
 }
 
+function toBilingualWorkoutDay(day) {
+  return {
+    ...day,
+    focus: { ro: day.focus, en: day.focus },
+    exercises: day.exercises.map((ex) => ({
+      ...ex,
+      name: { ro: ex.name, en: ex.name },
+      notes: { ro: ex.notes, en: ex.notes },
+    })),
+  };
+}
+
 // Emits each day of PLAN_JSON_SCHEMA the moment its object closes, by tracking JSON object
 // depth over the raw text deltas: depth 2 is exactly a "days[i]" object (depth 1 is the root
 // object, depth 3+ is nested "meals[i]" objects inside a day) — relies on that schema shape.
@@ -373,7 +507,7 @@ function makeDayExtractor(onDay) {
   };
 }
 
-async function streamPlanDays(env, { system, userMessage, schema, maxTokens, effort }, controller) {
+async function streamPlanDays(env, { system, userMessage, schema, maxTokens, effort, toBilingual }, controller) {
   const encoder = new TextEncoder();
   const emit = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
 
@@ -402,7 +536,7 @@ async function streamPlanDays(env, { system, userMessage, schema, maxTokens, eff
   let dayCount = 0;
   const extract = makeDayExtractor((day) => {
     dayCount++;
-    emit(toBilingualDay(day));
+    emit(toBilingual(day));
   });
 
   const reader = res.body.getReader();
@@ -463,6 +597,7 @@ async function handleGeneratePlan(request, env, origin, ip) {
           schema: PLAN_JSON_SCHEMA,
           maxTokens: PLAN_MAX_TOKENS,
           effort: 'low',
+          toBilingual: toBilingualDay,
         }, controller);
       } catch (err) {
         controller.enqueue(encoder.encode(JSON.stringify({ error: 'upstream_failed', message: String(err) }) + '\n'));
@@ -553,6 +688,93 @@ async function handleTranslatePlan(request, env, origin, ip) {
   }
 }
 
+async function handleGenerateWorkoutPlan(request, env, origin, ip) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return jsonResponse({ error: 'invalid_json' }, 400, origin);
+  }
+
+  if (!validateWorkoutPayload(body)) {
+    return jsonResponse({ error: 'invalid_payload' }, 400, origin);
+  }
+
+  if (!env.ANTHROPIC_API_KEY) {
+    return jsonResponse({ error: 'not_configured' }, 503, origin);
+  }
+
+  const allowed = await checkRateLimit(env, ip, 'workout', WORKOUT_RATE_LIMIT_PER_HOUR);
+  if (!allowed) {
+    return jsonResponse({ error: 'rate_limited' }, 429, origin);
+  }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        await streamPlanDays(env, {
+          system: buildWorkoutSystemPrompt(body.lang),
+          userMessage: buildWorkoutUserMessage(body),
+          schema: WORKOUT_PLAN_JSON_SCHEMA,
+          maxTokens: WORKOUT_PLAN_MAX_TOKENS,
+          effort: 'low',
+          toBilingual: toBilingualWorkoutDay,
+        }, controller);
+      } catch (err) {
+        controller.enqueue(encoder.encode(JSON.stringify({ error: 'upstream_failed', message: String(err) }) + '\n'));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: { 'content-type': 'application/x-ndjson', ...corsHeaders(origin) },
+  });
+}
+
+async function handleTranslateWorkoutPlan(request, env, origin, ip) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return jsonResponse({ error: 'invalid_json' }, 400, origin);
+  }
+
+  if (!validateTranslateWorkoutPayload(body)) {
+    return jsonResponse({ error: 'invalid_payload' }, 400, origin);
+  }
+
+  if (!env.ANTHROPIC_API_KEY) {
+    return jsonResponse({ error: 'not_configured' }, 503, origin);
+  }
+
+  const allowed = await checkRateLimit(env, ip, 'translateWorkout', TRANSLATE_WORKOUT_RATE_LIMIT_PER_HOUR);
+  if (!allowed) {
+    return jsonResponse({ error: 'rate_limited' }, 429, origin);
+  }
+
+  try {
+    const result = await callClaude(env, {
+      system: buildTranslateWorkoutSystemPrompt(body.targetLang),
+      userMessage: buildTranslateWorkoutUserMessage(body.items),
+      schema: TRANSLATE_ITEMS_SCHEMA,
+      maxTokens: TRANSLATE_MAX_TOKENS,
+      effort: 'low',
+    });
+
+    if (!result || !Array.isArray(result.items) || result.items.length !== body.items.length) {
+      return jsonResponse({ error: 'upstream_failed', message: 'Translation count mismatch' }, 502, origin);
+    }
+
+    return jsonResponse(result, 200, origin);
+  } catch (err) {
+    return jsonResponse({ error: 'upstream_failed', message: String(err) }, 502, origin);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin');
@@ -574,6 +796,14 @@ export default {
 
     if (url.pathname === '/api/translate-plan' && request.method === 'POST') {
       return handleTranslatePlan(request, env, origin, ip);
+    }
+
+    if (url.pathname === '/api/generate-workout-plan' && request.method === 'POST') {
+      return handleGenerateWorkoutPlan(request, env, origin, ip);
+    }
+
+    if (url.pathname === '/api/translate-workout-plan' && request.method === 'POST') {
+      return handleTranslateWorkoutPlan(request, env, origin, ip);
     }
 
     return jsonResponse({ error: 'not_found' }, 404, origin);

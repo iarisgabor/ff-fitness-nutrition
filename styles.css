@@ -507,7 +507,20 @@ legend, .field label {
   margin-top: var(--space-2);
 }
 
-#plan-regenerate-btn { align-self: flex-start; }
+#plan-regenerate-btn, #workout-plan-regenerate-btn { align-self: flex-start; }
+
+#workout-plan-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+#workout-plan-output { display: flex; flex-direction: column; gap: var(--space-4); }
+#workout-plan-output[hidden] { display: none; }
 
 /* ---------- Modal rețetă ---------- */
 .recipe-modal {
@@ -605,6 +618,145 @@ legend, .field label {
   .ai-badge--pulse { animation: none; }
   .ai-badge--thinking { animation: none; }
 }
+
+/* ---------- Harta corpului ---------- */
+.bodymap-section {
+  margin-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.bodymap-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.bodymap-toggle-btn {
+  padding: var(--space-2) var(--space-6);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.bodymap-toggle-btn[aria-pressed="true"] { color: #fff; background: var(--primary-button); }
+
+.bodymap-wrap { width: 100%; max-width: 320px; }
+@media (min-width: 900px) { .bodymap-wrap { max-width: 380px; } }
+
+.bodymap { width: 100%; height: auto; display: block; }
+.bodymap[hidden] { display: none; }
+
+.bodymap-silhouette { fill: var(--surface-2); stroke: var(--border); stroke-width: 2; }
+
+.muscle-region {
+  fill: rgba(232,17,126,0.25);
+  stroke: var(--primary);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: fill var(--dur-fast) var(--ease-out);
+}
+.muscle-region:hover { fill: rgba(232,17,126,0.55); }
+.muscle-region:focus-visible { outline: none; fill: rgba(232,17,126,0.55); stroke: var(--primary-hover); stroke-width: 2.5; }
+
+.bodymap-caption {
+  min-height: 1.4em;
+  color: var(--primary-hover);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ---------- Listă exerciții ---------- */
+.link-back {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: var(--space-6);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.link-back:hover { color: var(--primary-hover); }
+.link-back:focus-visible { outline: 2px solid var(--primary-hover); outline-offset: 3px; }
+
+#exercise-list-heading { font-size: clamp(1.6rem, 3vw + 1rem, 2.25rem); margin-bottom: var(--space-6); }
+
+.exercise-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.exercise-card { opacity: 1; }
+.exercise-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.exercise-card-header h3 {
+  font-size: 1.05rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.exercise-desc { color: var(--text-secondary); font-size: 0.9rem; }
+.exercise-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.badge--beginner { background: rgba(61,220,132,0.15); color: var(--success); }
+.badge--intermediate { background: rgba(255,193,99,0.15); color: var(--warning); }
+.badge--advanced { background: rgba(255,107,129,0.15); color: var(--error); }
+
+.video-wrapper {
+  position: relative;
+  padding-top: 56.25%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.video-wrapper iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.video-fallback {
+  position: relative;
+  padding-top: 56.25%;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  background: var(--surface-2);
+}
+.video-fallback-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: center;
+}
+.video-fallback-inner span { color: var(--text-secondary); font-size: 0.85rem; }
+.video-fallback-link { color: var(--primary-hover); font-weight: 600; font-size: 0.85rem; text-decoration: underline; }
+.video-fallback-link:focus-visible { outline: 2px solid var(--primary-hover); outline-offset: 2px; }
 
 /* ---------- FAQ / Accordion ---------- */
 #faq h2 { font-size: clamp(1.6rem, 3vw + 1rem, 2.25rem); margin-bottom: var(--space-6); }

@@ -13,6 +13,9 @@ const ALLERGEN_TAGS = ['dairy', 'egg', 'fish', 'shellfish', 'treenut', 'peanut',
 const NUTRITION_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/generate-plan';
 const RECIPE_API_URL = '/api/generate-recipe';
 const TRANSLATE_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/translate-plan';
+const WORKOUT_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/generate-workout-plan';
+const TRANSLATE_WORKOUT_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/translate-workout-plan';
+const WORKOUT_FETCH_TIMEOUT_MS = 150000;
 const REGENERATE_COOLDOWN_MS = 15000;
 const RECIPE_FETCH_TIMEOUT_MS = 15000;
 const TRANSLATE_FETCH_TIMEOUT_MS = 30000;
@@ -44,7 +47,7 @@ const CONTENT = {
       title: 'FF Fitness — Calculator TDEE & BMR',
       description: 'Calculează-ți TDEE-ul, BMR-ul, caloriile și proteinele zilnice necesare, cu sfaturi personalizate pentru obiectivul tău.',
     },
-    nav: { calculator: 'Calculator', faq: 'FAQ' },
+    nav: { calculator: 'Calculator', exercises: 'Exerciții', faq: 'FAQ' },
     hero: {
       title: 'Află-ți necesarul caloric zilnic',
       subtitle: 'Completează datele tale și primești imediat BMR, TDEE, un target caloric pentru obiectivul tău și necesarul de proteine.',
@@ -78,6 +81,59 @@ const CONTENT = {
       proteinShort: 'Proteine', carbsShort: 'Carbo', fatShort: 'Grăsimi',
       lowCalorieWarning: 'Acest target este sub 1200 kcal/zi — ia în calcul un deficit mai mic sau sfatul unui specialist.',
       adviceTitle: 'Sfatul FF Fitness pentru tine',
+    },
+    exercises: {
+      title: 'Alege un mușchi și antrenează-l',
+      subtitle: 'Dă click pe o grupă musculară de pe hartă pentru a vedea exerciții dedicate, fiecare cu un videoclip demonstrativ.',
+      toggleLabel: 'Vedere corp',
+      frontLabel: 'Față',
+      backLabel: 'Spate',
+      selectHint: 'Alege o grupă musculară…',
+      backToMap: '← Înapoi la harta corpului',
+      listHeading: 'Exerciții pentru {muscle}',
+      setsLabel: 'Serii',
+      repsLabel: 'Repetări',
+      equipmentLabel: 'Echipament',
+      difficultyLabel: 'Nivel',
+      videoComingSoon: 'Video în curând',
+      searchYoutube: 'Caută pe YouTube',
+      emptyState: 'Nu am găsit încă exerciții pentru această grupă musculară.',
+      muscles: {
+        chest: 'Piept', shoulders: 'Umeri', biceps: 'Biceps', forearms: 'Antebrațe',
+        abs: 'Abdomen', quads: 'Cvadricepși', calves: 'Gambe',
+        back: 'Spate', traps: 'Trapez', triceps: 'Triceps', glutes: 'Fesieri', hamstrings: 'Ischio-gambieri',
+      },
+      equipment: {
+        bodyweight: 'Greutate corporală', dumbbell: 'Gantere', barbell: 'Bară',
+        machine: 'Aparat', cable: 'Cablu', kettlebell: 'Kettlebell', band: 'Bandă elastică',
+      },
+      difficulty: { beginner: 'Începător', intermediate: 'Intermediar', advanced: 'Avansat' },
+    },
+    aiWorkoutPlan: {
+      title: 'Plan de antrenament cu AI',
+      intro: 'Generează un plan de antrenament personalizat, potrivit obiectivului, nivelului și echipamentului tău.',
+      goalLabel: 'Obiectiv',
+      goal: { loseFat: 'Slăbire', strength: 'Forță', buildMuscle: 'Masă musculară', endurance: 'Rezistență' },
+      daysLabel: 'Zile de antrenament pe săptămână',
+      equipmentLabel: 'Echipament disponibil',
+      equipment: { gym: 'Sală completă', homeBasic: 'Acasă (gantere/benzi)', bodyweight: 'Doar greutate corporală' },
+      experienceLabel: 'Nivel de experiență',
+      experience: { beginner: 'Începător', intermediate: 'Intermediar', advanced: 'Avansat' },
+      injuriesLabel: 'Accidentări sau limitări',
+      injuriesHint: 'Opțional. Menționăm mișcările de evitat, dar nu înlocuiește sfatul unui specialist.',
+      injuriesPlaceholder: 'ex: genunchi, umăr…',
+      generateButton: 'Generează planul',
+      regenerateButton: 'Regenerează planul',
+      loadingSteps: ['Analizează obiectivul tău…', 'Alege structura săptămânii…', 'Selectează exerciții potrivite echipamentului…', 'Calculează serii, repetări și pauze…', 'Construiește planul…'],
+      streamingProgress: 'Ziua {n} din {total} e gata…',
+      generatingAnnounce: 'Se generează planul de antrenament. Te rugăm așteaptă.',
+      translatingText: 'Traducem planul…',
+      translateError: 'Traducerea planului a eșuat. Planul rămâne afișat în limba anterioară — încearcă din nou să comuți limba.',
+      dayLabel: 'Ziua',
+      restLabel: 'Pauză',
+      viewExercisesButton: 'Vezi exerciții',
+      emptyError: 'Ceva nu a mers bine la generarea planului. Încearcă din nou.',
+      disclaimer: 'Planul de antrenament este generat automat și nu este creat sau verificat de un antrenor sau fizioterapeut — nu constituie sfat medical personalizat. Respectă tehnica corectă la fiecare exercițiu; dacă ești începător, ia în calcul îndrumare de la un specialist. Dacă ai o accidentare, o afecțiune medicală sau dureri, consultă un medic înainte de a începe.',
     },
     aiPlan: {
       title: 'Plan de nutriție cu AI',
@@ -170,7 +226,7 @@ const CONTENT = {
       title: 'FF Fitness — TDEE & BMR Calculator',
       description: 'Calculate your TDEE, BMR, daily calorie target and protein needs, with tailored advice for your goal.',
     },
-    nav: { calculator: 'Calculator', faq: 'FAQ' },
+    nav: { calculator: 'Calculator', exercises: 'Exercises', faq: 'FAQ' },
     hero: {
       title: 'Find your daily calorie needs',
       subtitle: 'Fill in your details and instantly get your BMR, TDEE, a calorie target for your goal, and your daily protein needs.',
@@ -204,6 +260,59 @@ const CONTENT = {
       proteinShort: 'Protein', carbsShort: 'Carbs', fatShort: 'Fat',
       lowCalorieWarning: 'This target is under 1,200 kcal/day — consider a smaller deficit or a professional’s guidance.',
       adviceTitle: 'FF Fitness advice for you',
+    },
+    exercises: {
+      title: 'Pick a muscle and train it',
+      subtitle: 'Click a muscle group on the map to see dedicated exercises, each with a demonstration video.',
+      toggleLabel: 'Body view',
+      frontLabel: 'Front',
+      backLabel: 'Back',
+      selectHint: 'Pick a muscle group…',
+      backToMap: '← Back to body map',
+      listHeading: '{muscle} exercises',
+      setsLabel: 'Sets',
+      repsLabel: 'Reps',
+      equipmentLabel: 'Equipment',
+      difficultyLabel: 'Level',
+      videoComingSoon: 'Video coming soon',
+      searchYoutube: 'Search on YouTube',
+      emptyState: "We don't have exercises for this muscle group yet.",
+      muscles: {
+        chest: 'Chest', shoulders: 'Shoulders', biceps: 'Biceps', forearms: 'Forearms',
+        abs: 'Abs', quads: 'Quads', calves: 'Calves',
+        back: 'Back', traps: 'Traps', triceps: 'Triceps', glutes: 'Glutes', hamstrings: 'Hamstrings',
+      },
+      equipment: {
+        bodyweight: 'Bodyweight', dumbbell: 'Dumbbell', barbell: 'Barbell',
+        machine: 'Machine', cable: 'Cable', kettlebell: 'Kettlebell', band: 'Band',
+      },
+      difficulty: { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' },
+    },
+    aiWorkoutPlan: {
+      title: 'AI Workout Plan',
+      intro: 'Generate a personalized workout plan, matched to your goal, level, and equipment.',
+      goalLabel: 'Goal',
+      goal: { loseFat: 'Lose fat', strength: 'Strength', buildMuscle: 'Build muscle', endurance: 'Endurance' },
+      daysLabel: 'Training days per week',
+      equipmentLabel: 'Available equipment',
+      equipment: { gym: 'Full gym', homeBasic: 'Home (dumbbells/bands)', bodyweight: 'Bodyweight only' },
+      experienceLabel: 'Experience level',
+      experience: { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' },
+      injuriesLabel: 'Injuries or limitations',
+      injuriesHint: "Optional. We'll flag movements to avoid, but this doesn't replace a professional's advice.",
+      injuriesPlaceholder: 'e.g. knee, shoulder…',
+      generateButton: 'Generate plan',
+      regenerateButton: 'Regenerate plan',
+      loadingSteps: ['Analyzing your goal…', 'Choosing your weekly structure…', 'Picking exercises for your equipment…', 'Calculating sets, reps, and rest…', 'Building your plan…'],
+      streamingProgress: 'Day {n} of {total} is ready…',
+      generatingAnnounce: 'Generating your workout plan. Please wait.',
+      translatingText: 'Translating plan…',
+      translateError: 'Translation failed. The plan is still shown in its previous language — try switching again.',
+      dayLabel: 'Day',
+      restLabel: 'Rest',
+      viewExercisesButton: 'View exercises',
+      emptyError: 'Something went wrong generating the plan. Please try again.',
+      disclaimer: 'This workout plan is generated automatically and is not created or reviewed by a certified trainer or physiotherapist — it is not personalized medical advice. Use correct form for every exercise; if you are a beginner, consider guided instruction. If you have an injury, a medical condition, or pain, consult a doctor before starting.',
     },
     aiPlan: {
       title: 'AI Nutrition Plan',
@@ -798,6 +907,10 @@ let currentRecipeData = null; // { meal, recipe } — ultima pereche afișată c
 let pdfLibraryPromise = null;
 let planRenderToken = 0; // bumped de orice operație care deține UI-ul planului; rezolvările întârziate verifică și abandonează dacă sunt stale
 let inFlightTranslation = null; // { planData, lang, promise } — deduplică cereri de traducere concurente identice
+let currentMuscleGroup = null; // grupa musculară curent afișată pe #exercise-list, sau null
+let lastWorkoutPlanData = null; // { days, lang, translatedLangs }
+let workoutPlanRenderToken = 0;
+let inFlightWorkoutTranslation = null;
 
 /* ---------- Utilitare ---------- */
 function getByPath(obj, path) {
@@ -882,6 +995,26 @@ function applyLanguage(lang) {
   } else if (currentRecipeMealKey) {
     refreshOpenRecipeDialog();
   }
+
+  if (currentMuscleGroup) renderExerciseList(currentMuscleGroup);
+  resetBodymapCaption();
+
+  if (lastWorkoutPlanData) {
+    const workoutNeedsTranslation = lastWorkoutPlanData.lang
+      && lastWorkoutPlanData.lang !== lang
+      && !(lastWorkoutPlanData.translatedLangs && lastWorkoutPlanData.translatedLangs.has(lang));
+
+    if (workoutNeedsTranslation) {
+      translateAndRenderWorkoutPlan(lang);
+    } else {
+      workoutPlanRenderToken += 1;
+      document.getElementById('workout-plan-error').textContent = '';
+      document.getElementById('workout-plan-loading').hidden = true;
+      document.getElementById('workout-plan-output').hidden = false;
+      renderWorkoutPlanAccordion(lastWorkoutPlanData);
+    }
+  }
+
   refreshErrorMessages(document.getElementById('calc-form'));
 }
 
@@ -1122,6 +1255,100 @@ function initAccordion() {
     const index = Array.from(container.querySelectorAll('.accordion-trigger')).indexOf(trigger);
     toggleAccordionItem(trigger, container, index);
   });
+}
+
+/* ---------- Harta corpului & listă exerciții ---------- */
+function showBodyView(view) {
+  document.getElementById('bodymap-front').hidden = view !== 'front';
+  document.getElementById('bodymap-back').hidden = view !== 'back';
+  document.querySelectorAll('.bodymap-toggle-btn').forEach((btn) => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.bodyView === view));
+  });
+}
+
+function setBodymapCaption(text) {
+  document.getElementById('bodymap-caption').textContent = text;
+}
+
+function resetBodymapCaption() {
+  setBodymapCaption(CONTENT[currentLang].exercises.selectHint);
+}
+
+function openExerciseList(muscleId) {
+  currentMuscleGroup = muscleId;
+  renderExerciseList(muscleId);
+  showView('exercise-list');
+}
+
+function buildExerciseCard(exercise) {
+  const t = CONTENT[currentLang].exercises;
+  const name = exercise.name[currentLang];
+  const videoHtml = exercise.videoId
+    ? `<div class="video-wrapper"><iframe src="https://www.youtube-nocookie.com/embed/${exercise.videoId}" title="${name}" loading="lazy" allowfullscreen></iframe></div>`
+    : `<div class="video-fallback"><div class="video-fallback-inner">
+        <span>${t.videoComingSoon}</span>
+        <a class="video-fallback-link" href="https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} exercise tutorial`)}" target="_blank" rel="noopener noreferrer">${t.searchYoutube}</a>
+      </div></div>`;
+
+  const card = document.createElement('div');
+  card.className = 'result-card exercise-card';
+  card.innerHTML = `
+    <div class="exercise-card-header">
+      <h3>${name}</h3>
+      <span class="badge badge--${exercise.difficulty}">${t.difficulty[exercise.difficulty]}</span>
+    </div>
+    <p class="exercise-desc">${exercise.description[currentLang]}</p>
+    <div class="exercise-meta">
+      <span>${t.setsLabel}: ${exercise.sets}</span>
+      <span>${t.repsLabel}: ${exercise.reps}</span>
+      <span>${t.equipmentLabel}: ${t.equipment[exercise.equipment]}</span>
+    </div>
+    ${videoHtml}
+  `;
+  return card;
+}
+
+function renderExerciseList(muscleId) {
+  const t = CONTENT[currentLang].exercises;
+  const container = document.getElementById('exercise-list-container');
+  const heading = document.getElementById('exercise-list-heading');
+  heading.textContent = t.listHeading.replace('{muscle}', t.muscles[muscleId]);
+
+  container.innerHTML = '';
+  const matches = EXERCISES.filter((e) => e.muscleGroup === muscleId);
+
+  if (!matches.length) {
+    const empty = document.createElement('p');
+    empty.className = 'field-hint';
+    empty.textContent = t.emptyState;
+    container.appendChild(empty);
+    return;
+  }
+
+  matches.forEach((exercise) => container.appendChild(buildExerciseCard(exercise)));
+}
+
+function initBodyMap() {
+  document.querySelectorAll('.bodymap-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', () => showBodyView(btn.dataset.bodyView));
+  });
+
+  document.querySelectorAll('.muscle-region').forEach((region) => {
+    const muscleId = region.dataset.muscle;
+    region.addEventListener('click', () => openExerciseList(muscleId));
+    region.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openExerciseList(muscleId);
+      }
+    });
+    region.addEventListener('pointerenter', () => setBodymapCaption(CONTENT[currentLang].exercises.muscles[muscleId]));
+    region.addEventListener('focus', () => setBodymapCaption(CONTENT[currentLang].exercises.muscles[muscleId]));
+    region.addEventListener('pointerleave', resetBodymapCaption);
+    region.addEventListener('blur', resetBodymapCaption);
+  });
+
+  resetBodymapCaption();
 }
 
 /* ---------- Formular ---------- */
@@ -1921,6 +2148,342 @@ function initAiPlanSection() {
   initPlanAccordion();
 }
 
+/* ---------- Plan de antrenament AI ---------- */
+async function fetchWorkoutPlanFromApi(payload, onDay) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), WORKOUT_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(WORKOUT_API_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!res.ok || !res.body) return null;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const days = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let obj;
+        try { obj = JSON.parse(line); } catch (e) { continue; }
+        if (obj.error) return days.length ? { days, lang: payload.lang } : null;
+        days.push(obj);
+        if (onDay) onDay(obj, days.length);
+      }
+    }
+    return days.length ? { days, lang: payload.lang } : null;
+  } catch (err) {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function generateWorkoutPlan(formValues, onDay) {
+  const payload = {
+    goal: formValues.goal,
+    days: formValues.days,
+    equipment: formValues.equipment,
+    experience: formValues.experience,
+    injuriesText: formValues.injuries,
+    lang: currentLang,
+  };
+  return fetchWorkoutPlanFromApi(payload, onDay);
+}
+
+async function translateWorkoutPlanMeals(planData, targetLang) {
+  if (inFlightWorkoutTranslation && inFlightWorkoutTranslation.planData === planData && inFlightWorkoutTranslation.lang === targetLang) {
+    return inFlightWorkoutTranslation.promise;
+  }
+
+  const promise = (async () => {
+    const items = [];
+    planData.days.forEach((day) => {
+      items.push(day.focus[planData.lang]);
+      day.exercises.forEach((ex) => {
+        items.push(ex.name[planData.lang]);
+        items.push(ex.notes[planData.lang]);
+      });
+    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), WORKOUT_FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(TRANSLATE_WORKOUT_API_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ targetLang, items }),
+        signal: controller.signal,
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data || !Array.isArray(data.items) || data.items.length !== items.length) return false;
+
+      let i = 0;
+      planData.days.forEach((day) => {
+        const translatedFocus = data.items[i]; i += 1;
+        if (typeof translatedFocus === 'string') day.focus[targetLang] = translatedFocus;
+        day.exercises.forEach((ex) => {
+          const translatedName = data.items[i]; i += 1;
+          const translatedNotes = data.items[i]; i += 1;
+          if (typeof translatedName === 'string') ex.name[targetLang] = translatedName;
+          if (typeof translatedNotes === 'string') ex.notes[targetLang] = translatedNotes;
+        });
+      });
+
+      if (!planData.translatedLangs) planData.translatedLangs = new Set([planData.lang]);
+      planData.translatedLangs.add(targetLang);
+      return true;
+    } catch (err) {
+      return false;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  })();
+
+  inFlightWorkoutTranslation = { planData, lang: targetLang, promise };
+  try {
+    return await promise;
+  } finally {
+    if (inFlightWorkoutTranslation && inFlightWorkoutTranslation.promise === promise) inFlightWorkoutTranslation = null;
+  }
+}
+
+async function translateAndRenderWorkoutPlan(lang) {
+  const planData = lastWorkoutPlanData;
+  workoutPlanRenderToken += 1;
+  const myToken = workoutPlanRenderToken;
+
+  const t = CONTENT[lang].aiWorkoutPlan;
+  const loadingEl = document.getElementById('workout-plan-loading');
+  const loadingTextEl = document.getElementById('workout-plan-loading-text');
+  const loadingAnnounceEl = document.getElementById('workout-plan-loading-announce');
+  const outputEl = document.getElementById('workout-plan-output');
+  const errorEl = document.getElementById('workout-plan-error');
+
+  errorEl.textContent = '';
+  outputEl.hidden = true;
+  loadingEl.hidden = false;
+  loadingTextEl.textContent = t.translatingText;
+  loadingAnnounceEl.textContent = t.translatingText;
+
+  const ok = await translateWorkoutPlanMeals(planData, lang);
+
+  if (myToken !== workoutPlanRenderToken) return;
+
+  loadingEl.hidden = true;
+
+  if (!ok) {
+    errorEl.textContent = t.translateError;
+    return;
+  }
+
+  outputEl.hidden = false;
+  renderWorkoutPlanAccordion(lastWorkoutPlanData);
+}
+
+function buildWorkoutDayElement(day, dayIndex) {
+  const t = CONTENT[currentLang].aiWorkoutPlan;
+  const et = CONTENT[currentLang].exercises;
+  const itemEl = document.createElement('div');
+  itemEl.className = 'accordion-item';
+  const triggerId = `workout-trigger-${dayIndex}`;
+  const panelId = `workout-panel-${dayIndex}`;
+
+  const rowsHtml = day.exercises.map((ex) => {
+    const muscleLabel = et.muscles[ex.muscleGroup] || ex.muscleGroup;
+    const notes = ex.notes[currentLang];
+    return `
+      <div class="plan-meal-row">
+        <div class="plan-meal-text">
+          <span class="plan-meal-name">${ex.name[currentLang]}</span>
+          <span class="plan-meal-desc">${muscleLabel}${notes ? ' · ' + notes : ''}</span>
+        </div>
+        <span class="plan-meal-macros">${ex.sets} × ${ex.reps} · ${t.restLabel} ${ex.restSeconds}s</span>
+        <button type="button" class="recipe-btn workout-crosslink-btn" data-muscle="${ex.muscleGroup}">${t.viewExercisesButton}</button>
+      </div>`;
+  }).join('');
+
+  itemEl.innerHTML = `
+    <h3>
+      <button type="button" class="accordion-trigger" id="${triggerId}" aria-expanded="false" aria-controls="${panelId}">
+        <span>${t.dayLabel} ${day.day} · ${day.focus[currentLang]}</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </h3>
+    <div class="accordion-panel" id="${panelId}" role="region" aria-labelledby="${triggerId}">
+      <div class="inner">
+        ${rowsHtml}
+      </div>
+    </div>
+  `;
+  return itemEl;
+}
+
+function appendWorkoutDay(day, dayIndex) {
+  document.getElementById('workout-plan-accordion').appendChild(buildWorkoutDayElement(day, dayIndex));
+}
+
+function renderWorkoutPlanAccordion(planData) {
+  const container = document.getElementById('workout-plan-accordion');
+  const openIndex = container.dataset.openIndex;
+  container.innerHTML = '';
+
+  planData.days.forEach((day, dayIndex) => {
+    container.appendChild(buildWorkoutDayElement(day, dayIndex));
+  });
+
+  if (openIndex != null) {
+    const trigger = container.querySelector(`#workout-trigger-${openIndex}`);
+    if (trigger) toggleAccordionItem(trigger, container, Number(openIndex));
+  }
+}
+
+function initWorkoutPlanAccordion() {
+  const container = document.getElementById('workout-plan-accordion');
+  container.addEventListener('click', (e) => {
+    const crosslinkBtn = e.target.closest('.workout-crosslink-btn');
+    if (crosslinkBtn) {
+      openExerciseList(crosslinkBtn.dataset.muscle);
+      return;
+    }
+    const trigger = e.target.closest('.accordion-trigger');
+    if (!trigger) return;
+    const index = Array.from(container.querySelectorAll('.accordion-trigger')).indexOf(trigger);
+    toggleAccordionItem(trigger, container, index);
+  });
+}
+
+function validateWorkoutForm(form) {
+  const t = CONTENT[currentLang].validation;
+  const errors = {};
+
+  const goal = form.querySelector('input[name="workoutGoal"]:checked');
+  if (!goal) errors.workoutGoal = t.selectGoal;
+
+  const days = form.querySelector('input[name="workoutDays"]:checked');
+  if (!days) errors.workoutDays = t.required;
+
+  const equipment = form.querySelector('input[name="workoutEquipment"]:checked');
+  if (!equipment) errors.workoutEquipment = t.required;
+
+  const experience = form.querySelector('input[name="workoutExperience"]:checked');
+  if (!experience) errors.workoutExperience = t.required;
+
+  const valid = Object.keys(errors).length === 0;
+  return {
+    valid,
+    errors,
+    values: valid ? {
+      goal: goal.value,
+      days: Number(days.value),
+      equipment: equipment.value,
+      experience: experience.value,
+      injuries: form.injuries.value.trim(),
+    } : null,
+  };
+}
+
+function renderWorkoutFormErrors(form, errors) {
+  ['workoutGoal', 'workoutDays', 'workoutEquipment', 'workoutExperience'].forEach((field) => {
+    const errorEl = document.getElementById(`${field}-error`);
+    if (errorEl) errorEl.textContent = errors[field] || '';
+  });
+}
+
+async function handleWorkoutPlanGenerate() {
+  const form = document.getElementById('workout-plan-form');
+  const { valid, errors, values } = validateWorkoutForm(form);
+  renderWorkoutFormErrors(form, errors);
+  if (!valid) return;
+
+  workoutPlanRenderToken += 1;
+
+  const generateBtn = document.getElementById('workout-plan-generate-btn');
+  const regenerateBtn = document.getElementById('workout-plan-regenerate-btn');
+  const loadingEl = document.getElementById('workout-plan-loading');
+  const loadingTextEl = document.getElementById('workout-plan-loading-text');
+  const loadingAnnounceEl = document.getElementById('workout-plan-loading-announce');
+  const outputEl = document.getElementById('workout-plan-output');
+  const accordionEl = document.getElementById('workout-plan-accordion');
+  const errorEl = document.getElementById('workout-plan-error');
+  const t = CONTENT[currentLang].aiWorkoutPlan;
+
+  generateBtn.disabled = true;
+  regenerateBtn.disabled = true;
+  errorEl.textContent = '';
+  accordionEl.innerHTML = '';
+  outputEl.hidden = true;
+  loadingEl.hidden = false;
+  loadingTextEl.textContent = t.loadingSteps[0];
+  loadingAnnounceEl.textContent = t.generatingAnnounce;
+
+  let stepIndex = 0;
+  const stepInterval = setInterval(() => {
+    stepIndex = (stepIndex + 1) % t.loadingSteps.length;
+    loadingTextEl.textContent = t.loadingSteps[stepIndex];
+  }, 2800);
+
+  let daysReceived = 0;
+  const onDay = (day, count) => {
+    clearInterval(stepInterval);
+    daysReceived = count;
+    outputEl.hidden = false;
+    appendWorkoutDay(day, count - 1);
+    const progressText = t.streamingProgress.replace('{n}', count).replace('{total}', values.days);
+    loadingTextEl.textContent = progressText;
+    loadingAnnounceEl.textContent = progressText;
+  };
+
+  const plan = await generateWorkoutPlan(values, onDay);
+  clearInterval(stepInterval);
+  loadingEl.hidden = true;
+  generateBtn.disabled = false;
+
+  if (!plan) {
+    outputEl.hidden = true;
+    errorEl.textContent = t.emptyError;
+    return;
+  }
+
+  lastWorkoutPlanData = plan;
+  lastWorkoutPlanData.translatedLangs = new Set([lastWorkoutPlanData.lang || currentLang]);
+  if (daysReceived === 0) renderWorkoutPlanAccordion(plan);
+  outputEl.hidden = false;
+  regenerateBtn.hidden = false;
+  regenerateBtn.disabled = true;
+  setTimeout(() => { regenerateBtn.disabled = false; }, REGENERATE_COOLDOWN_MS);
+}
+
+function initAiWorkoutPlanSection() {
+  const form = document.getElementById('workout-plan-form');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleWorkoutPlanGenerate();
+  });
+
+  form.querySelectorAll('input[type="radio"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      const errorEl = document.getElementById(`${radio.name}-error`);
+      if (errorEl) errorEl.textContent = '';
+    });
+  });
+
+  document.getElementById('workout-plan-regenerate-btn').addEventListener('click', handleWorkoutPlanGenerate);
+  initWorkoutPlanAccordion();
+}
+
 /* ---------- Bootstrap ---------- */
 function init() {
   initNavigation();
@@ -1930,6 +2493,8 @@ function init() {
   initForm();
   initAiPlanSection();
   initRecipeDialog();
+  initBodyMap();
+  initAiWorkoutPlanSection();
   applyLanguage(currentLang);
 }
 
