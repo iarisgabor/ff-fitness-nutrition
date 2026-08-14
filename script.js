@@ -96,6 +96,7 @@ const CONTENT = {
       totalLabel: 'Total',
       targetWord: 'target',
       emptyPoolError: 'Cu atât de multe excluderi bifate, nu mai rămân suficiente rețete pentru un plan complet. Debifează câteva opțiuni și încearcă din nou.',
+      planLangMismatch: 'Planul afișat a fost generat în cealaltă limbă. Apasă "Regenerează planul" ca să-l vezi în această limbă.',
       disclaimer: 'Planul de mese este generat automat, pe baza unei baze de date nutriționale și a targetului tău caloric și de macronutrienți — nu este creat sau verificat de un nutriționist și nu constituie sfat medical sau dietetic personalizat. Bifele de alergii exclud cu strictețe rețetele care conțin acel ingredient, dar nu pot garanta absența urmelor sau a contaminării încrucișate din bucătăria ta. Câmpul liber pentru alte preferințe este orientativ și nu filtrează la fel de sigur ca bifele — nu te baza pe el dacă ai o alergie reală. Dacă ai o alergie alimentară diagnosticată, o intoleranță sau altă afecțiune medicală, verifică fiecare rețetă pe cont propriu și consultă un medic sau un dietetician autorizat.',
       slots: { breakfast: 'Mic dejun', lunch: 'Prânz', dinner: 'Cină', snack: 'Gustare' },
       recipeButton: 'Vezi rețeta',
@@ -218,6 +219,7 @@ const CONTENT = {
       totalLabel: 'Total',
       targetWord: 'target',
       emptyPoolError: 'With this many exclusions checked, there aren’t enough recipes left for a full plan. Uncheck a few options and try again.',
+      planLangMismatch: 'The displayed plan was generated in the other language. Press "Regenerate plan" to see it in this language.',
       disclaimer: 'This meal plan is generated automatically from a nutrition database and your calorie/macro targets — it is not created or reviewed by a nutritionist and is not personalized medical or dietary advice. The allergy checkboxes strictly exclude any recipe containing that ingredient, but can’t guarantee your kitchen is free of traces or cross-contamination. The free-text field is best-effort only and doesn’t filter as reliably as the checkboxes — don’t rely on it for a real allergy. If you have a diagnosed food allergy, intolerance, or other medical condition, double-check every recipe yourself and consult a doctor or registered dietitian.',
       slots: { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' },
       recipeButton: 'See recipe',
@@ -852,8 +854,18 @@ function applyLanguage(lang) {
   updateCopyright();
   renderFAQ();
   if (lastResults) renderResults(lastResults, false);
-  if (lastPlanData) renderPlanAccordion(lastPlanData);
-  if (currentRecipeMealKey) refreshOpenRecipeDialog();
+  if (lastPlanData) {
+    if (lastPlanData.lang && lastPlanData.lang !== lang) {
+      document.getElementById('plan-output').hidden = true;
+      document.getElementById('plan-error').textContent = CONTENT[lang].aiPlan.planLangMismatch;
+      closeRecipeDialog();
+    } else {
+      renderPlanAccordion(lastPlanData);
+      if (currentRecipeMealKey) refreshOpenRecipeDialog();
+    }
+  } else if (currentRecipeMealKey) {
+    refreshOpenRecipeDialog();
+  }
   refreshErrorMessages(document.getElementById('calc-form'));
 }
 

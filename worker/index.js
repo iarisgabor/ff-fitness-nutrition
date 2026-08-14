@@ -61,12 +61,7 @@ const GOAL_NAMES = {
   en: { lose: 'lose weight', maintain: 'maintain', gain: 'build muscle' },
 };
 
-const BILINGUAL_TEXT_SCHEMA = {
-  type: 'object',
-  properties: { ro: { type: 'string' }, en: { type: 'string' } },
-  required: ['ro', 'en'],
-  additionalProperties: false,
-};
+const LANGUAGE_NAMES = { ro: 'Romanian', en: 'English' };
 
 const PLAN_JSON_SCHEMA = {
   type: 'object',
@@ -83,8 +78,8 @@ const PLAN_JSON_SCHEMA = {
               type: 'object',
               properties: {
                 slot: { type: 'string', enum: ['breakfast', 'lunch', 'dinner', 'snack'] },
-                name: BILINGUAL_TEXT_SCHEMA,
-                description: BILINGUAL_TEXT_SCHEMA,
+                name: { type: 'string' },
+                description: { type: 'string' },
                 kcal: { type: 'number' },
                 protein: { type: 'number' },
                 carbs: { type: 'number' },
@@ -136,8 +131,9 @@ const RECIPE_JSON_SCHEMA = {
   additionalProperties: false,
 };
 
-function buildSystemPrompt() {
-  const sampleText = SAMPLE_MEALS.map((m) => `- ${m.en} (RO: ${m.ro})`).join('\n');
+function buildSystemPrompt(lang) {
+  const languageName = LANGUAGE_NAMES[lang] || 'English';
+  const sampleText = SAMPLE_MEALS.map((m) => `- ${m[lang] || m.en}`).join('\n');
 
   return `You are a nutrition assistant for FF Fitness. You compose realistic meal plans, based on home-cooked food (not restaurant dishes), for a user who gave you a daily calorie and macronutrient target.
 
@@ -145,7 +141,7 @@ STRICT RULES:
 1. Calculate each meal's macros from the verified nutrition table below (values per 100g) and the portions you choose — do not use memorized values for foods outside this table.
 2. Each day's total must be close to the given target (within ±10%).
 3. Vary the meals — don't repeat the same meal across the 7 days if possible.
-4. For EVERY meal, write the name and description in BOTH Romanian and English (name.ro/name.en, description.ro/description.en) — describing the exact same dish and portions in each language, not a machine translation of one into the other. Use realistic portions (don't invent absurd quantities).
+4. For EVERY meal, write the name and description in ${languageName} only. Use realistic portions (don't invent absurd quantities).
 5. STRICTLY respect the allergen exclusions given by the user — no meal may contain those ingredients.
 6. Each day must include breakfast, lunch, and dinner (slot values 'breakfast'/'lunch'/'dinner'), plus 0-2 snacks ('snack') depending on how much extra the calorie target requires.
 7. Number each day's "day" field sequentially from 1 to 7.
@@ -170,6 +166,18 @@ function buildUserMessage(payload) {
     payload.dislikeText ? `Avoid if possible: ${payload.dislikeText}.` : '',
     'Generate the 7-day plan.',
   ].filter(Boolean).join('\n');
+}
+
+function toBilingualPlan(plan, lang) {
+  const days = plan.days.map((day) => ({
+    ...day,
+    meals: day.meals.map((meal) => ({
+      ...meal,
+      name: { ro: meal.name, en: meal.name },
+      description: { ro: meal.description, en: meal.description },
+    })),
+  }));
+  return { days, lang };
 }
 
 function buildRecipeSystemPrompt() {
@@ -297,13 +305,13 @@ async function handleGeneratePlan(request, env, origin, ip) {
 
   try {
     const plan = await callClaude(env, {
-      system: buildSystemPrompt(),
+      system: buildSystemPrompt(body.lang),
       userMessage: buildUserMessage(body),
       schema: PLAN_JSON_SCHEMA,
       maxTokens: PLAN_MAX_TOKENS,
       effort: 'low',
     });
-    return jsonResponse(plan, 200, origin);
+    return jsonResponse(toBilingualPlan(plan, body.lang), 200, origin);
   } catch (err) {
     return jsonResponse({ error: 'upstream_failed', message: String(err) }, 502, origin);
   }
