@@ -7,6 +7,9 @@ const PLAN_MAX_TOKENS = 20000;
 const RECIPE_MAX_TOKENS = 1500;
 const PLAN_RATE_LIMIT_PER_HOUR = 8;
 const RECIPE_RATE_LIMIT_PER_HOUR = 30;
+const TRANSLATE_MAX_TOKENS = 4000;
+const TRANSLATE_RATE_LIMIT_PER_HOUR = 20;
+const TRANSLATE_MEALS_MAX = 40;
 
 const INGREDIENT_TABLE = `
 Chicken breast (cooked): 165 kcal, 31g protein, 0g carbs, 3.6g fat / 100g
@@ -131,6 +134,26 @@ const RECIPE_JSON_SCHEMA = {
   additionalProperties: false,
 };
 
+const TRANSLATE_MEALS_SCHEMA = {
+  type: 'object',
+  properties: {
+    meals: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          description: { type: 'string' },
+        },
+        required: ['name', 'description'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['meals'],
+  additionalProperties: false,
+};
+
 function buildSystemPrompt(lang) {
   const languageName = LANGUAGE_NAMES[lang] || 'English';
   const sampleText = SAMPLE_MEALS.map((m) => `- ${m[lang] || m.en}`).join('\n');
@@ -191,6 +214,26 @@ function buildRecipeUserMessage(payload) {
   ].join('\n');
 }
 
+function buildTranslateSystemPrompt(targetLang) {
+  const languageName = LANGUAGE_NAMES[targetLang] || 'English';
+  return `You are a translation assistant for FF Fitness. You translate meal names and short ingredient/portion descriptions from a nutrition plan into ${languageName}.
+
+STRICT RULES:
+1. Preserve the exact meaning, all food/ingredient terms, and all quantities/portions — do not invent, omit, or add ingredients or amounts.
+2. Do not recalculate or mention macros/calories — you are only translating text, nothing else.
+3. Return EXACTLY the same number of meals you were given, in the SAME order — meal N in your response must be the translation of meal N in the input.
+4. Keep the tone concise and consistent with a nutrition plan (short dish names, brief comma-separated portion descriptions).
+
+Respond ONLY with the structured translation per the requested JSON schema.`;
+}
+
+function buildTranslateUserMessage(meals) {
+  const numbered = meals
+    .map((m, i) => `${i + 1}. Name: ${m.name}\n   Description: ${m.description}`)
+    .join('\n');
+  return `Translate each of these ${meals.length} meals. Return them in the same order, one entry per input meal:\n\n${numbered}`;
+}
+
 function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': origin || '*',
@@ -230,6 +273,17 @@ function validateRecipePayload(body) {
   const numFields = ['kcal', 'protein', 'carbs', 'fat'];
   if (!numFields.every((f) => typeof body[f] === 'number' && body[f] >= 0 && body[f] < 10000)) return false;
   return true;
+}
+
+function isNonEmptyString(value, maxLength) {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
+}
+
+function validateTranslatePayload(body) {
+  if (!body || typeof body !== 'object') return false;
+  if (!['ro', 'en'].includes(body.targetLang)) return false;
+  if (!Array.isArray(body.meals) || body.meals.length === 0 || body.meals.length > TRANSLATE_MEALS_MAX) return false;
+  return body.meals.every((m) => m && isNonEmptyString(m.name, 200) && isNonEmptyString(m.description, 500));
 }
 
 async function checkRateLimit(env, ip, kind, limitPerHour) {
@@ -459,6 +513,46 @@ async function handleGenerateRecipe(request, env, origin, ip) {
   }
 }
 
+async function handleTranslatePlan(request, env, origin, ip) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return jsonResponse({ error: 'invalid_json' }, 400, origin);
+  }
+
+  if (!validateTranslatePayload(body)) {
+    return jsonResponse({ error: 'invalid_payload' }, 400, origin);
+  }
+
+  if (!env.ANTHROPIC_API_KEY) {
+    return jsonResponse({ error: 'not_configured' }, 503, origin);
+  }
+
+  const allowed = await checkRateLimit(env, ip, 'translate', TRANSLATE_RATE_LIMIT_PER_HOUR);
+  if (!allowed) {
+    return jsonResponse({ error: 'rate_limited' }, 429, origin);
+  }
+
+  try {
+    const result = await callClaude(env, {
+      system: buildTranslateSystemPrompt(body.targetLang),
+      userMessage: buildTranslateUserMessage(body.meals),
+      schema: TRANSLATE_MEALS_SCHEMA,
+      maxTokens: TRANSLATE_MAX_TOKENS,
+      effort: 'low',
+    });
+
+    if (!result || !Array.isArray(result.meals) || result.meals.length !== body.meals.length) {
+      return jsonResponse({ error: 'upstream_failed', message: 'Translation count mismatch' }, 502, origin);
+    }
+
+    return jsonResponse(result, 200, origin);
+  } catch (err) {
+    return jsonResponse({ error: 'upstream_failed', message: String(err) }, 502, origin);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin');
@@ -476,6 +570,10 @@ export default {
 
     if (url.pathname === '/api/generate-recipe' && request.method === 'POST') {
       return handleGenerateRecipe(request, env, origin, ip);
+    }
+
+    if (url.pathname === '/api/translate-plan' && request.method === 'POST') {
+      return handleTranslatePlan(request, env, origin, ip);
     }
 
     return jsonResponse({ error: 'not_found' }, 404, origin);

@@ -202,11 +202,12 @@
           <button type="submit" class="btn-primary" id="plan-generate-btn" data-i18n="aiPlan.generateButton">Generează planul</button>
         </form>
 
-        <div id="plan-loading" class="plan-loading" hidden aria-live="polite">
-          <svg class="ai-badge ai-badge--pulse" viewBox="0 0 24 24" aria-hidden="true">
+        <div id="plan-loading" class="plan-loading" hidden>
+          <svg class="ai-badge ai-badge--thinking" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
           </svg>
           <span id="plan-loading-text"></span>
+          <span id="plan-loading-announce" class="visually-hidden" aria-live="polite"></span>
         </div>
 
         <p id="plan-error" class="field-error" role="alert"></p>

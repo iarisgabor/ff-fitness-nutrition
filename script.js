@@ -12,8 +12,10 @@ const LOW_CALORIE_FLOOR = 1200;
 const ALLERGEN_TAGS = ['dairy', 'egg', 'fish', 'shellfish', 'treenut', 'peanut', 'gluten', 'soy', 'sesame'];
 const NUTRITION_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/generate-plan';
 const RECIPE_API_URL = '/api/generate-recipe';
+const TRANSLATE_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/translate-plan';
 const REGENERATE_COOLDOWN_MS = 15000;
 const RECIPE_FETCH_TIMEOUT_MS = 15000;
+const TRANSLATE_FETCH_TIMEOUT_MS = 30000;
 const PLAN_SLOT_ORDER = ['breakfast', 'lunch', 'dinner', 'snack'];
 const PDF_LIBRARY_URL = 'assets/vendor/jspdf.umd.min.js';
 const PDF_ASSETS_URL = 'assets/vendor/pdf-assets.js';
@@ -91,13 +93,15 @@ const CONTENT = {
       dislikesPlaceholder: 'ex: ciuperci, măsline…',
       generateButton: 'Generează planul',
       regenerateButton: 'Regenerează planul',
-      loadingSteps: ['Analizează obiectivul tău…', 'Verifică alergiile…', 'Construiește planul…'],
+      loadingSteps: ['Analizează obiectivul tău…', 'Verifică alergiile…', 'Calculează caloriile și macronutrienții…', 'Alege rețete variate pentru fiecare zi…', 'Echilibrează proteine, carbohidrați și grăsimi…', 'Construiește planul…'],
       streamingProgress: 'Ziua {n} din 7 e gata…',
+      generatingAnnounce: 'Se generează planul de nutriție. Te rugăm așteaptă.',
+      translatingText: 'Traducem planul…',
+      translateError: 'Traducerea planului a eșuat. Planul rămâne afișat în limba anterioară — încearcă din nou să comuți limba.',
       dayLabel: 'Ziua',
       totalLabel: 'Total',
       targetWord: 'target',
       emptyPoolError: 'Cu atât de multe excluderi bifate, nu mai rămân suficiente rețete pentru un plan complet. Debifează câteva opțiuni și încearcă din nou.',
-      planLangMismatch: 'Planul afișat a fost generat în cealaltă limbă. Apasă "Regenerează planul" ca să-l vezi în această limbă.',
       disclaimer: 'Planul de mese este generat automat, pe baza unei baze de date nutriționale și a targetului tău caloric și de macronutrienți — nu este creat sau verificat de un nutriționist și nu constituie sfat medical sau dietetic personalizat. Bifele de alergii exclud cu strictețe rețetele care conțin acel ingredient, dar nu pot garanta absența urmelor sau a contaminării încrucișate din bucătăria ta. Câmpul liber pentru alte preferințe este orientativ și nu filtrează la fel de sigur ca bifele — nu te baza pe el dacă ai o alergie reală. Dacă ai o alergie alimentară diagnosticată, o intoleranță sau altă afecțiune medicală, verifică fiecare rețetă pe cont propriu și consultă un medic sau un dietetician autorizat.',
       slots: { breakfast: 'Mic dejun', lunch: 'Prânz', dinner: 'Cină', snack: 'Gustare' },
       recipeButton: 'Vezi rețeta',
@@ -215,13 +219,15 @@ const CONTENT = {
       dislikesPlaceholder: 'e.g. mushrooms, olives…',
       generateButton: 'Generate plan',
       regenerateButton: 'Regenerate plan',
-      loadingSteps: ['Analyzing your goal…', 'Checking allergies…', 'Building your plan…'],
+      loadingSteps: ['Analyzing your goal…', 'Checking allergies…', 'Calculating calories and macros…', 'Picking varied recipes for each day…', 'Balancing protein, carbs, and fat…', 'Building your plan…'],
       streamingProgress: 'Day {n} of 7 is ready…',
+      generatingAnnounce: 'Generating your nutrition plan. Please wait.',
+      translatingText: 'Translating plan…',
+      translateError: 'Translation failed. The plan is still shown in its previous language — try switching again.',
       dayLabel: 'Day',
       totalLabel: 'Total',
       targetWord: 'target',
       emptyPoolError: 'With this many exclusions checked, there aren’t enough recipes left for a full plan. Uncheck a few options and try again.',
-      planLangMismatch: 'The displayed plan was generated in the other language. Press "Regenerate plan" to see it in this language.',
       disclaimer: 'This meal plan is generated automatically from a nutrition database and your calorie/macro targets — it is not created or reviewed by a nutritionist and is not personalized medical or dietary advice. The allergy checkboxes strictly exclude any recipe containing that ingredient, but can’t guarantee your kitchen is free of traces or cross-contamination. The free-text field is best-effort only and doesn’t filter as reliably as the checkboxes — don’t rely on it for a real allergy. If you have a diagnosed food allergy, intolerance, or other medical condition, double-check every recipe yourself and consult a doctor or registered dietitian.',
       slots: { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' },
       recipeButton: 'See recipe',
@@ -790,6 +796,8 @@ let recipeCache = new Map(); // mealKey -> rețetă (ingrediente/pași bilingve)
 let currentRecipeMealKey = null;
 let currentRecipeData = null; // { meal, recipe } — ultima pereche afișată cu succes în modal
 let pdfLibraryPromise = null;
+let planRenderToken = 0; // bumped de orice operație care deține UI-ul planului; rezolvările întârziate verifică și abandonează dacă sunt stale
+let inFlightTranslation = null; // { planData, lang, promise } — deduplică cereri de traducere concurente identice
 
 /* ---------- Utilitare ---------- */
 function getByPath(obj, path) {
@@ -857,11 +865,17 @@ function applyLanguage(lang) {
   renderFAQ();
   if (lastResults) renderResults(lastResults, false);
   if (lastPlanData) {
-    if (lastPlanData.lang && lastPlanData.lang !== lang) {
-      document.getElementById('plan-output').hidden = true;
-      document.getElementById('plan-error').textContent = CONTENT[lang].aiPlan.planLangMismatch;
-      closeRecipeDialog();
+    const needsTranslation = lastPlanData.lang
+      && lastPlanData.lang !== lang
+      && !(lastPlanData.translatedLangs && lastPlanData.translatedLangs.has(lang));
+
+    if (needsTranslation) {
+      translateAndRenderPlan(lang);
     } else {
+      planRenderToken += 1;
+      document.getElementById('plan-error').textContent = '';
+      document.getElementById('plan-loading').hidden = true;
+      document.getElementById('plan-output').hidden = false;
       renderPlanAccordion(lastPlanData);
       if (currentRecipeMealKey) refreshOpenRecipeDialog();
     }
@@ -1242,6 +1256,96 @@ async function generatePlan(targets, goal, allergens, dislikes, onDay) {
   if (apiResult) return apiResult;
 
   return generateWeekPlanLocal(targets, allergens, dislikes, currentLang);
+}
+
+async function translatePlanMeals(planData, targetLang) {
+  if (inFlightTranslation && inFlightTranslation.planData === planData && inFlightTranslation.lang === targetLang) {
+    return inFlightTranslation.promise;
+  }
+
+  const promise = (async () => {
+    const flatMeals = [];
+    planData.days.forEach((day) => {
+      day.meals.forEach((m) => {
+        flatMeals.push({ name: m.name[planData.lang], description: m.description[planData.lang] });
+      });
+    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TRANSLATE_FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(TRANSLATE_API_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ targetLang, meals: flatMeals }),
+        signal: controller.signal,
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data || !Array.isArray(data.meals) || data.meals.length !== flatMeals.length) return false;
+
+      let i = 0;
+      planData.days.forEach((day) => {
+        day.meals.forEach((m) => {
+          const translated = data.meals[i];
+          i += 1;
+          if (translated && typeof translated.name === 'string' && typeof translated.description === 'string') {
+            m.name[targetLang] = translated.name;
+            m.description[targetLang] = translated.description;
+          }
+        });
+      });
+
+      if (!planData.translatedLangs) planData.translatedLangs = new Set([planData.lang]);
+      planData.translatedLangs.add(targetLang);
+      return true;
+    } catch (err) {
+      return false;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  })();
+
+  inFlightTranslation = { planData, lang: targetLang, promise };
+  try {
+    return await promise;
+  } finally {
+    if (inFlightTranslation && inFlightTranslation.promise === promise) inFlightTranslation = null;
+  }
+}
+
+async function translateAndRenderPlan(lang) {
+  const planData = lastPlanData;
+  planRenderToken += 1;
+  const myToken = planRenderToken;
+
+  const t = CONTENT[lang].aiPlan;
+  const loadingEl = document.getElementById('plan-loading');
+  const loadingTextEl = document.getElementById('plan-loading-text');
+  const loadingAnnounceEl = document.getElementById('plan-loading-announce');
+  const outputEl = document.getElementById('plan-output');
+  const errorEl = document.getElementById('plan-error');
+
+  errorEl.textContent = '';
+  outputEl.hidden = true;
+  loadingEl.hidden = false;
+  loadingTextEl.textContent = t.translatingText;
+  loadingAnnounceEl.textContent = t.translatingText;
+
+  const ok = await translatePlanMeals(planData, lang);
+
+  if (myToken !== planRenderToken) return;
+
+  loadingEl.hidden = true;
+
+  if (!ok) {
+    errorEl.textContent = t.translateError;
+    return;
+  }
+
+  outputEl.hidden = false;
+  renderPlanAccordion(lastPlanData);
+  if (currentRecipeMealKey) refreshOpenRecipeDialog();
 }
 
 function buildPlanDayElement(day, dayIndex) {
@@ -1730,6 +1834,8 @@ async function handleDownloadPdf() {
 async function handlePlanGenerate() {
   if (!lastResults) return;
 
+  planRenderToken += 1;
+
   recipeCache.clear();
   closeRecipeDialog();
 
@@ -1742,6 +1848,7 @@ async function handlePlanGenerate() {
   const regenerateBtn = document.getElementById('plan-regenerate-btn');
   const loadingEl = document.getElementById('plan-loading');
   const loadingTextEl = document.getElementById('plan-loading-text');
+  const loadingAnnounceEl = document.getElementById('plan-loading-announce');
   const outputEl = document.getElementById('plan-output');
   const accordionEl = document.getElementById('plan-accordion');
   const errorEl = document.getElementById('plan-error');
@@ -1755,6 +1862,13 @@ async function handlePlanGenerate() {
   outputEl.hidden = true;
   loadingEl.hidden = false;
   loadingTextEl.textContent = t.loadingSteps[0];
+  loadingAnnounceEl.textContent = t.generatingAnnounce;
+
+  let stepIndex = 0;
+  const stepInterval = setInterval(() => {
+    stepIndex = (stepIndex + 1) % t.loadingSteps.length;
+    loadingTextEl.textContent = t.loadingSteps[stepIndex];
+  }, 2800);
 
   const targets = {
     kcal: lastResults.target,
@@ -1765,13 +1879,17 @@ async function handlePlanGenerate() {
 
   let daysReceived = 0;
   const onDay = (day, count) => {
+    clearInterval(stepInterval);
     daysReceived = count;
     outputEl.hidden = false;
     appendPlanDay(day, count - 1);
-    loadingTextEl.textContent = t.streamingProgress.replace('{n}', count);
+    const progressText = t.streamingProgress.replace('{n}', count);
+    loadingTextEl.textContent = progressText;
+    loadingAnnounceEl.textContent = progressText;
   };
 
   const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes, onDay);
+  clearInterval(stepInterval);
   loadingEl.hidden = true;
   generateBtn.disabled = false;
 
@@ -1782,6 +1900,7 @@ async function handlePlanGenerate() {
   }
 
   lastPlanData = plan;
+  lastPlanData.translatedLangs = new Set([lastPlanData.lang || currentLang]);
   if (daysReceived === 0) renderPlanAccordion(plan);
   outputEl.hidden = false;
   regenerateBtn.hidden = false;

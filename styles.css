@@ -426,6 +426,13 @@ legend, .field label {
   50% { transform: scale(1.15); opacity: 0.7; }
 }
 
+.ai-badge--thinking { animation: aiBadgeThinking 2.4s ease-in-out infinite; }
+@keyframes aiBadgeThinking {
+  0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 0 rgba(232, 17, 126, 0)); }
+  50% { transform: scale(1.2) rotate(180deg); filter: drop-shadow(0 0 4px rgba(232, 17, 126, 0.9)) drop-shadow(0 0 10px rgba(232, 17, 126, 0.5)); }
+  100% { transform: scale(1) rotate(360deg); filter: drop-shadow(0 0 0 rgba(232, 17, 126, 0)); }
+}
+
 .ai-plan-intro { color: var(--text-secondary); margin-top: calc(-1 * var(--space-4)); }
 
 #plan-form {
@@ -596,6 +603,7 @@ legend, .field label {
 
 @media (prefers-reduced-motion: reduce) {
   .ai-badge--pulse { animation: none; }
+  .ai-badge--thinking { animation: none; }
 }
 
 /* ---------- FAQ / Accordion ---------- */
