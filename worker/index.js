@@ -168,18 +168,6 @@ function buildUserMessage(payload) {
   ].filter(Boolean).join('\n');
 }
 
-function toBilingualPlan(plan, lang) {
-  const days = plan.days.map((day) => ({
-    ...day,
-    meals: day.meals.map((meal) => ({
-      ...meal,
-      name: { ro: meal.name, en: meal.name },
-      description: { ro: meal.description, en: meal.description },
-    })),
-  }));
-  return { days, lang };
-}
-
 function buildRecipeSystemPrompt() {
   return `You are a cooking assistant for FF Fitness. Given a meal's name, a short ingredient/portion description, and its fixed macros, produce a realistic, easy-to-follow home-cook recipe consistent with that exact description — do not invent a different dish or different ingredients than what the description implies, and do not contradict the given macros.
 
@@ -282,6 +270,114 @@ async function callClaude(env, { system, userMessage, schema, maxTokens, effort 
   return JSON.parse(textBlock.text);
 }
 
+function toBilingualDay(day) {
+  return {
+    ...day,
+    meals: day.meals.map((meal) => ({
+      ...meal,
+      name: { ro: meal.name, en: meal.name },
+      description: { ro: meal.description, en: meal.description },
+    })),
+  };
+}
+
+// Emits each day of PLAN_JSON_SCHEMA the moment its object closes, by tracking JSON object
+// depth over the raw text deltas: depth 2 is exactly a "days[i]" object (depth 1 is the root
+// object, depth 3+ is nested "meals[i]" objects inside a day) — relies on that schema shape.
+function makeDayExtractor(onDay) {
+  let buffer = '';
+  let scanPos = 0;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let dayStart = -1;
+
+  return function feed(text) {
+    buffer += text;
+    for (; scanPos < buffer.length; scanPos++) {
+      const ch = buffer[scanPos];
+      if (inString) {
+        if (escape) escape = false;
+        else if (ch === '\\') escape = true;
+        else if (ch === '"') inString = false;
+        continue;
+      }
+      if (ch === '"') { inString = true; continue; }
+      if (ch === '{') {
+        depth++;
+        if (depth === 2) dayStart = scanPos;
+        continue;
+      }
+      if (ch === '}') {
+        if (depth === 2 && dayStart !== -1) {
+          const raw = buffer.slice(dayStart, scanPos + 1);
+          try { onDay(JSON.parse(raw)); } catch (e) { /* incomplete/malformed fragment, skip */ }
+        }
+        depth--;
+      }
+    }
+  };
+}
+
+async function streamPlanDays(env, { system, userMessage, schema, maxTokens, effort }, controller) {
+  const encoder = new TextEncoder();
+  const emit = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+
+  const res = await fetch(ANTHROPIC_API_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': ANTHROPIC_VERSION,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: maxTokens,
+      stream: true,
+      output_config: { effort, format: { type: 'json_schema', schema } },
+      system,
+      messages: [{ role: 'user', content: userMessage }],
+    }),
+  });
+
+  if (!res.ok || !res.body) {
+    emit({ error: 'upstream_failed', message: res.body ? await res.text() : 'no response body' });
+    return;
+  }
+
+  let dayCount = 0;
+  const extract = makeDayExtractor((day) => {
+    dayCount++;
+    emit(toBilingualDay(day));
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let sseBuffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    sseBuffer += decoder.decode(value, { stream: true });
+    const lines = sseBuffer.split('\n');
+    sseBuffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue;
+      const jsonStr = line.slice(5).trim();
+      if (!jsonStr) continue;
+      let evt;
+      try { evt = JSON.parse(jsonStr); } catch (e) { continue; }
+      if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
+        extract(evt.delta.text);
+      }
+    }
+  }
+
+  if (dayCount === 0) {
+    emit({ error: 'upstream_failed', message: 'No days parsed from stream' });
+  }
+}
+
 async function handleGeneratePlan(request, env, origin, ip) {
   let body;
   try {
@@ -303,18 +399,29 @@ async function handleGeneratePlan(request, env, origin, ip) {
     return jsonResponse({ error: 'rate_limited' }, 429, origin);
   }
 
-  try {
-    const plan = await callClaude(env, {
-      system: buildSystemPrompt(body.lang),
-      userMessage: buildUserMessage(body),
-      schema: PLAN_JSON_SCHEMA,
-      maxTokens: PLAN_MAX_TOKENS,
-      effort: 'low',
-    });
-    return jsonResponse(toBilingualPlan(plan, body.lang), 200, origin);
-  } catch (err) {
-    return jsonResponse({ error: 'upstream_failed', message: String(err) }, 502, origin);
-  }
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        await streamPlanDays(env, {
+          system: buildSystemPrompt(body.lang),
+          userMessage: buildUserMessage(body),
+          schema: PLAN_JSON_SCHEMA,
+          maxTokens: PLAN_MAX_TOKENS,
+          effort: 'low',
+        }, controller);
+      } catch (err) {
+        controller.enqueue(encoder.encode(JSON.stringify({ error: 'upstream_failed', message: String(err) }) + '\n'));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: { 'content-type': 'application/x-ndjson', ...corsHeaders(origin) },
+  });
 }
 
 async function handleGenerateRecipe(request, env, origin, ip) {

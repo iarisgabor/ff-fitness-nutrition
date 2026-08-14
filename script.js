@@ -92,6 +92,7 @@ const CONTENT = {
       generateButton: 'Generează planul',
       regenerateButton: 'Regenerează planul',
       loadingSteps: ['Analizează obiectivul tău…', 'Verifică alergiile…', 'Construiește planul…'],
+      streamingProgress: 'Ziua {n} din 7 e gata…',
       dayLabel: 'Ziua',
       totalLabel: 'Total',
       targetWord: 'target',
@@ -215,6 +216,7 @@ const CONTENT = {
       generateButton: 'Generate plan',
       regenerateButton: 'Regenerate plan',
       loadingSteps: ['Analyzing your goal…', 'Checking allergies…', 'Building your plan…'],
+      streamingProgress: 'Day {n} of 7 is ready…',
       dayLabel: 'Day',
       totalLabel: 'Total',
       targetWord: 'target',
@@ -1184,7 +1186,7 @@ function applySavedAllergyPrefs(form) {
   form.dislikes.value = saved.dislikes || '';
 }
 
-async function fetchPlanFromApi(payload) {
+async function fetchPlanFromApi(payload, onDay) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 150000);
   try {
@@ -1194,10 +1196,29 @@ async function fetchPlanFromApi(payload) {
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-    if (!res.ok) throw new Error(`API status ${res.status}`);
-    const data = await res.json();
-    if (!data || !Array.isArray(data.days)) throw new Error('Invalid API response');
-    return data;
+    if (!res.ok || !res.body) return null;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const days = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let obj;
+        try { obj = JSON.parse(line); } catch (e) { continue; }
+        if (obj.error) return days.length ? { days, lang: payload.lang } : null;
+        days.push(obj);
+        if (onDay) onDay(obj, days.length);
+      }
+    }
+    return days.length ? { days, lang: payload.lang } : null;
   } catch (err) {
     return null;
   } finally {
@@ -1205,7 +1226,7 @@ async function fetchPlanFromApi(payload) {
   }
 }
 
-async function generatePlan(targets, goal, allergens, dislikes) {
+async function generatePlan(targets, goal, allergens, dislikes, onDay) {
   const payload = {
     targetKcal: targets.kcal,
     targetProtein: targets.protein,
@@ -1217,85 +1238,69 @@ async function generatePlan(targets, goal, allergens, dislikes) {
     lang: currentLang,
   };
 
-  const apiResult = await fetchPlanFromApi(payload);
+  const apiResult = await fetchPlanFromApi(payload, onDay);
   if (apiResult) return apiResult;
 
   return generateWeekPlanLocal(targets, allergens, dislikes, currentLang);
 }
 
-function runLoadingSequence(onDone) {
-  const stepsEl = document.getElementById('plan-loading-text');
-  const steps = CONTENT[currentLang].aiPlan.loadingSteps;
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function buildPlanDayElement(day, dayIndex) {
+  const t = CONTENT[currentLang].aiPlan;
+  const itemEl = document.createElement('div');
+  itemEl.className = 'accordion-item';
+  const triggerId = `plan-trigger-${dayIndex}`;
+  const panelId = `plan-panel-${dayIndex}`;
 
-  if (reduced) {
-    stepsEl.textContent = steps[steps.length - 1];
-    setTimeout(onDone, 400);
-    return;
-  }
+  const groupsHtml = PLAN_SLOT_ORDER.map((slot) => {
+    const mealsInSlot = day.meals.filter((m) => m.slot === slot);
+    if (!mealsInSlot.length) return '';
 
-  let i = 0;
-  stepsEl.textContent = steps[0];
-  const interval = setInterval(() => {
-    i += 1;
-    if (i < steps.length) {
-      stepsEl.textContent = steps[i];
-    } else {
-      clearInterval(interval);
-      onDone();
-    }
-  }, 530);
+    const rowsHtml = mealsInSlot.map((m) => {
+      const mealKey = `${dayIndex}-${slot}-${m.name[currentLang]}`;
+      mealIndex.set(mealKey, m);
+      return `
+      <div class="plan-meal-row">
+        <div class="plan-meal-text">
+          <span class="plan-meal-name">${m.name[currentLang]}</span>
+          <span class="plan-meal-desc">${m.description[currentLang]}</span>
+        </div>
+        <span class="plan-meal-macros">${formatNumber(m.kcal)} kcal · P ${formatNumber(m.protein)}g · C ${formatNumber(m.carbs)}g · G ${formatNumber(m.fat)}g</span>
+        <button type="button" class="recipe-btn" data-meal-key="${mealKey}">${t.recipeButton}</button>
+      </div>`;
+    }).join('');
+
+    return `<div class="plan-slot-group"><h4 class="plan-slot-heading">${t.slots[slot]}</h4>${rowsHtml}</div>`;
+  }).join('');
+
+  itemEl.innerHTML = `
+    <h3>
+      <button type="button" class="accordion-trigger" id="${triggerId}" aria-expanded="false" aria-controls="${panelId}">
+        <span>${t.dayLabel} ${day.day} · ${formatNumber(day.totalKcal)} kcal</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </h3>
+    <div class="accordion-panel" id="${panelId}" role="region" aria-labelledby="${triggerId}">
+      <div class="inner">
+        ${groupsHtml}
+        <p class="plan-day-total">${t.totalLabel}: ${formatNumber(day.totalKcal)} kcal (${t.targetWord} ${formatNumber(lastResults.target)}) · P ${formatNumber(day.totalProtein)}g · C ${formatNumber(day.totalCarbs)}g · G ${formatNumber(day.totalFat)}g</p>
+      </div>
+    </div>
+  `;
+  return itemEl;
+}
+
+function appendPlanDay(day, dayIndex) {
+  document.getElementById('plan-accordion').appendChild(buildPlanDayElement(day, dayIndex));
 }
 
 function renderPlanAccordion(planData) {
   const container = document.getElementById('plan-accordion');
   const openIndex = container.dataset.openIndex;
   container.innerHTML = '';
-  const t = CONTENT[currentLang].aiPlan;
   mealIndex.clear();
 
   planData.days.forEach((day, dayIndex) => {
-    const itemEl = document.createElement('div');
-    itemEl.className = 'accordion-item';
-    const triggerId = `plan-trigger-${dayIndex}`;
-    const panelId = `plan-panel-${dayIndex}`;
-
-    const groupsHtml = PLAN_SLOT_ORDER.map((slot) => {
-      const mealsInSlot = day.meals.filter((m) => m.slot === slot);
-      if (!mealsInSlot.length) return '';
-
-      const rowsHtml = mealsInSlot.map((m) => {
-        const mealKey = `${dayIndex}-${slot}-${m.name.ro}`;
-        mealIndex.set(mealKey, m);
-        return `
-        <div class="plan-meal-row">
-          <div class="plan-meal-text">
-            <span class="plan-meal-name">${m.name[currentLang]}</span>
-            <span class="plan-meal-desc">${m.description[currentLang]}</span>
-          </div>
-          <span class="plan-meal-macros">${formatNumber(m.kcal)} kcal · P ${formatNumber(m.protein)}g · C ${formatNumber(m.carbs)}g · G ${formatNumber(m.fat)}g</span>
-          <button type="button" class="recipe-btn" data-meal-key="${mealKey}">${t.recipeButton}</button>
-        </div>`;
-      }).join('');
-
-      return `<div class="plan-slot-group"><h4 class="plan-slot-heading">${t.slots[slot]}</h4>${rowsHtml}</div>`;
-    }).join('');
-
-    itemEl.innerHTML = `
-      <h3>
-        <button type="button" class="accordion-trigger" id="${triggerId}" aria-expanded="false" aria-controls="${panelId}">
-          <span>${t.dayLabel} ${day.day} · ${formatNumber(day.totalKcal)} kcal</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </h3>
-      <div class="accordion-panel" id="${panelId}" role="region" aria-labelledby="${triggerId}">
-        <div class="inner">
-          ${groupsHtml}
-          <p class="plan-day-total">${t.totalLabel}: ${formatNumber(day.totalKcal)} kcal (${t.targetWord} ${formatNumber(lastResults.target)}) · P ${formatNumber(day.totalProtein)}g · C ${formatNumber(day.totalCarbs)}g · G ${formatNumber(day.totalFat)}g</p>
-        </div>
-      </div>
-    `;
-    container.appendChild(itemEl);
+    container.appendChild(buildPlanDayElement(day, dayIndex));
   });
 
   if (openIndex != null) {
@@ -1736,14 +1741,20 @@ async function handlePlanGenerate() {
   const generateBtn = document.getElementById('plan-generate-btn');
   const regenerateBtn = document.getElementById('plan-regenerate-btn');
   const loadingEl = document.getElementById('plan-loading');
+  const loadingTextEl = document.getElementById('plan-loading-text');
   const outputEl = document.getElementById('plan-output');
+  const accordionEl = document.getElementById('plan-accordion');
   const errorEl = document.getElementById('plan-error');
+  const t = CONTENT[currentLang].aiPlan;
 
   generateBtn.disabled = true;
   regenerateBtn.disabled = true;
   errorEl.textContent = '';
+  accordionEl.innerHTML = '';
+  mealIndex.clear();
   outputEl.hidden = true;
   loadingEl.hidden = false;
+  loadingTextEl.textContent = t.loadingSteps[0];
 
   const targets = {
     kcal: lastResults.target,
@@ -1752,23 +1763,30 @@ async function handlePlanGenerate() {
     fat: lastResults.fat,
   };
 
-  runLoadingSequence(async () => {
-    const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes);
-    loadingEl.hidden = true;
-    generateBtn.disabled = false;
-
-    if (!plan) {
-      errorEl.textContent = CONTENT[currentLang].aiPlan.emptyPoolError;
-      return;
-    }
-
-    lastPlanData = plan;
-    renderPlanAccordion(plan);
+  let daysReceived = 0;
+  const onDay = (day, count) => {
+    daysReceived = count;
     outputEl.hidden = false;
-    regenerateBtn.hidden = false;
-    regenerateBtn.disabled = true;
-    setTimeout(() => { regenerateBtn.disabled = false; }, REGENERATE_COOLDOWN_MS);
-  });
+    appendPlanDay(day, count - 1);
+    loadingTextEl.textContent = t.streamingProgress.replace('{n}', count);
+  };
+
+  const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes, onDay);
+  loadingEl.hidden = true;
+  generateBtn.disabled = false;
+
+  if (!plan) {
+    outputEl.hidden = true;
+    errorEl.textContent = t.emptyPoolError;
+    return;
+  }
+
+  lastPlanData = plan;
+  if (daysReceived === 0) renderPlanAccordion(plan);
+  outputEl.hidden = false;
+  regenerateBtn.hidden = false;
+  regenerateBtn.disabled = true;
+  setTimeout(() => { regenerateBtn.disabled = false; }, REGENERATE_COOLDOWN_MS);
 }
 
 function initAiPlanSection() {
