@@ -90,6 +90,7 @@ const CONTENT = {
       backLabel: 'Spate',
       selectHint: 'Alege o grupă musculară…',
       backToMap: '← Înapoi la harta corpului',
+      backToPlan: '← Înapoi la planul tău',
       listHeading: 'Exerciții pentru {muscle}',
       setsLabel: 'Serii',
       repsLabel: 'Repetări',
@@ -269,6 +270,7 @@ const CONTENT = {
       backLabel: 'Back',
       selectHint: 'Pick a muscle group…',
       backToMap: '← Back to body map',
+      backToPlan: '← Back to your plan',
       listHeading: '{muscle} exercises',
       setsLabel: 'Sets',
       repsLabel: 'Reps',
@@ -908,6 +910,8 @@ let pdfLibraryPromise = null;
 let planRenderToken = 0; // bumped de orice operație care deține UI-ul planului; rezolvările întârziate verifică și abandonează dacă sunt stale
 let inFlightTranslation = null; // { planData, lang, promise } — deduplică cereri de traducere concurente identice
 let currentMuscleGroup = null; // grupa musculară curent afișată pe #exercise-list, sau null
+let exerciseListReturnTarget = null; // { dayIndex } dacă am ajuns pe #exercise-list din planul AI, altfel null (din harta corpului)
+let highlightedExerciseId = null; // id-ul exercițiului evidențiat curent pe #exercise-list, sau null
 let lastWorkoutPlanData = null; // { days, lang, translatedLangs }
 let workoutPlanRenderToken = 0;
 let inFlightWorkoutTranslation = null;
@@ -996,7 +1000,8 @@ function applyLanguage(lang) {
     refreshOpenRecipeDialog();
   }
 
-  if (currentMuscleGroup) renderExerciseList(currentMuscleGroup);
+  if (currentMuscleGroup) renderExerciseList(currentMuscleGroup, highlightedExerciseId);
+  updateExerciseListBackLabel();
   resetBodymapCaption();
 
   if (lastWorkoutPlanData) {
@@ -1283,13 +1288,36 @@ function resetBodymapCaption() {
   setBodymapCaption(CONTENT[currentLang].exercises.selectHint);
 }
 
-function openExerciseList(muscleId) {
+function openExerciseList(muscleId, options = {}) {
   currentMuscleGroup = muscleId;
-  renderExerciseList(muscleId);
+  exerciseListReturnTarget = options.returnToDayIndex != null ? { dayIndex: options.returnToDayIndex } : null;
+  highlightedExerciseId = options.highlightExerciseId || null;
+  renderExerciseList(muscleId, highlightedExerciseId);
+  updateExerciseListBackLabel();
   showView('exercise-list');
 }
 
-function buildExerciseCard(exercise) {
+function updateExerciseListBackLabel() {
+  const t = CONTENT[currentLang].exercises;
+  const btn = document.getElementById('exercise-list-back-btn');
+  btn.textContent = exerciseListReturnTarget ? t.backToPlan : t.backToMap;
+}
+
+function goBackFromExerciseList() {
+  const target = exerciseListReturnTarget;
+  showView('exercises');
+  if (!target) return;
+  const container = document.getElementById('workout-plan-accordion');
+  const trigger = container.querySelector(`#workout-trigger-${target.dayIndex}`);
+  if (!trigger) return;
+  if (trigger.getAttribute('aria-expanded') !== 'true') {
+    toggleAccordionItem(trigger, container, target.dayIndex);
+  }
+  const item = trigger.closest('.accordion-item') || trigger;
+  item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function buildExerciseCard(exercise, isHighlighted) {
   const t = CONTENT[currentLang].exercises;
   const name = exercise.name[currentLang];
   const videoHtml = exercise.videoId
@@ -1300,7 +1328,8 @@ function buildExerciseCard(exercise) {
       </div></div>`;
 
   const card = document.createElement('div');
-  card.className = 'result-card exercise-card';
+  card.id = `exercise-card-${exercise.id}`;
+  card.className = 'result-card exercise-card' + (isHighlighted ? ' exercise-card--highlighted' : '');
   card.innerHTML = `
     <div class="exercise-card-header">
       <h3>${name}</h3>
@@ -1317,7 +1346,7 @@ function buildExerciseCard(exercise) {
   return card;
 }
 
-function renderExerciseList(muscleId) {
+function renderExerciseList(muscleId, highlightExerciseId) {
   const t = CONTENT[currentLang].exercises;
   const container = document.getElementById('exercise-list-container');
   const heading = document.getElementById('exercise-list-heading');
@@ -1334,7 +1363,14 @@ function renderExerciseList(muscleId) {
     return;
   }
 
-  matches.forEach((exercise) => container.appendChild(buildExerciseCard(exercise)));
+  matches.forEach((exercise) => container.appendChild(buildExerciseCard(exercise, exercise.id === highlightExerciseId)));
+
+  if (highlightExerciseId) {
+    const target = document.getElementById(`exercise-card-${highlightExerciseId}`);
+    if (target) {
+      requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    }
+  }
 }
 
 function initBodyMap() {
@@ -1356,6 +1392,8 @@ function initBodyMap() {
     region.addEventListener('pointerleave', resetBodymapCaption);
     region.addEventListener('blur', resetBodymapCaption);
   });
+
+  document.getElementById('exercise-list-back-btn').addEventListener('click', goBackFromExerciseList);
 
   resetBodymapCaption();
 }
@@ -2221,7 +2259,6 @@ async function translateWorkoutPlanMeals(planData, targetLang) {
     planData.days.forEach((day) => {
       items.push(day.focus[planData.lang]);
       day.exercises.forEach((ex) => {
-        items.push(ex.name[planData.lang]);
         items.push(ex.notes[planData.lang]);
       });
     });
@@ -2244,9 +2281,7 @@ async function translateWorkoutPlanMeals(planData, targetLang) {
         const translatedFocus = data.items[i]; i += 1;
         if (typeof translatedFocus === 'string') day.focus[targetLang] = translatedFocus;
         day.exercises.forEach((ex) => {
-          const translatedName = data.items[i]; i += 1;
           const translatedNotes = data.items[i]; i += 1;
-          if (typeof translatedName === 'string') ex.name[targetLang] = translatedName;
           if (typeof translatedNotes === 'string') ex.notes[targetLang] = translatedNotes;
         });
       });
@@ -2311,16 +2346,19 @@ function buildWorkoutDayElement(day, dayIndex) {
   const panelId = `workout-panel-${dayIndex}`;
 
   const rowsHtml = day.exercises.map((ex) => {
-    const muscleLabel = et.muscles[ex.muscleGroup] || ex.muscleGroup;
+    const catalogExercise = EXERCISES.find((e) => e.id === ex.exerciseId);
+    const displayName = catalogExercise ? catalogExercise.name[currentLang] : ex.exerciseId;
+    const muscleGroup = catalogExercise ? catalogExercise.muscleGroup : '';
+    const muscleLabel = et.muscles[muscleGroup] || muscleGroup;
     const notes = ex.notes[currentLang];
     return `
       <div class="plan-meal-row">
         <div class="plan-meal-text">
-          <span class="plan-meal-name">${ex.name[currentLang]}</span>
+          <span class="plan-meal-name">${displayName}</span>
           <span class="plan-meal-desc">${muscleLabel}${notes ? ' · ' + notes : ''}</span>
         </div>
         <span class="plan-meal-macros">${ex.sets} × ${ex.reps} · ${t.restLabel} ${ex.restSeconds}s</span>
-        <button type="button" class="recipe-btn workout-crosslink-btn" data-muscle="${ex.muscleGroup}">${t.viewExercisesButton}</button>
+        <button type="button" class="recipe-btn workout-crosslink-btn" data-exercise-id="${ex.exerciseId}" data-muscle="${muscleGroup}" data-day-index="${dayIndex}">${t.viewExercisesButton}</button>
       </div>`;
   }).join('');
 
@@ -2364,7 +2402,10 @@ function initWorkoutPlanAccordion() {
   container.addEventListener('click', (e) => {
     const crosslinkBtn = e.target.closest('.workout-crosslink-btn');
     if (crosslinkBtn) {
-      openExerciseList(crosslinkBtn.dataset.muscle);
+      openExerciseList(crosslinkBtn.dataset.muscle, {
+        highlightExerciseId: crosslinkBtn.dataset.exerciseId,
+        returnToDayIndex: Number(crosslinkBtn.dataset.dayIndex),
+      });
       return;
     }
     const trigger = e.target.closest('.accordion-trigger');

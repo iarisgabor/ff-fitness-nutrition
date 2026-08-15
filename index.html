@@ -11,6 +11,15 @@
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ai-badge-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF2E96"></stop>
+      <stop offset="100%" stop-color="#C70E6E"></stop>
+    </linearGradient>
+  </defs>
+</svg>
+
 <header class="site-header">
   <div class="container header-inner">
     <button type="button" class="brand" data-view="calculator">
@@ -165,12 +174,6 @@
       <div class="ai-plan-section">
         <div class="ai-plan-header">
           <svg class="ai-badge" viewBox="0 0 24 24" aria-hidden="true">
-            <defs>
-              <linearGradient id="ai-badge-gradient" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#FF2E96"></stop>
-                <stop offset="100%" stop-color="#C70E6E"></stop>
-              </linearGradient>
-            </defs>
             <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
           </svg>
           <h2 data-i18n="aiPlan.title">Plan de nutriție cu AI</h2>
@@ -383,7 +386,7 @@
   </section>
 
   <section id="exercise-list" class="view" hidden>
-    <button type="button" class="link-back" data-view="exercises" data-i18n="exercises.backToMap">← Înapoi la harta corpului</button>
+    <button type="button" class="link-back" id="exercise-list-back-btn">← Înapoi la harta corpului</button>
     <h2 id="exercise-list-heading"></h2>
     <div class="exercise-cards" id="exercise-list-container"></div>
   </section>

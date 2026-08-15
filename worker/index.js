@@ -15,7 +15,64 @@ const WORKOUT_RATE_LIMIT_PER_HOUR = 8;
 const TRANSLATE_WORKOUT_RATE_LIMIT_PER_HOUR = 20;
 const TRANSLATE_WORKOUT_ITEMS_MAX = 150;
 const WORKOUT_MUSCLE_GROUPS = ['chest', 'shoulders', 'biceps', 'forearms', 'abs', 'quads', 'calves', 'back', 'traps', 'triceps', 'glutes', 'hamstrings'];
-const WORKOUT_CACHE_VERSION = 'v1';
+
+// Catalog minimal (id, grupă musculară, echipament, nume EN) al exercițiilor curate din
+// exercises-data.js (frontend) — trebuie ținut sincronizat manual cu acel fișier, nu există
+// build/import comun între site-ul static și acest Worker. Folosit ca material de referință
+// în prompt și ca enum pentru schema JSON, ca AI-ul să aleagă DOAR exerciții reale, curate,
+// cu videoclip — nu să inventeze nume libere care nu se potrivesc cu nimic din catalog.
+const EXERCISE_CATALOG = [
+  { id: 'chest-barbell-bench-press', muscleGroup: 'chest', equipment: 'barbell', name: 'Barbell Bench Press' },
+  { id: 'chest-incline-dumbbell-press', muscleGroup: 'chest', equipment: 'dumbbell', name: 'Incline Dumbbell Press' },
+  { id: 'chest-push-up', muscleGroup: 'chest', equipment: 'bodyweight', name: 'Push-Up' },
+  { id: 'chest-cable-fly', muscleGroup: 'chest', equipment: 'cable', name: 'Cable Fly' },
+  { id: 'shoulders-overhead-press', muscleGroup: 'shoulders', equipment: 'barbell', name: 'Overhead Press' },
+  { id: 'shoulders-lateral-raise', muscleGroup: 'shoulders', equipment: 'dumbbell', name: 'Lateral Raise' },
+  { id: 'shoulders-front-raise', muscleGroup: 'shoulders', equipment: 'dumbbell', name: 'Front Raise' },
+  { id: 'shoulders-face-pull', muscleGroup: 'shoulders', equipment: 'cable', name: 'Face Pull' },
+  { id: 'biceps-barbell-curl', muscleGroup: 'biceps', equipment: 'barbell', name: 'Barbell Curl' },
+  { id: 'biceps-dumbbell-curl', muscleGroup: 'biceps', equipment: 'dumbbell', name: 'Dumbbell Curl' },
+  { id: 'biceps-hammer-curl', muscleGroup: 'biceps', equipment: 'dumbbell', name: 'Hammer Curl' },
+  { id: 'biceps-cable-curl', muscleGroup: 'biceps', equipment: 'cable', name: 'Cable Curl' },
+  { id: 'forearms-wrist-curl', muscleGroup: 'forearms', equipment: 'dumbbell', name: 'Wrist Curl' },
+  { id: 'forearms-reverse-curl', muscleGroup: 'forearms', equipment: 'barbell', name: 'Reverse Curl' },
+  { id: 'forearms-farmers-carry', muscleGroup: 'forearms', equipment: 'dumbbell', name: "Farmer's Carry" },
+  { id: 'forearms-dead-hang', muscleGroup: 'forearms', equipment: 'bodyweight', name: 'Dead Hang' },
+  { id: 'abs-plank', muscleGroup: 'abs', equipment: 'bodyweight', name: 'Plank' },
+  { id: 'abs-crunch', muscleGroup: 'abs', equipment: 'bodyweight', name: 'Crunch' },
+  { id: 'abs-leg-raise', muscleGroup: 'abs', equipment: 'bodyweight', name: 'Leg Raise' },
+  { id: 'abs-russian-twist', muscleGroup: 'abs', equipment: 'bodyweight', name: 'Russian Twist' },
+  { id: 'quads-back-squat', muscleGroup: 'quads', equipment: 'barbell', name: 'Back Squat' },
+  { id: 'quads-leg-press', muscleGroup: 'quads', equipment: 'machine', name: 'Leg Press' },
+  { id: 'quads-walking-lunge', muscleGroup: 'quads', equipment: 'dumbbell', name: 'Walking Lunge' },
+  { id: 'quads-leg-extension', muscleGroup: 'quads', equipment: 'machine', name: 'Leg Extension' },
+  { id: 'calves-standing-calf-raise', muscleGroup: 'calves', equipment: 'machine', name: 'Standing Calf Raise' },
+  { id: 'calves-seated-calf-raise', muscleGroup: 'calves', equipment: 'machine', name: 'Seated Calf Raise' },
+  { id: 'calves-single-leg-calf-raise', muscleGroup: 'calves', equipment: 'bodyweight', name: 'Single-Leg Calf Raise' },
+  { id: 'calves-dumbbell-calf-raise', muscleGroup: 'calves', equipment: 'dumbbell', name: 'Dumbbell Calf Raise' },
+  { id: 'back-pull-up', muscleGroup: 'back', equipment: 'bodyweight', name: 'Pull-Up' },
+  { id: 'back-barbell-row', muscleGroup: 'back', equipment: 'barbell', name: 'Barbell Row' },
+  { id: 'back-lat-pulldown', muscleGroup: 'back', equipment: 'machine', name: 'Lat Pulldown' },
+  { id: 'back-seated-cable-row', muscleGroup: 'back', equipment: 'cable', name: 'Seated Cable Row' },
+  { id: 'traps-barbell-shrug', muscleGroup: 'traps', equipment: 'barbell', name: 'Barbell Shrug' },
+  { id: 'traps-dumbbell-shrug', muscleGroup: 'traps', equipment: 'dumbbell', name: 'Dumbbell Shrug' },
+  { id: 'traps-upright-row', muscleGroup: 'traps', equipment: 'barbell', name: 'Upright Row' },
+  { id: 'traps-farmers-carry-traps', muscleGroup: 'traps', equipment: 'dumbbell', name: "Farmer's Carry (Trap Focus)" },
+  { id: 'triceps-close-grip-bench-press', muscleGroup: 'triceps', equipment: 'barbell', name: 'Close-Grip Bench Press' },
+  { id: 'triceps-pushdown', muscleGroup: 'triceps', equipment: 'cable', name: 'Triceps Pushdown' },
+  { id: 'triceps-overhead-extension', muscleGroup: 'triceps', equipment: 'dumbbell', name: 'Overhead Triceps Extension' },
+  { id: 'triceps-dip', muscleGroup: 'triceps', equipment: 'bodyweight', name: 'Dip' },
+  { id: 'glutes-hip-thrust', muscleGroup: 'glutes', equipment: 'barbell', name: 'Hip Thrust' },
+  { id: 'glutes-glute-bridge', muscleGroup: 'glutes', equipment: 'bodyweight', name: 'Glute Bridge' },
+  { id: 'glutes-bulgarian-split-squat', muscleGroup: 'glutes', equipment: 'dumbbell', name: 'Bulgarian Split Squat' },
+  { id: 'glutes-cable-kickback', muscleGroup: 'glutes', equipment: 'cable', name: 'Cable Kickback' },
+  { id: 'hamstrings-romanian-deadlift', muscleGroup: 'hamstrings', equipment: 'barbell', name: 'Romanian Deadlift' },
+  { id: 'hamstrings-leg-curl', muscleGroup: 'hamstrings', equipment: 'machine', name: 'Leg Curl' },
+  { id: 'hamstrings-good-morning', muscleGroup: 'hamstrings', equipment: 'barbell', name: 'Good Morning' },
+  { id: 'hamstrings-nordic-curl', muscleGroup: 'hamstrings', equipment: 'bodyweight', name: 'Nordic Hamstring Curl' },
+];
+const WORKOUT_EXERCISE_IDS = EXERCISE_CATALOG.map((e) => e.id);
+const WORKOUT_CACHE_VERSION = 'v2'; // v2: schema exercises[] foloseste exerciseId (catalog) în loc de name liber
 const WORKOUT_CACHE_POOL_SIZE = 5;
 const WORKOUT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 zile
 
@@ -181,14 +238,13 @@ const WORKOUT_PLAN_JSON_SCHEMA = {
             items: {
               type: 'object',
               properties: {
-                name: { type: 'string' },
-                muscleGroup: { type: 'string', enum: WORKOUT_MUSCLE_GROUPS },
+                exerciseId: { type: 'string', enum: WORKOUT_EXERCISE_IDS },
                 sets: { type: 'integer' },
                 reps: { type: 'string' },
                 restSeconds: { type: 'integer' },
                 notes: { type: 'string' },
               },
-              required: ['name', 'muscleGroup', 'sets', 'reps', 'restSeconds', 'notes'],
+              required: ['exerciseId', 'sets', 'reps', 'restSeconds', 'notes'],
               additionalProperties: false,
             },
           },
@@ -250,19 +306,24 @@ function buildUserMessage(payload) {
 
 function buildWorkoutSystemPrompt(lang) {
   const languageName = LANGUAGE_NAMES[lang] || 'English';
+  const catalogText = EXERCISE_CATALOG.map((e) => `${e.id} | ${e.muscleGroup} | ${e.equipment} | ${e.name}`).join('\n');
 
-  return `You are a strength & conditioning assistant for FF Fitness. You design realistic, structured workout plans for a user based on their goal, weekly availability, equipment access, and experience level.
+  return `You are a strength & conditioning assistant for FF Fitness. You design realistic, structured workout plans for a user based on their goal, weekly availability, equipment access, and experience level, choosing exercises ONLY from the catalog below (each catalog exercise has a real demonstration video on the site — picking outside the catalog would leave the user without a video).
 
 STRICT RULES:
 1. Output exactly the requested number of "days" day objects, numbered sequentially starting at 1.
 2. Choose a sensible weekly split for the "focus" field based on the number of training days: 2-3 days/week → full-body sessions; 4 days/week → an upper/lower split; 5-6 days/week → a push/pull/legs or body-part split.
-3. Every exercise's "muscleGroup" must be exactly one of: ${WORKOUT_MUSCLE_GROUPS.join(', ')}.
-4. Respect the equipment tier strictly: "gym" allows any equipment; "home_basic" allows only bodyweight, dumbbell, or resistance-band exercises; "bodyweight" allows only bodyweight exercises, zero equipment.
-5. Respect the experience level: beginners get simpler, safer movements (machines/bodyweight-friendly) at moderate volume; intermediate/advanced can include free weights and higher volume/intensity.
-6. Respect any injuries or limitations the user lists — avoid or substitute movements that would aggravate that body part.
+3. Every exercise's "exerciseId" MUST be exactly one of the ids in the EXERCISE CATALOG below — never invent an id or describe an exercise that isn't in the catalog.
+4. Respect the equipment tier strictly, using each catalog exercise's listed equipment column: "gym" allows any equipment; "home_basic" allows only bodyweight, dumbbell, or band exercises; "bodyweight" allows only bodyweight exercises.
+5. Respect the experience level: beginners favor simpler, safer catalog exercises (machine/bodyweight-friendly) at moderate volume; intermediate/advanced can use the more demanding catalog exercises at higher volume/intensity.
+6. Respect any injuries or limitations the user lists — avoid catalog exercises that would aggravate that body part, picking a suitable alternative from the catalog instead.
 7. Pick realistic "sets" (2-5), "reps" (a range string like "8-12", or time/rep-based like "30s" or "AMRAP"), and "restSeconds" (30-180) matched to the goal: strength = lower reps, longer rest; endurance = higher reps, shorter rest; build_muscle = moderate reps/rest; lose_fat = moderate-to-high reps, shorter rest.
 8. "notes" is a short, optional coaching cue — use an empty string "" if there is nothing useful to add, never invent filler text.
-9. For EVERY exercise, write "name" and "notes" in ${languageName} only. Write "focus" in ${languageName} only.
+9. For EVERY exercise, write "notes" in ${languageName} only. Write "focus" in ${languageName} only.
+10. Vary the exercises across days where the catalog offers alternatives for the same muscle group — don't default to the same single exercise every time a muscle group comes up.
+
+EXERCISE CATALOG (id | muscle group | equipment | name):
+${catalogText}
 
 Respond ONLY with the structured plan per the requested JSON schema.`;
 }
@@ -526,7 +587,6 @@ function toBilingualWorkoutDay(day) {
     focus: { ro: day.focus, en: day.focus },
     exercises: day.exercises.map((ex) => ({
       ...ex,
-      name: { ro: ex.name, en: ex.name },
       notes: { ro: ex.notes, en: ex.notes },
     })),
   };
