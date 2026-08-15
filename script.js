@@ -134,6 +134,8 @@ const CONTENT = {
       restLabel: 'Pauză',
       viewExercisesButton: 'Vezi exerciții',
       emptyError: 'Ceva nu a mers bine la generarea planului. Încearcă din nou.',
+      rateLimitError: 'Ai atins limita de generări pentru această oră. Încearcă din nou peste puțin timp.',
+      timeoutError: 'Generarea planului a durat prea mult. Încearcă din nou.',
       disclaimer: 'Planul de antrenament este generat automat și nu este creat sau verificat de un antrenor sau fizioterapeut — nu constituie sfat medical personalizat. Respectă tehnica corectă la fiecare exercițiu; dacă ești începător, ia în calcul îndrumare de la un specialist. Dacă ai o accidentare, o afecțiune medicală sau dureri, consultă un medic înainte de a începe.',
     },
     aiPlan: {
@@ -314,6 +316,8 @@ const CONTENT = {
       restLabel: 'Rest',
       viewExercisesButton: 'View exercises',
       emptyError: 'Something went wrong generating the plan. Please try again.',
+      rateLimitError: 'You\'ve reached the hourly generation limit. Try again in a little while.',
+      timeoutError: 'Plan generation took too long. Please try again.',
       disclaimer: 'This workout plan is generated automatically and is not created or reviewed by a certified trainer or physiotherapist — it is not personalized medical advice. Use correct form for every exercise; if you are a beginner, consider guided instruction. If you have an injury, a medical condition, or pain, consult a doctor before starting.',
     },
     aiPlan: {
@@ -2206,7 +2210,15 @@ async function fetchWorkoutPlanFromApi(payload, onDay) {
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-    if (!res.ok || !res.body) return null;
+    if (!res.ok) {
+      let errorCode = 'upstream_failed';
+      try {
+        const errBody = await res.json();
+        if (errBody && errBody.error) errorCode = errBody.error;
+      } catch (e) { /* corp de răspuns nefolositor, păstrăm codul implicit */ }
+      return { error: errorCode };
+    }
+    if (!res.body) return { error: 'upstream_failed' };
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -2223,14 +2235,14 @@ async function fetchWorkoutPlanFromApi(payload, onDay) {
         if (!line.trim()) continue;
         let obj;
         try { obj = JSON.parse(line); } catch (e) { continue; }
-        if (obj.error) return days.length ? { days, lang: payload.lang } : null;
+        if (obj.error) return days.length ? { days, lang: payload.lang } : { error: obj.error };
         days.push(obj);
         if (onDay) onDay(obj, days.length);
       }
     }
-    return days.length ? { days, lang: payload.lang } : null;
+    return days.length ? { days, lang: payload.lang } : { error: 'upstream_failed' };
   } catch (err) {
-    return null;
+    return { error: err && err.name === 'AbortError' ? 'timeout' : 'network' };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -2452,6 +2464,13 @@ function renderWorkoutFormErrors(errors) {
   });
 }
 
+function getWorkoutErrorMessage(errorCode) {
+  const t = CONTENT[currentLang].aiWorkoutPlan;
+  if (errorCode === 'rate_limited') return t.rateLimitError;
+  if (errorCode === 'timeout') return t.timeoutError;
+  return t.emptyError;
+}
+
 async function handleWorkoutPlanGenerate(bypassCache = false) {
   const form = document.getElementById('workout-plan-form');
   const { valid, errors, values } = validateWorkoutForm(form);
@@ -2501,9 +2520,9 @@ async function handleWorkoutPlanGenerate(bypassCache = false) {
   loadingEl.hidden = true;
   generateBtn.disabled = false;
 
-  if (!plan) {
+  if (!plan || plan.error) {
     outputEl.hidden = true;
-    errorEl.textContent = t.emptyError;
+    errorEl.textContent = getWorkoutErrorMessage(plan && plan.error);
     return;
   }
 
