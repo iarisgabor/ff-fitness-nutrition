@@ -1259,8 +1259,17 @@ function initAccordion() {
 
 /* ---------- Harta corpului & listă exerciții ---------- */
 function showBodyView(view) {
-  document.getElementById('bodymap-front').hidden = view !== 'front';
-  document.getElementById('bodymap-back').hidden = view !== 'back';
+  // setarea proprietății .hidden nu se reflectă fiabil pe elemente <svg> în toate browserele,
+  // așa că manipulăm direct atributul HTML hidden.
+  const front = document.getElementById('bodymap-front');
+  const back = document.getElementById('bodymap-back');
+  if (view === 'front') {
+    front.removeAttribute('hidden');
+    back.setAttribute('hidden', '');
+  } else {
+    front.setAttribute('hidden', '');
+    back.removeAttribute('hidden');
+  }
   document.querySelectorAll('.bodymap-toggle-btn').forEach((btn) => {
     btn.setAttribute('aria-pressed', String(btn.dataset.bodyView === view));
   });
@@ -2394,7 +2403,7 @@ function validateWorkoutForm(form) {
   };
 }
 
-function renderWorkoutFormErrors(form, errors) {
+function renderWorkoutFormErrors(errors) {
   ['workoutGoal', 'workoutDays', 'workoutEquipment', 'workoutExperience'].forEach((field) => {
     const errorEl = document.getElementById(`${field}-error`);
     if (errorEl) errorEl.textContent = errors[field] || '';
@@ -2404,7 +2413,7 @@ function renderWorkoutFormErrors(form, errors) {
 async function handleWorkoutPlanGenerate() {
   const form = document.getElementById('workout-plan-form');
   const { valid, errors, values } = validateWorkoutForm(form);
-  renderWorkoutFormErrors(form, errors);
+  renderWorkoutFormErrors(errors);
   if (!valid) return;
 
   workoutPlanRenderToken += 1;

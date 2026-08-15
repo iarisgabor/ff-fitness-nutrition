@@ -653,6 +653,15 @@ legend, .field label {
 
 .bodymap-silhouette { fill: var(--surface-2); stroke: var(--border); stroke-width: 2; }
 
+.bodymap-label {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  fill: rgba(232,17,126,0.4);
+}
+
 .muscle-region {
   fill: rgba(232,17,126,0.25);
   stroke: var(--primary);
