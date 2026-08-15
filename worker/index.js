@@ -15,6 +15,9 @@ const WORKOUT_RATE_LIMIT_PER_HOUR = 8;
 const TRANSLATE_WORKOUT_RATE_LIMIT_PER_HOUR = 20;
 const TRANSLATE_WORKOUT_ITEMS_MAX = 150;
 const WORKOUT_MUSCLE_GROUPS = ['chest', 'shoulders', 'biceps', 'forearms', 'abs', 'quads', 'calves', 'back', 'traps', 'triceps', 'glutes', 'hamstrings'];
+const WORKOUT_CACHE_VERSION = 'v1';
+const WORKOUT_CACHE_POOL_SIZE = 5;
+const WORKOUT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 zile
 
 const INGREDIENT_TABLE = `
 Chicken breast (cooked): 165 kcal, 31g protein, 0g carbs, 3.6g fat / 100g
@@ -418,6 +421,66 @@ async function checkRateLimit(env, ip, kind, limitPerHour) {
   return true;
 }
 
+function buildWorkoutCacheKey(body) {
+  return `workout-cache:${WORKOUT_CACHE_VERSION}:${body.lang}:${body.goal}:${body.days}:${body.equipment}:${body.experience}`;
+}
+
+// Niciodată nu aruncă excepție — orice eșec (KV nelegat, JSON corupt, pool gol,
+// lungime nepotrivită) devine null = cache miss, se continuă cu generare live.
+async function readWorkoutCachePool(env, cacheKey, expectedDayCount) {
+  if (!env.RATE_LIMIT_KV) return null;
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(cacheKey);
+    if (!raw) return null;
+    const pool = JSON.parse(raw);
+    if (!Array.isArray(pool) || pool.length === 0) return null;
+    const entry = pool[Math.floor(Math.random() * pool.length)];
+    if (!Array.isArray(entry) || entry.length !== expectedDayCount) return null;
+    return entry;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Niciodată nu aruncă excepție — un eșec de scriere în cache nu trebuie să strice
+// răspunsul deja livrat userului. Auto-recuperare la pool corupt (pornește de la []).
+async function writeWorkoutCachePool(env, cacheKey, days) {
+  if (!env.RATE_LIMIT_KV) return;
+  let pool = [];
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(cacheKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) pool = parsed;
+    }
+  } catch (err) {
+    pool = [];
+  }
+  pool.push(days);
+  if (pool.length > WORKOUT_CACHE_POOL_SIZE) pool = pool.slice(-WORKOUT_CACHE_POOL_SIZE);
+  try {
+    await env.RATE_LIMIT_KV.put(cacheKey, JSON.stringify(pool), { expirationTtl: WORKOUT_CACHE_TTL_SECONDS });
+  } catch (err) {
+    // eșec silențios — cache-ul e doar o optimizare, nu trebuie să strice generarea
+  }
+}
+
+function cachedWorkoutPlanResponse(days, origin) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      for (const day of days) {
+        controller.enqueue(encoder.encode(JSON.stringify(day) + '\n'));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    status: 200,
+    headers: { 'content-type': 'application/x-ndjson', ...corsHeaders(origin) },
+  });
+}
+
 async function callClaude(env, { system, userMessage, schema, maxTokens, effort }) {
   const res = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -700,6 +763,14 @@ async function handleGenerateWorkoutPlan(request, env, origin, ip) {
     return jsonResponse({ error: 'invalid_payload' }, 400, origin);
   }
 
+  const cacheKey = buildWorkoutCacheKey(body);
+  const bypassCache = Boolean(body.skipCache) || body.injuriesText.trim().length > 0;
+
+  if (!bypassCache) {
+    const cachedDays = await readWorkoutCachePool(env, cacheKey, body.days);
+    if (cachedDays) return cachedWorkoutPlanResponse(cachedDays, origin);
+  }
+
   if (!env.ANTHROPIC_API_KEY) {
     return jsonResponse({ error: 'not_configured' }, 503, origin);
   }
@@ -710,6 +781,12 @@ async function handleGenerateWorkoutPlan(request, env, origin, ip) {
   }
 
   const encoder = new TextEncoder();
+  const collectedDays = [];
+  const collectingToBilingual = (day) => {
+    const bilingual = toBilingualWorkoutDay(day);
+    collectedDays.push(bilingual);
+    return bilingual;
+  };
   const stream = new ReadableStream({
     async start(controller) {
       try {
@@ -719,8 +796,11 @@ async function handleGenerateWorkoutPlan(request, env, origin, ip) {
           schema: WORKOUT_PLAN_JSON_SCHEMA,
           maxTokens: WORKOUT_PLAN_MAX_TOKENS,
           effort: 'low',
-          toBilingual: toBilingualWorkoutDay,
+          toBilingual: collectingToBilingual,
         }, controller);
+        if (!bypassCache && collectedDays.length === body.days) {
+          await writeWorkoutCachePool(env, cacheKey, collectedDays);
+        }
       } catch (err) {
         controller.enqueue(encoder.encode(JSON.stringify({ error: 'upstream_failed', message: String(err) }) + '\n'));
       } finally {

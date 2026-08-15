@@ -2198,7 +2198,7 @@ async function fetchWorkoutPlanFromApi(payload, onDay) {
   }
 }
 
-async function generateWorkoutPlan(formValues, onDay) {
+async function generateWorkoutPlan(formValues, onDay, bypassCache = false) {
   const payload = {
     goal: formValues.goal,
     days: formValues.days,
@@ -2206,6 +2206,7 @@ async function generateWorkoutPlan(formValues, onDay) {
     experience: formValues.experience,
     injuriesText: formValues.injuries,
     lang: currentLang,
+    skipCache: Boolean(bypassCache),
   };
   return fetchWorkoutPlanFromApi(payload, onDay);
 }
@@ -2410,7 +2411,7 @@ function renderWorkoutFormErrors(errors) {
   });
 }
 
-async function handleWorkoutPlanGenerate() {
+async function handleWorkoutPlanGenerate(bypassCache = false) {
   const form = document.getElementById('workout-plan-form');
   const { valid, errors, values } = validateWorkoutForm(form);
   renderWorkoutFormErrors(errors);
@@ -2454,7 +2455,7 @@ async function handleWorkoutPlanGenerate() {
     loadingAnnounceEl.textContent = progressText;
   };
 
-  const plan = await generateWorkoutPlan(values, onDay);
+  const plan = await generateWorkoutPlan(values, onDay, bypassCache);
   clearInterval(stepInterval);
   loadingEl.hidden = true;
   generateBtn.disabled = false;
@@ -2479,7 +2480,7 @@ function initAiWorkoutPlanSection() {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    handleWorkoutPlanGenerate();
+    handleWorkoutPlanGenerate(false);
   });
 
   form.querySelectorAll('input[type="radio"]').forEach((radio) => {
@@ -2489,7 +2490,7 @@ function initAiWorkoutPlanSection() {
     });
   });
 
-  document.getElementById('workout-plan-regenerate-btn').addEventListener('click', handleWorkoutPlanGenerate);
+  document.getElementById('workout-plan-regenerate-btn').addEventListener('click', () => handleWorkoutPlanGenerate(true));
   initWorkoutPlanAccordion();
 }
 
