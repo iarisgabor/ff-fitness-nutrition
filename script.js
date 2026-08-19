@@ -1528,7 +1528,7 @@ async function fetchPlanFromApi(payload, onDay) {
   }
 }
 
-async function generatePlan(targets, goal, allergens, dislikes, stores, onDay) {
+async function generatePlan(targets, goal, allergens, dislikes, stores, bypassCache, onDay) {
   const payload = {
     targetKcal: targets.kcal,
     targetProtein: targets.protein,
@@ -1538,6 +1538,7 @@ async function generatePlan(targets, goal, allergens, dislikes, stores, onDay) {
     excludedTags: allergens,
     dislikeText: dislikes,
     stores,
+    skipCache: Boolean(bypassCache),
     lang: currentLang,
   };
 
@@ -2120,7 +2121,7 @@ async function handleDownloadPdf() {
   }
 }
 
-async function handlePlanGenerate() {
+async function handlePlanGenerate(bypassCache = false) {
   if (!lastResults) return;
 
   planRenderToken += 1;
@@ -2183,7 +2184,7 @@ async function handlePlanGenerate() {
     loadingAnnounceEl.textContent = progressText;
   };
 
-  const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes, stores, onDay);
+  const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes, stores, bypassCache, onDay);
   clearInterval(stepInterval);
   loadingEl.hidden = true;
   generateBtn.disabled = false;
@@ -2209,10 +2210,10 @@ function initAiPlanSection() {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    handlePlanGenerate();
+    handlePlanGenerate(false);
   });
 
-  document.getElementById('plan-regenerate-btn').addEventListener('click', handlePlanGenerate);
+  document.getElementById('plan-regenerate-btn').addEventListener('click', () => handlePlanGenerate(true));
   initPlanAccordion();
 }
 

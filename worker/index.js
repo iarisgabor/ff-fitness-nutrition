@@ -4,6 +4,10 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 const MODEL = 'claude-sonnet-5';
 const PLAN_MAX_TOKENS = 20000;
+const PLAN_DAY_COUNT = 7;
+const PLAN_CACHE_VERSION = 'v1';
+const PLAN_CACHE_POOL_SIZE = 5;
+const PLAN_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 zile
 const RECIPE_MAX_TOKENS = 1500;
 const PLAN_RATE_LIMIT_PER_HOUR = 8;
 const RECIPE_RATE_LIMIT_PER_HOUR = 30;
@@ -614,6 +618,23 @@ function buildWorkoutCacheKey(body) {
   return `workout-cache:${WORKOUT_CACHE_VERSION}:${body.lang}:${body.goal}:${body.days}:${body.equipment}:${body.experience}`;
 }
 
+function roundToStep(value, step) {
+  return Math.round(value / step) * step;
+}
+
+// Bucket-uri suficient de fine încât planul servit din cache să rămână în marja de ±10% pe
+// care regula 3 din buildSystemPrompt o cere oricum de la generarea live — nu introduc o
+// aproximare mai mare decât cea deja tolerată.
+function buildPlanCacheKey(body) {
+  const kcalBucket = roundToStep(body.targetKcal, 100);
+  const proteinBucket = roundToStep(body.targetProtein, 10);
+  const carbsBucket = roundToStep(body.targetCarbs, 10);
+  const fatBucket = roundToStep(body.targetFat, 10);
+  const tagsKey = [...body.excludedTags].sort().join(',') || 'none';
+  const storesKey = (body.stores && body.stores.length ? [...body.stores].sort() : STORE_IDS.slice()).join(',');
+  return `plan-cache:${PLAN_CACHE_VERSION}:${body.lang}:${body.goal}:${kcalBucket}:${proteinBucket}:${carbsBucket}:${fatBucket}:${tagsKey}:${storesKey}`;
+}
+
 // Niciodată nu aruncă excepție — orice eșec (KV nelegat, JSON corupt, pool gol,
 // lungime nepotrivită) devine null = cache miss, se continuă cu generare live.
 async function readWorkoutCachePool(env, cacheKey, expectedDayCount) {
@@ -654,7 +675,47 @@ async function writeWorkoutCachePool(env, cacheKey, days) {
   }
 }
 
-function cachedWorkoutPlanResponse(days, origin) {
+// Niciodată nu aruncă excepție — orice eșec (KV nelegat, JSON corupt, pool gol,
+// lungime nepotrivită) devine null = cache miss, se continuă cu generare live.
+async function readPlanCachePool(env, cacheKey, expectedDayCount) {
+  if (!env.RATE_LIMIT_KV) return null;
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(cacheKey);
+    if (!raw) return null;
+    const pool = JSON.parse(raw);
+    if (!Array.isArray(pool) || pool.length === 0) return null;
+    const entry = pool[Math.floor(Math.random() * pool.length)];
+    if (!Array.isArray(entry) || entry.length !== expectedDayCount) return null;
+    return entry;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Niciodată nu aruncă excepție — un eșec de scriere în cache nu trebuie să strice
+// răspunsul deja livrat userului. Auto-recuperare la pool corupt (pornește de la []).
+async function writePlanCachePool(env, cacheKey, days) {
+  if (!env.RATE_LIMIT_KV) return;
+  let pool = [];
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(cacheKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) pool = parsed;
+    }
+  } catch (err) {
+    pool = [];
+  }
+  pool.push(days);
+  if (pool.length > PLAN_CACHE_POOL_SIZE) pool = pool.slice(-PLAN_CACHE_POOL_SIZE);
+  try {
+    await env.RATE_LIMIT_KV.put(cacheKey, JSON.stringify(pool), { expirationTtl: PLAN_CACHE_TTL_SECONDS });
+  } catch (err) {
+    // eșec silențios — cache-ul e doar o optimizare, nu trebuie să strice generarea
+  }
+}
+
+function cachedDaysResponse(days, origin) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
@@ -829,6 +890,14 @@ async function handleGeneratePlan(request, env, origin, ip) {
     return jsonResponse({ error: 'invalid_payload' }, 400, origin);
   }
 
+  const cacheKey = buildPlanCacheKey(body);
+  const bypassCache = Boolean(body.skipCache) || body.dislikeText.trim().length > 0;
+
+  if (!bypassCache) {
+    const cachedDays = await readPlanCachePool(env, cacheKey, PLAN_DAY_COUNT);
+    if (cachedDays) return cachedDaysResponse(cachedDays, origin);
+  }
+
   if (!env.ANTHROPIC_API_KEY) {
     return jsonResponse({ error: 'not_configured' }, 503, origin);
   }
@@ -839,6 +908,12 @@ async function handleGeneratePlan(request, env, origin, ip) {
   }
 
   const encoder = new TextEncoder();
+  const collectedDays = [];
+  const collectingToBilingual = (day) => {
+    const bilingual = toBilingualDay(day);
+    collectedDays.push(bilingual);
+    return bilingual;
+  };
   const stream = new ReadableStream({
     async start(controller) {
       try {
@@ -848,8 +923,11 @@ async function handleGeneratePlan(request, env, origin, ip) {
           schema: PLAN_JSON_SCHEMA,
           maxTokens: PLAN_MAX_TOKENS,
           effort: 'low',
-          toBilingual: toBilingualDay,
+          toBilingual: collectingToBilingual,
         }, controller);
+        if (!bypassCache && collectedDays.length === PLAN_DAY_COUNT) {
+          await writePlanCachePool(env, cacheKey, collectedDays);
+        }
       } catch (err) {
         controller.enqueue(encoder.encode(JSON.stringify({ error: 'upstream_failed', message: String(err) }) + '\n'));
       } finally {
@@ -956,7 +1034,7 @@ async function handleGenerateWorkoutPlan(request, env, origin, ip) {
 
   if (!bypassCache) {
     const cachedDays = await readWorkoutCachePool(env, cacheKey, body.days);
-    if (cachedDays) return cachedWorkoutPlanResponse(cachedDays, origin);
+    if (cachedDays) return cachedDaysResponse(cachedDays, origin);
   }
 
   if (!env.ANTHROPIC_API_KEY) {
