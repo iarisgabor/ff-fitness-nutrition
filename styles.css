@@ -288,6 +288,48 @@ legend, .field label {
   color: #fff;
 }
 
+.store-group { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.store-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.store-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+.store-option-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--border);
+  overflow: hidden;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.store-option-avatar img { width: 100%; height: 100%; object-fit: contain; padding: var(--space-2); }
+.store-option-fallback {
+  display: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-primary);
+  padding: var(--space-1);
+}
+.store-option-avatar--fallback { background: var(--surface-2); }
+.store-option-avatar--fallback .store-option-fallback { display: block; }
+.store-option input:checked + .store-option-avatar {
+  border-color: var(--primary-button);
+  box-shadow: 0 0 0 3px rgba(232,17,126,0.25);
+}
+.store-option input:focus-visible + .store-option-avatar {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232,17,126,0.25);
+}
+
 .btn-primary {
   align-self: flex-start;
   padding: var(--space-4) var(--space-8);

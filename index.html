@@ -197,6 +197,37 @@
             </div>
           </fieldset>
 
+          <fieldset class="field-group">
+            <legend data-i18n="aiPlan.storesLabel">Magazine disponibile</legend>
+            <p class="field-hint" data-i18n="aiPlan.storesHint">Alege din ce magazine poți cumpăra — planul va folosi doar produse plauzibile pentru magazinele bifate.</p>
+            <div class="store-group" id="store-group">
+              <label class="store-option">
+                <input type="checkbox" name="store" value="lidl" checked>
+                <span class="store-option-avatar"><img src="assets/stores/lidl.png" alt="Lidl" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Lidl</span></span>
+              </label>
+              <label class="store-option">
+                <input type="checkbox" name="store" value="kaufland" checked>
+                <span class="store-option-avatar"><img src="assets/stores/kaufland.png" alt="Kaufland" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Kaufland</span></span>
+              </label>
+              <label class="store-option">
+                <input type="checkbox" name="store" value="profi" checked>
+                <span class="store-option-avatar"><img src="assets/stores/profi.png" alt="Profi" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Profi</span></span>
+              </label>
+              <label class="store-option">
+                <input type="checkbox" name="store" value="mega-image" checked>
+                <span class="store-option-avatar"><img src="assets/stores/megaimage.png" alt="Mega Image" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Mega Image</span></span>
+              </label>
+              <label class="store-option">
+                <input type="checkbox" name="store" value="carrefour" checked>
+                <span class="store-option-avatar"><img src="assets/stores/carefour.png" alt="Carrefour" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Carrefour</span></span>
+              </label>
+              <label class="store-option">
+                <input type="checkbox" name="store" value="auchan" checked>
+                <span class="store-option-avatar"><img src="assets/stores/auchan.jpg" alt="Auchan" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Auchan</span></span>
+              </label>
+            </div>
+          </fieldset>
+
           <div class="field">
             <label for="plan-dislikes" data-i18n="aiPlan.dislikesLabel">Alte alimente pe care nu le placi</label>
             <p class="field-hint" data-i18n="aiPlan.dislikesHint">Opțional. Folosim acest câmp ca ghid orientativ, nu ca o excludere garantată — pentru alergii reale, folosește bifele de mai sus.</p>

@@ -147,6 +147,9 @@ const CONTENT = {
         dairy: 'Lactate', egg: 'Ouă', fish: 'Pește', shellfish: 'Fructe de mare',
         treenut: 'Nuci', peanut: 'Arahide', gluten: 'Gluten', soy: 'Soia', sesame: 'Susan',
       },
+      storesLabel: 'Magazine disponibile',
+      storesHint: 'Alege din ce magazine poți cumpăra — planul va folosi doar produse plauzibile pentru magazinele bifate.',
+      storesRequiredError: 'Bifează cel puțin un magazin.',
       dislikesLabel: 'Alte alimente pe care nu le placi',
       dislikesHint: 'Opțional. Folosim acest câmp ca ghid orientativ, nu ca o excludere garantată — pentru alergii reale, folosește bifele de mai sus.',
       dislikesPlaceholder: 'ex: ciuperci, măsline…',
@@ -329,6 +332,9 @@ const CONTENT = {
         dairy: 'Dairy', egg: 'Eggs', fish: 'Fish', shellfish: 'Shellfish',
         treenut: 'Tree nuts', peanut: 'Peanuts', gluten: 'Gluten', soy: 'Soy', sesame: 'Sesame',
       },
+      storesLabel: 'Available stores',
+      storesHint: "Choose which stores you can shop at — the plan will only use products plausible for the stores you've checked.",
+      storesRequiredError: 'Check at least one store.',
       dislikesLabel: 'Other foods you dislike',
       dislikesHint: 'Optional. We use this as a best-effort guide, not a guaranteed exclusion — for real allergies, use the checkboxes above.',
       dislikesPlaceholder: 'e.g. mushrooms, olives…',
@@ -1457,6 +1463,10 @@ function getSelectedAllergens(form) {
   return Array.from(form.querySelectorAll('input[name="allergen"]:checked')).map((el) => el.value);
 }
 
+function getSelectedStores(form) {
+  return Array.from(form.querySelectorAll('input[name="store"]:checked')).map((el) => el.value);
+}
+
 function loadSavedAllergyPrefs() {
   try {
     const raw = localStorage.getItem('ffFitnessAllergyPrefs');
@@ -1518,7 +1528,7 @@ async function fetchPlanFromApi(payload, onDay) {
   }
 }
 
-async function generatePlan(targets, goal, allergens, dislikes, onDay) {
+async function generatePlan(targets, goal, allergens, dislikes, stores, onDay) {
   const payload = {
     targetKcal: targets.kcal,
     targetProtein: targets.protein,
@@ -1527,6 +1537,7 @@ async function generatePlan(targets, goal, allergens, dislikes, onDay) {
     goal,
     excludedTags: allergens,
     dislikeText: dislikes,
+    stores,
     lang: currentLang,
   };
 
@@ -2120,6 +2131,7 @@ async function handlePlanGenerate() {
   const form = document.getElementById('plan-form');
   const allergens = getSelectedAllergens(form);
   const dislikes = form.dislikes.value.trim();
+  const stores = getSelectedStores(form);
   saveAllergyPrefs(allergens, dislikes);
 
   const generateBtn = document.getElementById('plan-generate-btn');
@@ -2131,6 +2143,11 @@ async function handlePlanGenerate() {
   const accordionEl = document.getElementById('plan-accordion');
   const errorEl = document.getElementById('plan-error');
   const t = CONTENT[currentLang].aiPlan;
+
+  if (stores.length === 0) {
+    errorEl.textContent = t.storesRequiredError;
+    return;
+  }
 
   generateBtn.disabled = true;
   regenerateBtn.disabled = true;
@@ -2166,7 +2183,7 @@ async function handlePlanGenerate() {
     loadingAnnounceEl.textContent = progressText;
   };
 
-  const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes, onDay);
+  const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes, stores, onDay);
   clearInterval(stepInterval);
   loadingEl.hidden = true;
   generateBtn.disabled = false;

@@ -104,6 +104,128 @@ Tahini: 595 kcal, 17g protein, 21.5g carbs, 53.01g fat / 100g
 Peanut butter: 588 kcal, 21.93g protein, 23.98g carbs, 49.54g fat / 100g
 `.trim();
 
+// Cele 5 lanțuri de magazine selectabile la generarea planului alimentar.
+const STORES = [
+  { id: 'lidl', name: 'Lidl' },
+  { id: 'kaufland', name: 'Kaufland' },
+  { id: 'profi', name: 'Profi' },
+  { id: 'mega-image', name: 'Mega Image' },
+  { id: 'carrefour', name: 'Carrefour' },
+  { id: 'auchan', name: 'Auchan' },
+];
+const STORE_IDS = STORES.map((s) => s.id);
+
+// Catalog fix de produse per magazin (valori nutriționale per 100g), curatat manual — nu
+// date scrapuite/live de preț sau stoc. Ținut sincronizat manual, ca la EXERCISE_CATALOG mai
+// jos: nu există build/import comun cu alt fișier. Folosit ca să limităm generarea planului
+// alimentar doar la produse plauzibile pentru magazinele bifate de utilizator.
+const STORE_PRODUCT_CATALOG = [
+  // Lidl
+  { store: 'lidl', name: 'Piept de pui (Lidl)', kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+  { store: 'lidl', name: 'Somon la cuptor (Lidl)', kcal: 206, protein: 22.1, carbs: 0, fat: 12.35 },
+  { store: 'lidl', name: 'Ouă clasa M (Lidl)', kcal: 143, protein: 12.6, carbs: 0.72, fat: 9.51 },
+  { store: 'lidl', name: 'Carne tocată de vită 93/7 (Lidl)', kcal: 155, protein: 21.7, carbs: 0, fat: 6.8 },
+  { store: 'lidl', name: 'Iaurt grecesc 0% (Milbona)', kcal: 61, protein: 10, carbs: 3.6, fat: 0.37 },
+  { store: 'lidl', name: 'Brânză cottage (Milbona)', kcal: 81, protein: 10.45, carbs: 4.76, fat: 2.3 },
+  { store: 'lidl', name: 'Lapte 1.5% (Milbona)', kcal: 47, protein: 3.4, carbs: 4.9, fat: 1.5 },
+  { store: 'lidl', name: 'Orez brun (Vitasia)', kcal: 123, protein: 2.74, carbs: 25.6, fat: 0.97 },
+  { store: 'lidl', name: 'Quinoa (Vitasia)', kcal: 120, protein: 4.4, carbs: 21.3, fat: 1.9 },
+  { store: 'lidl', name: 'Fulgi de ovăz (Alpen Fest)', kcal: 379, protein: 13.15, carbs: 67.7, fat: 6.52 },
+  { store: 'lidl', name: 'Pâine integrală (Lidl)', kcal: 252, protein: 12.45, carbs: 42.71, fat: 3.5 },
+  { store: 'lidl', name: 'Mix legume congelate (Freshona)', kcal: 65, protein: 2.86, carbs: 13.09, fat: 0.15 },
+  { store: 'lidl', name: 'Fructe de pădure congelate (Freshona)', kcal: 57, protein: 0.7, carbs: 13.5, fat: 0.3 },
+  { store: 'lidl', name: 'Migdale crude (Alesto)', kcal: 579, protein: 21.2, carbs: 21.6, fat: 49.9 },
+  { store: 'lidl', name: 'Ulei de măsline extravirgin (Lidl)', kcal: 884, protein: 0, carbs: 0, fat: 100 },
+  // Kaufland
+  { store: 'kaufland', name: 'Piept de pui (K-Classic)', kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+  { store: 'kaufland', name: 'Piept de curcan (K-Classic)', kcal: 135, protein: 30, carbs: 0, fat: 1 },
+  { store: 'kaufland', name: 'File de cod la cuptor (K-Favorite)', kcal: 105, protein: 23, carbs: 0, fat: 1 },
+  { store: 'kaufland', name: 'Ouă (K-Bio)', kcal: 143, protein: 12.6, carbs: 0.72, fat: 9.51 },
+  { store: 'kaufland', name: 'Iaurt grecesc 0% (K-Bio)', kcal: 61, protein: 10, carbs: 3.6, fat: 0.37 },
+  { store: 'kaufland', name: 'Telemea (K-Classic)', kcal: 264, protein: 14, carbs: 4, fat: 21 },
+  { store: 'kaufland', name: 'Lapte 1.5% (K-Classic)', kcal: 47, protein: 3.4, carbs: 4.9, fat: 1.5 },
+  { store: 'kaufland', name: 'Orez alb (K-Classic)', kcal: 130, protein: 2.7, carbs: 28.2, fat: 0.3 },
+  { store: 'kaufland', name: 'Paste integrale (K-take it veggie)', kcal: 124, protein: 5, carbs: 25, fat: 1.1 },
+  { store: 'kaufland', name: 'Cartofi dulci (Kaufland)', kcal: 90, protein: 2.01, carbs: 20.71, fat: 0.15 },
+  { store: 'kaufland', name: 'Pâine integrală (K-Classic)', kcal: 252, protein: 12.45, carbs: 42.71, fat: 3.5 },
+  { store: 'kaufland', name: 'Broccoli congelat (K-take it veggie)', kcal: 35, protein: 2.4, carbs: 7.2, fat: 0.4 },
+  { store: 'kaufland', name: 'Năut fiert, conservă (K-Bio)', kcal: 164, protein: 8.9, carbs: 27.4, fat: 2.6 },
+  { store: 'kaufland', name: 'Miez de nucă (K-Favorite)', kcal: 654, protein: 15.2, carbs: 13.7, fat: 65.2 },
+  { store: 'kaufland', name: 'Miere (K-Bio)', kcal: 304, protein: 0.3, carbs: 82.4, fat: 0 },
+  // Profi
+  { store: 'profi', name: 'Piept de pui (Profi)', kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+  { store: 'profi', name: 'Carne tocată de porc slabă (Profi)', kcal: 155, protein: 21.7, carbs: 0, fat: 6.8 },
+  { store: 'profi', name: 'Somon afumat (Profi)', kcal: 117, protein: 18.3, carbs: 0, fat: 4.3 },
+  { store: 'profi', name: 'Ouă clasa M (Profi)', kcal: 143, protein: 12.6, carbs: 0.72, fat: 9.51 },
+  { store: 'profi', name: 'Iaurt grecesc 0% (Profi)', kcal: 61, protein: 10, carbs: 3.6, fat: 0.37 },
+  { store: 'profi', name: 'Brânză cottage (Profi)', kcal: 81, protein: 10.45, carbs: 4.76, fat: 2.3 },
+  { store: 'profi', name: 'Lapte 1.5% (Profi)', kcal: 47, protein: 3.4, carbs: 4.9, fat: 1.5 },
+  { store: 'profi', name: 'Orez alb (Profi)', kcal: 130, protein: 2.7, carbs: 28.2, fat: 0.3 },
+  { store: 'profi', name: 'Fulgi de ovăz (Profi)', kcal: 379, protein: 13.15, carbs: 67.7, fat: 6.52 },
+  { store: 'profi', name: 'Cartofi (Profi)', kcal: 93, protein: 2.5, carbs: 21.1, fat: 0.13 },
+  { store: 'profi', name: 'Pâine integrală (Profi)', kcal: 252, protein: 12.45, carbs: 42.71, fat: 3.5 },
+  { store: 'profi', name: 'Spanac congelat (Profi)', kcal: 23, protein: 2.9, carbs: 3.6, fat: 0.4 },
+  { store: 'profi', name: 'Mere (Profi)', kcal: 52, protein: 0.3, carbs: 13.8, fat: 0.2 },
+  { store: 'profi', name: 'Fasole neagră fiartă, conservă (Profi)', kcal: 132, protein: 8.86, carbs: 23.71, fat: 0.54 },
+  { store: 'profi', name: 'Ulei de măsline (Profi)', kcal: 884, protein: 0, carbs: 0, fat: 100 },
+  // Mega Image
+  { store: 'mega-image', name: 'Piept de pui (Mega Image)', kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+  { store: 'mega-image', name: 'Piept de curcan (Mega Image)', kcal: 135, protein: 30, carbs: 0, fat: 1 },
+  { store: 'mega-image', name: 'Somon la cuptor (Mega Image)', kcal: 206, protein: 22.1, carbs: 0, fat: 12.35 },
+  { store: 'mega-image', name: 'Ouă clasa M (Mega Image)', kcal: 143, protein: 12.6, carbs: 0.72, fat: 9.51 },
+  { store: 'mega-image', name: 'Iaurt grecesc 0% (Mega Image)', kcal: 61, protein: 10, carbs: 3.6, fat: 0.37 },
+  { store: 'mega-image', name: 'Lapte 1.5% (Mega Image)', kcal: 47, protein: 3.4, carbs: 4.9, fat: 1.5 },
+  { store: 'mega-image', name: 'Orez brun (Mega Image)', kcal: 123, protein: 2.74, carbs: 25.6, fat: 0.97 },
+  { store: 'mega-image', name: 'Paste integrale (Mega Image)', kcal: 124, protein: 5, carbs: 25, fat: 1.1 },
+  { store: 'mega-image', name: 'Cartof dulce copt (Mega Image)', kcal: 90, protein: 2.01, carbs: 20.71, fat: 0.15 },
+  { store: 'mega-image', name: 'Pâine integrală (Mega Image)', kcal: 252, protein: 12.45, carbs: 42.71, fat: 3.5 },
+  { store: 'mega-image', name: 'Mix legume congelate (Mega Image)', kcal: 65, protein: 2.86, carbs: 13.09, fat: 0.15 },
+  { store: 'mega-image', name: 'Banane (Mega Image)', kcal: 89, protein: 1.09, carbs: 22.8, fat: 0.33 },
+  { store: 'mega-image', name: 'Linte fiartă, conservă (Mega Image)', kcal: 116, protein: 9.02, carbs: 20.13, fat: 0.38 },
+  { store: 'mega-image', name: 'Migdale crude (Mega Image)', kcal: 579, protein: 21.2, carbs: 21.6, fat: 49.9 },
+  { store: 'mega-image', name: 'Semințe de chia (Mega Image)', kcal: 486, protein: 16.5, carbs: 42.1, fat: 30.7 },
+  // Carrefour
+  { store: 'carrefour', name: "Piept de pui (Carrefour Classic')", kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+  { store: 'carrefour', name: 'File de cod la cuptor (Carrefour)', kcal: 105, protein: 23, carbs: 0, fat: 1 },
+  { store: 'carrefour', name: 'Carne tocată de vită 93/7 (Carrefour)', kcal: 155, protein: 21.7, carbs: 0, fat: 6.8 },
+  { store: 'carrefour', name: 'Ouă (Carrefour Bio)', kcal: 143, protein: 12.6, carbs: 0.72, fat: 9.51 },
+  { store: 'carrefour', name: 'Iaurt grecesc 0% (Carrefour Bio)', kcal: 61, protein: 10, carbs: 3.6, fat: 0.37 },
+  { store: 'carrefour', name: 'Brânză cottage (Carrefour)', kcal: 81, protein: 10.45, carbs: 4.76, fat: 2.3 },
+  { store: 'carrefour', name: 'Lapte 1.5% (Carrefour Selection)', kcal: 47, protein: 3.4, carbs: 4.9, fat: 1.5 },
+  { store: 'carrefour', name: 'Quinoa (Carrefour Bio)', kcal: 120, protein: 4.4, carbs: 21.3, fat: 1.9 },
+  { store: 'carrefour', name: 'Fulgi de ovăz (Carrefour Bio)', kcal: 379, protein: 13.15, carbs: 67.7, fat: 6.52 },
+  { store: 'carrefour', name: 'Cartofi (Carrefour)', kcal: 93, protein: 2.5, carbs: 21.1, fat: 0.13 },
+  { store: 'carrefour', name: 'Pâine integrală (Carrefour)', kcal: 252, protein: 12.45, carbs: 42.71, fat: 3.5 },
+  { store: 'carrefour', name: 'Broccoli congelat (Carrefour)', kcal: 35, protein: 2.4, carbs: 7.2, fat: 0.4 },
+  { store: 'carrefour', name: 'Mere (Carrefour)', kcal: 52, protein: 0.3, carbs: 13.8, fat: 0.2 },
+  { store: 'carrefour', name: 'Năut fiert, conservă (Carrefour Bio)', kcal: 164, protein: 8.9, carbs: 27.4, fat: 2.6 },
+  { store: 'carrefour', name: 'Ulei de măsline (Carrefour Selection)', kcal: 884, protein: 0, carbs: 0, fat: 100 },
+  // Auchan
+  { store: 'auchan', name: 'Piept de pui (Auchan)', kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+  { store: 'auchan', name: 'Piept de curcan (Auchan)', kcal: 135, protein: 30, carbs: 0, fat: 1 },
+  { store: 'auchan', name: 'Somon la cuptor (Auchan)', kcal: 206, protein: 22.1, carbs: 0, fat: 12.35 },
+  { store: 'auchan', name: 'Ouă clasa M (Auchan)', kcal: 143, protein: 12.6, carbs: 0.72, fat: 9.51 },
+  { store: 'auchan', name: 'Carne tocată de vită 93/7 (Auchan)', kcal: 155, protein: 21.7, carbs: 0, fat: 6.8 },
+  { store: 'auchan', name: 'Iaurt grecesc 0% (Auchan)', kcal: 61, protein: 10, carbs: 3.6, fat: 0.37 },
+  { store: 'auchan', name: 'Brânză cottage (Auchan)', kcal: 81, protein: 10.45, carbs: 4.76, fat: 2.3 },
+  { store: 'auchan', name: 'Lapte 1.5% (Auchan)', kcal: 47, protein: 3.4, carbs: 4.9, fat: 1.5 },
+  { store: 'auchan', name: 'Orez alb (Auchan)', kcal: 130, protein: 2.7, carbs: 28.2, fat: 0.3 },
+  { store: 'auchan', name: 'Fulgi de ovăz (Auchan)', kcal: 379, protein: 13.15, carbs: 67.7, fat: 6.52 },
+  { store: 'auchan', name: 'Cartofi dulci (Auchan)', kcal: 90, protein: 2.01, carbs: 20.71, fat: 0.15 },
+  { store: 'auchan', name: 'Pâine integrală (Auchan)', kcal: 252, protein: 12.45, carbs: 42.71, fat: 3.5 },
+  { store: 'auchan', name: 'Mix legume congelate (Auchan)', kcal: 65, protein: 2.86, carbs: 13.09, fat: 0.15 },
+  { store: 'auchan', name: 'Năut fiert, conservă (Auchan)', kcal: 164, protein: 8.9, carbs: 27.4, fat: 2.6 },
+  { store: 'auchan', name: 'Ulei de măsline (Auchan)', kcal: 884, protein: 0, carbs: 0, fat: 100 },
+];
+
+function formatStoreProductTable(storeIds) {
+  const ids = Array.isArray(storeIds) && storeIds.length ? storeIds : STORE_IDS;
+  return STORE_PRODUCT_CATALOG
+    .filter((p) => ids.includes(p.store))
+    .map((p) => `${p.name}: ${p.kcal} kcal, ${p.protein}g protein, ${p.carbs}g carbs, ${p.fat}g fat / 100g`)
+    .join('\n');
+}
+
 const SAMPLE_MEALS = [
   {
     ro: 'Ovăz cu iaurt și banană — 50g fulgi ovăz, 150g iaurt grecesc, banană, scorțișoară (370 kcal, 23g proteine, 62g carbo, 4g grăsimi)',
@@ -267,23 +389,25 @@ const TRANSLATE_ITEMS_SCHEMA = {
   additionalProperties: false,
 };
 
-function buildSystemPrompt(lang) {
+function buildSystemPrompt(lang, storeIds) {
   const languageName = LANGUAGE_NAMES[lang] || 'English';
   const sampleText = SAMPLE_MEALS.map((m) => `- ${m[lang] || m.en}`).join('\n');
+  const productTable = formatStoreProductTable(storeIds);
 
   return `You are a nutrition assistant for FF Fitness. You compose realistic meal plans, based on home-cooked food (not restaurant dishes), for a user who gave you a daily calorie and macronutrient target.
 
 STRICT RULES:
-1. Calculate each meal's macros from the verified nutrition table below (values per 100g) and the portions you choose — do not use memorized values for foods outside this table.
-2. Each day's total must be close to the given target (within ±10%).
-3. Vary the meals — don't repeat the same meal across the 7 days if possible.
-4. For EVERY meal, write the name and description in ${languageName} only. Use realistic portions (don't invent absurd quantities).
-5. STRICTLY respect the allergen exclusions given by the user — no meal may contain those ingredients.
-6. Each day must include breakfast, lunch, and dinner (slot values 'breakfast'/'lunch'/'dinner'), plus 0-2 snacks ('snack') depending on how much extra the calorie target requires.
-7. Number each day's "day" field sequentially from 1 to 7.
+1. Calculate each meal's macros from the verified product table below (values per 100g) and the portions you choose — do not use memorized values for foods outside this table.
+2. Every ingredient used in a meal must be one of the products listed in the table below — never invent or use a food that isn't in the table, since it only lists products available at the stores the user selected.
+3. Each day's total must be close to the given target (within ±10%).
+4. Vary the meals — don't repeat the same meal across the 7 days if possible.
+5. For EVERY meal, write the name and description in ${languageName} only. Use realistic portions (don't invent absurd quantities).
+6. STRICTLY respect the allergen exclusions given by the user — no meal may contain those ingredients.
+7. Each day must include breakfast, lunch, and dinner (slot values 'breakfast'/'lunch'/'dinner'), plus 0-2 snacks ('snack') depending on how much extra the calorie target requires.
+8. Number each day's "day" field sequentially from 1 to 7.
 
-VERIFIED NUTRITION TABLE (per 100g):
-${INGREDIENT_TABLE}
+AVAILABLE PRODUCTS (per 100g) — from the stores the user selected:
+${productTable}
 
 STYLE/PORTION EXAMPLES (reference only, not mandatory to copy):
 ${sampleText}
@@ -425,6 +549,10 @@ function validatePayload(body) {
   if (!['ro', 'en'].includes(body.lang)) return false;
   if (!Array.isArray(body.excludedTags) || body.excludedTags.length > 9) return false;
   if (typeof body.dislikeText !== 'string' || body.dislikeText.length > 300) return false;
+  if (body.stores !== undefined) {
+    if (!Array.isArray(body.stores) || body.stores.length < 1 || body.stores.length > STORE_IDS.length) return false;
+    if (!body.stores.every((s) => STORE_IDS.includes(s))) return false;
+  }
   return true;
 }
 
@@ -715,7 +843,7 @@ async function handleGeneratePlan(request, env, origin, ip) {
     async start(controller) {
       try {
         await streamPlanDays(env, {
-          system: buildSystemPrompt(body.lang),
+          system: buildSystemPrompt(body.lang, body.stores),
           userMessage: buildUserMessage(body),
           schema: PLAN_JSON_SCHEMA,
           maxTokens: PLAN_MAX_TOKENS,
