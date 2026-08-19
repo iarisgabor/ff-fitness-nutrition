@@ -1528,7 +1528,16 @@ async function fetchPlanFromApi(payload, onDay) {
   }
 }
 
-async function generatePlan(targets, goal, allergens, dislikes, stores, bypassCache, onDay) {
+// Semnătură compactă a planului curent (numele meselor, în engleză ca ancoră stabilă
+// indiferent de limba afișată) — trimisă la server ca "excludeSignature" la regenerare, ca
+// să primim o altă variantă din pool-ul de cache în loc de a forța mereu un apel AI nou.
+// Trebuie să rămână în sincron cu computePlanSignature() din worker/index.js.
+function computePlanSignature(planData) {
+  if (!planData || !Array.isArray(planData.days)) return null;
+  return planData.days.map((d) => d.meals.map((m) => (m.name && m.name.en) || '').join(',')).join('|');
+}
+
+async function generatePlan(targets, goal, allergens, dislikes, stores, wantsDifferentPlan, onDay) {
   const payload = {
     targetKcal: targets.kcal,
     targetProtein: targets.protein,
@@ -1538,9 +1547,12 @@ async function generatePlan(targets, goal, allergens, dislikes, stores, bypassCa
     excludedTags: allergens,
     dislikeText: dislikes,
     stores,
-    skipCache: Boolean(bypassCache),
     lang: currentLang,
   };
+  if (wantsDifferentPlan) {
+    const signature = computePlanSignature(lastPlanData);
+    if (signature) payload.excludeSignature = signature;
+  }
 
   const apiResult = await fetchPlanFromApi(payload, onDay);
   if (apiResult) return apiResult;
@@ -1734,6 +1746,102 @@ const RECIPE_STEP_TEMPLATE = {
   ],
 };
 
+/* ---------- Adnotare rețete cu magazinele unde găsești ingredientele ---------- */
+const STORE_DISPLAY_NAMES = {
+  lidl: 'Lidl',
+  kaufland: 'Kaufland',
+  profi: 'Profi',
+  'mega-image': 'Mega Image',
+  carrefour: 'Carrefour',
+  auchan: 'Auchan',
+};
+const STORE_ORDER = ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'];
+
+// Grupare manuală ingredient -> magazine, derivată din STORE_PRODUCT_CATALOG din
+// worker/index.js (întreținută separat, la fel ca celelalte cataloage duplicate manual din
+// acest proiect — vezi architecture.md). Intrările mai specifice trebuie să apară înaintea
+// celor generice (ex. "cartof dulce" înaintea lui "cartof"), pentru că se oprește la prima
+// potrivire. Un ingredient care nu apare deloc în catalog (ex. tofu, creveți, tahini) rămâne
+// fără nicio potrivire — mai bine fără paranteză decât cu o informație inventată.
+const INGREDIENT_STORE_MAP = [
+  { ro: ['cartof dulce', 'cartofi dulci'], en: ['sweet potato'], stores: ['kaufland', 'mega-image', 'auchan'] },
+  { ro: ['cartof', 'cartofi'], en: ['potato'], stores: ['profi', 'carrefour'] },
+  { ro: ['piept de curcan', 'curcan'], en: ['turkey breast', 'turkey'], stores: ['kaufland', 'mega-image', 'auchan'] },
+  { ro: ['piept de pui', 'pui'], en: ['chicken breast', 'chicken'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['somon afumat'], en: ['smoked salmon'], stores: ['profi'] },
+  { ro: ['somon'], en: ['salmon'], stores: ['lidl', 'profi', 'mega-image', 'auchan'] },
+  { ro: ['file de cod', 'cod'], en: ['cod'], stores: ['kaufland', 'carrefour'] },
+  { ro: ['carne tocata de vita', 'vita tocata'], en: ['ground beef', 'lean beef'], stores: ['lidl', 'carrefour', 'auchan'] },
+  { ro: ['carne tocata de porc'], en: ['ground pork'], stores: ['profi'] },
+  { ro: ['muschiulet de porc'], en: ['pork tenderloin'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['oua', 'ou fiert', 'ouă'], en: ['eggs', 'egg'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['iaurt grecesc', 'iaurt'], en: ['greek yogurt', 'yogurt'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['branza cottage', 'branza de vaci'], en: ['cottage cheese'], stores: ['lidl', 'profi', 'carrefour', 'auchan'] },
+  { ro: ['telemea'], en: ['telemea', 'feta'], stores: ['kaufland'] },
+  { ro: ['lapte'], en: ['milk'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['orez alb'], en: ['white rice'], stores: ['kaufland', 'profi', 'auchan'] },
+  { ro: ['orez brun'], en: ['brown rice'], stores: ['lidl', 'mega-image'] },
+  { ro: ['paste integrale'], en: ['wholewheat pasta'], stores: ['kaufland', 'mega-image'] },
+  { ro: ['paine integrala'], en: ['wholewheat bread'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['fulgi de ovaz', 'ovaz'], en: ['rolled oats', 'oats'], stores: ['lidl', 'profi', 'carrefour', 'auchan'] },
+  { ro: ['cus-cus', 'cuscus'], en: ['couscous'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['quinoa'], en: ['quinoa'], stores: ['lidl', 'carrefour'] },
+  { ro: ['naut'], en: ['chickpeas'], stores: ['kaufland', 'carrefour', 'auchan'] },
+  { ro: ['fasole neagra'], en: ['black beans'], stores: ['profi'] },
+  { ro: ['linte'], en: ['lentils'], stores: ['mega-image'] },
+  { ro: ['migdale'], en: ['almonds'], stores: ['lidl', 'mega-image'] },
+  { ro: ['miez de nuca', 'nuci'], en: ['walnuts'], stores: ['kaufland'] },
+  { ro: ['seminte de chia', 'chia'], en: ['chia seeds'], stores: ['mega-image'] },
+  { ro: ['ulei de masline'], en: ['olive oil'], stores: ['lidl', 'profi', 'carrefour', 'auchan'] },
+  { ro: ['miere'], en: ['honey'], stores: ['kaufland'] },
+  { ro: ['banana', 'banane'], en: ['banana'], stores: ['mega-image'] },
+  { ro: ['mere', 'mar'], en: ['apples', 'apple'], stores: ['profi', 'carrefour'] },
+  { ro: ['portocale', 'portocala'], en: ['oranges', 'orange'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['fructe de padure congelate'], en: ['frozen berries'], stores: ['lidl'] },
+  { ro: ['broccoli congelat', 'broccoli'], en: ['frozen broccoli', 'broccoli'], stores: ['kaufland', 'carrefour'] },
+  { ro: ['spanac'], en: ['spinach'], stores: ['profi'] },
+  { ro: ['mix legume congelate', 'legume congelate'], en: ['frozen vegetables', 'mixed vegetables'], stores: ['lidl', 'mega-image', 'auchan'] },
+  { ro: ['castraveti'], en: ['cucumber', 'cucumbers'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['rosii'], en: ['tomato', 'tomatoes'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+  { ro: ['ardei'], en: ['bell pepper', 'pepper'], stores: ['lidl', 'kaufland', 'profi', 'mega-image', 'carrefour', 'auchan'] },
+];
+
+// Caută prima intrare din INGREDIENT_STORE_MAP al cărei cuvânt-cheie (pentru limba dată)
+// apare ca substring în textul ingredientului; null dacă niciun ingredient cunoscut nu se
+// potrivește (ingredient în afara catalogului de magazine).
+function findIngredientStores(text, lang) {
+  const normalized = normalizeForMatch(text);
+  for (const entry of INGREDIENT_STORE_MAP) {
+    const keywords = entry[lang] || [];
+    if (keywords.some((kw) => normalized.includes(normalizeForMatch(kw)))) {
+      return entry.stores;
+    }
+  }
+  return null;
+}
+
+// Adaugă "(Magazin1, Magazin2)" la finalul unei linii de ingredient, cu magazinele care chiar
+// vând acel produs, restrânse la magazinele bifate de user la generarea planului
+// (selectedStoreIds) — nu la toate 6, ca să nu recomandăm un magazin pe care userul nu l-a
+// ales. Fără nicio adnotare dacă ingredientul nu se potrivește cu catalogul cunoscut, sau
+// dacă niciunul din magazinele care îl vând nu e printre cele selectate.
+function annotateIngredientWithStores(text, lang, selectedStoreIds) {
+  const matchedStores = findIngredientStores(text, lang);
+  if (!matchedStores || !matchedStores.length) return text;
+  const allowed = selectedStoreIds && selectedStoreIds.length ? selectedStoreIds : STORE_ORDER;
+  const applicable = STORE_ORDER.filter((id) => matchedStores.includes(id) && allowed.includes(id));
+  if (!applicable.length) return text;
+  const names = applicable.map((id) => STORE_DISPLAY_NAMES[id]).join(', ');
+  return `${text} (${names})`;
+}
+
+function annotateIngredientsWithStores(ingredients, selectedStoreIds) {
+  return {
+    ro: ingredients.ro.map((line) => annotateIngredientWithStores(line, 'ro', selectedStoreIds)),
+    en: ingredients.en.map((line) => annotateIngredientWithStores(line, 'en', selectedStoreIds)),
+  };
+}
+
 function buildLocalRecipe(meal) {
   const written = meal.id && MEAL_RECIPE_STEPS[meal.id];
   return {
@@ -1777,10 +1885,11 @@ async function fetchRecipeFromApi(meal) {
   }
 }
 
-async function getRecipe(meal) {
+async function getRecipe(meal, selectedStoreIds) {
   const apiResult = await fetchRecipeFromApi(meal);
-  if (apiResult) return apiResult;
-  return buildLocalRecipe(meal);
+  const recipe = apiResult || buildLocalRecipe(meal);
+  recipe.ingredients = annotateIngredientsWithStores(recipe.ingredients, selectedStoreIds);
+  return recipe;
 }
 
 function renderRecipeDialogContent(meal, recipe) {
@@ -1820,7 +1929,7 @@ async function openRecipeDialog(mealKey) {
   if (!dialog.open) dialog.showModal();
 
   const cached = recipeCache.get(mealKey);
-  const recipe = cached || await getRecipe(meal);
+  const recipe = cached || await getRecipe(meal, lastPlanData && lastPlanData.stores);
   if (!cached) recipeCache.set(mealKey, recipe);
 
   if (currentRecipeMealKey !== mealKey || !dialog.open) return;
@@ -2196,6 +2305,7 @@ async function handlePlanGenerate(bypassCache = false) {
   }
 
   lastPlanData = plan;
+  lastPlanData.stores = stores;
   lastPlanData.translatedLangs = new Set([lastPlanData.lang || currentLang]);
   if (daysReceived === 0) renderPlanAccordion(plan);
   outputEl.hidden = false;

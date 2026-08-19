@@ -5,8 +5,8 @@ const ANTHROPIC_VERSION = '2023-06-01';
 const MODEL = 'claude-sonnet-5';
 const PLAN_MAX_TOKENS = 20000;
 const PLAN_DAY_COUNT = 7;
-const PLAN_CACHE_VERSION = 'v1';
-const PLAN_CACHE_POOL_SIZE = 5;
+const PLAN_CACHE_VERSION = 'v2'; // v2: bucket-uri mai late + pool mai mare, ca sa creasca rata de cache-hit
+const PLAN_CACHE_POOL_SIZE = 12;
 const PLAN_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 zile
 const RECIPE_MAX_TOKENS = 1500;
 const PLAN_RATE_LIMIT_PER_HOUR = 8;
@@ -412,7 +412,7 @@ STRICT RULES:
 1. Calculate each meal's macros from the verified product table below (values per 100g) and the portions you choose — do not use memorized values for foods outside this table.
 2. Every ingredient used in a meal must be one of the products listed in the table below — never invent or use a food that isn't in the table, since it only lists products available at the stores the user selected.
 3. Each day's total must be close to the given target (within ±10%).
-4. Vary the meals aggressively across the 7 days: never repeat the exact same meal (same name and same ingredient combination) twice in the plan, and avoid pairing the same two main ingredients together more than once — instead recombine the product table into different pairings, proportions, and preparation styles (e.g. grilled vs. baked, different vegetable/side pairings, different breakfast bases) each time, even though the product table itself is limited.
+4. Vary the meals aggressively across the 7 days: never repeat the exact same meal (same name and same ingredient combination) twice in the plan, and avoid pairing the same two main ingredients together more than once — instead recombine the product table into different pairings, proportions, and preparation styles (e.g. grilled vs. baked, different vegetable/side pairings, different breakfast bases) each time, even though the product table itself is limited. Before finalizing, mentally scan the full list of meal names across all 7 days — if any two are identical or near-identical, replace one of them with a different combination.
 5. For EVERY meal, write the name and description in ${languageName} only. Use realistic portions (don't invent absurd quantities).
 6. STRICTLY respect the allergen exclusions given by the user — no meal may contain those ingredients.
 7. Each day must include breakfast, lunch, and dinner (slot values 'breakfast'/'lunch'/'dinner'), plus 0-2 snacks ('snack') depending on how much extra the calorie target requires.
@@ -630,17 +630,26 @@ function roundToStep(value, step) {
   return Math.round(value / step) * step;
 }
 
-// Bucket-uri suficient de fine încât planul servit din cache să rămână în marja de ±10% pe
-// care regula 3 din buildSystemPrompt o cere oricum de la generarea live — nu introduc o
-// aproximare mai mare decât cea deja tolerată.
+// Bucket-uri lărgite deliberat (mai late decât marja ±10% cerută de regula 3 din
+// buildSystemPrompt) ca mai multe cereri diferite să nimerească aceeași cheie de cache și
+// pool-ul să se umple mai repede — prioritizăm rata de cache-hit (viteză + mai puține
+// apeluri AI) în detrimentul preciziei fine a bucket-ului, acceptabil cât timp planul din
+// cache tot respectă undeva-n jurul targetului (disclaimer-ul de pe pagină acoperă asta).
 function buildPlanCacheKey(body) {
-  const kcalBucket = roundToStep(body.targetKcal, 100);
-  const proteinBucket = roundToStep(body.targetProtein, 10);
-  const carbsBucket = roundToStep(body.targetCarbs, 10);
-  const fatBucket = roundToStep(body.targetFat, 10);
+  const kcalBucket = roundToStep(body.targetKcal, 200);
+  const proteinBucket = roundToStep(body.targetProtein, 20);
+  const carbsBucket = roundToStep(body.targetCarbs, 20);
+  const fatBucket = roundToStep(body.targetFat, 15);
   const tagsKey = [...body.excludedTags].sort().join(',') || 'none';
   const storesKey = (body.stores && body.stores.length ? [...body.stores].sort() : STORE_IDS.slice()).join(',');
   return `plan-cache:${PLAN_CACHE_VERSION}:${body.lang}:${body.goal}:${kcalBucket}:${proteinBucket}:${carbsBucket}:${fatBucket}:${tagsKey}:${storesKey}`;
+}
+
+// Semnătură compactă a conținutului unui plan (numele meselor, în engleză ca ancoră stabilă
+// indiferent de `lang`), folosită doar ca să distingem variantele din pool între ele — nu ca
+// hash criptografic.
+function computePlanSignature(days) {
+  return days.map((d) => d.meals.map((m) => (m.name && m.name.en) || '').join(',')).join('|');
 }
 
 // Niciodată nu aruncă excepție — orice eșec (KV nelegat, JSON corupt, pool gol,
@@ -685,16 +694,25 @@ async function writeWorkoutCachePool(env, cacheKey, days) {
 
 // Niciodată nu aruncă excepție — orice eșec (KV nelegat, JSON corupt, pool gol,
 // lungime nepotrivită) devine null = cache miss, se continuă cu generare live.
-async function readPlanCachePool(env, cacheKey, expectedDayCount) {
+// Dacă excludeSignature e dat (ex. userul a apăsat "Regenerează" și nu vrea planul pe care
+// deja îl are pe ecran), preferăm o variantă din pool diferită de ea; dacă TOATE variantele
+// din pool coincid cu excludeSignature (pool cu o singură variantă reală), întoarcem null
+// ca să declanșăm o generare live nouă — mai bine un plan proaspăt decât unul identic.
+async function readPlanCachePool(env, cacheKey, expectedDayCount, excludeSignature) {
   if (!env.RATE_LIMIT_KV) return null;
   try {
     const raw = await env.RATE_LIMIT_KV.get(cacheKey);
     if (!raw) return null;
     const pool = JSON.parse(raw);
     if (!Array.isArray(pool) || pool.length === 0) return null;
-    const entry = pool[Math.floor(Math.random() * pool.length)];
-    if (!Array.isArray(entry) || entry.length !== expectedDayCount) return null;
-    return entry;
+    let candidates = pool.filter((entry) => Array.isArray(entry) && entry.length === expectedDayCount);
+    if (!candidates.length) return null;
+    if (excludeSignature) {
+      const distinct = candidates.filter((entry) => computePlanSignature(entry) !== excludeSignature);
+      if (!distinct.length) return null;
+      candidates = distinct;
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)];
   } catch (err) {
     return null;
   }
@@ -702,6 +720,8 @@ async function readPlanCachePool(env, cacheKey, expectedDayCount) {
 
 // Niciodată nu aruncă excepție — un eșec de scriere în cache nu trebuie să strice
 // răspunsul deja livrat userului. Auto-recuperare la pool corupt (pornește de la []).
+// Nu adaugă o variantă al cărei conținut (nume mese) e identic cu una deja din pool — ținem
+// pool-ul plin de variante cu adevărat diferite, nu de duplicate întâmplătoare.
 async function writePlanCachePool(env, cacheKey, days) {
   if (!env.RATE_LIMIT_KV) return;
   let pool = [];
@@ -714,8 +734,12 @@ async function writePlanCachePool(env, cacheKey, days) {
   } catch (err) {
     pool = [];
   }
-  pool.push(days);
-  if (pool.length > PLAN_CACHE_POOL_SIZE) pool = pool.slice(-PLAN_CACHE_POOL_SIZE);
+  const newSignature = computePlanSignature(days);
+  const isDuplicate = pool.some((entry) => Array.isArray(entry) && computePlanSignature(entry) === newSignature);
+  if (!isDuplicate) {
+    pool.push(days);
+    if (pool.length > PLAN_CACHE_POOL_SIZE) pool = pool.slice(-PLAN_CACHE_POOL_SIZE);
+  }
   try {
     await env.RATE_LIMIT_KV.put(cacheKey, JSON.stringify(pool), { expirationTtl: PLAN_CACHE_TTL_SECONDS });
   } catch (err) {
@@ -899,10 +923,15 @@ async function handleGeneratePlan(request, env, origin, ip) {
   }
 
   const cacheKey = buildPlanCacheKey(body);
-  const bypassCache = Boolean(body.skipCache) || body.dislikeText.trim().length > 0;
+  // dislikeText nu intră în cheia de cache (e prea liber ca să bucketăm pe el), deci un plan
+  // generat cu preferințe libere n-are ce căuta în pool-ul comun — mereu live pentru el.
+  const bypassCache = body.dislikeText.trim().length > 0;
+  const excludeSignature = typeof body.excludeSignature === 'string' && body.excludeSignature.length <= 8000
+    ? body.excludeSignature
+    : null;
 
   if (!bypassCache) {
-    const cachedDays = await readPlanCachePool(env, cacheKey, PLAN_DAY_COUNT);
+    const cachedDays = await readPlanCachePool(env, cacheKey, PLAN_DAY_COUNT, excludeSignature);
     if (cachedDays) return cachedDaysResponse(cachedDays, origin);
   }
 
@@ -930,7 +959,10 @@ async function handleGeneratePlan(request, env, origin, ip) {
           userMessage: buildUserMessage(body),
           schema: PLAN_JSON_SCHEMA,
           maxTokens: PLAN_MAX_TOKENS,
-          effort: 'low',
+          // 'medium' (nu 'low' ca la celelalte apeluri): acum că planurile generate live
+          // ajung în pool-ul de cache și sunt reservite la mulți useri, merită mai multă
+          // atenție la variație pe generarea inițială — costul suplimentar se amortizează.
+          effort: 'medium',
           toBilingual: collectingToBilingual,
         }, controller);
         if (!bypassCache && collectedDays.length === PLAN_DAY_COUNT) {
