@@ -1488,6 +1488,16 @@ function applySavedAllergyPrefs(form) {
   form.dislikes.value = saved.dislikes || '';
 }
 
+// Distanța minimă între afișarea a două zile consecutive din plan — la generare live, AI-ul
+// oricum ia mai mult decât atât între zile, deci pauza asta nu se simte. Dar la un plan servit
+// din cache (toate cele 7 zile ajung practic simultan, într-un singur chunk NDJSON), fără
+// pauza asta userul ar vedea tot planul apărând dintr-o dată în loc de zi-cu-zi.
+const PLAN_DAY_REVEAL_MIN_INTERVAL_MS = 450;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchPlanFromApi(payload, onDay) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 150000);
@@ -1504,6 +1514,7 @@ async function fetchPlanFromApi(payload, onDay) {
     const decoder = new TextDecoder();
     let buffer = '';
     const days = [];
+    let lastRevealAt = 0;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -1517,7 +1528,14 @@ async function fetchPlanFromApi(payload, onDay) {
         try { obj = JSON.parse(line); } catch (e) { continue; }
         if (obj.error) return days.length ? { days, lang: payload.lang } : null;
         days.push(obj);
-        if (onDay) onDay(obj, days.length);
+        if (onDay) {
+          if (lastRevealAt) {
+            const elapsed = Date.now() - lastRevealAt;
+            if (elapsed < PLAN_DAY_REVEAL_MIN_INTERVAL_MS) await wait(PLAN_DAY_REVEAL_MIN_INTERVAL_MS - elapsed);
+          }
+          lastRevealAt = Date.now();
+          onDay(obj, days.length);
+        }
       }
     }
     return days.length ? { days, lang: payload.lang } : null;
