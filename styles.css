@@ -486,6 +486,12 @@ legend, .field label {
 
 .ai-plan-intro { color: var(--text-secondary); margin-top: calc(-1 * var(--space-4)); }
 
+#plan-ready-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
 .plan-paywall-card {
   background: var(--surface);
   border: 1px solid var(--border);
