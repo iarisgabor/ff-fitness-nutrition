@@ -211,6 +211,15 @@ h1, h2, h3 { font-family: var(--font-heading); font-weight: 600; letter-spacing:
   margin-inline: auto;
 }
 
+.hero-about {
+  margin-top: var(--space-4);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  opacity: 0.85;
+  max-width: 680px;
+  margin-inline: auto;
+}
+
 /* ---------- Views ---------- */
 .view { padding-bottom: var(--space-12); }
 .view[hidden] { display: none; }

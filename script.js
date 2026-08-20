@@ -58,6 +58,7 @@ const CONTENT = {
     hero: {
       title: 'Află-ți necesarul caloric zilnic',
       subtitle: 'Completează datele tale și primești imediat BMR, TDEE, un target caloric pentru obiectivul tău și necesarul de proteine.',
+      about: 'FF Fitness este un calculator gratuit de necesar caloric (BMR/TDEE) și un generator de plan alimentar personalizat cu inteligență artificială. Planul alimentar (serviciu plătit, $5) include rețete complete, export PDF și opțiunea de a-l primi pe email — funcție pentru care folosim contul de Gmail al FF Fitness doar ca să trimitem acel email, niciodată contul tău Google.',
     },
     form: {
       sexLabel: 'Sex biologic',
@@ -305,6 +306,7 @@ const CONTENT = {
     hero: {
       title: 'Find your daily calorie needs',
       subtitle: 'Fill in your details and instantly get your BMR, TDEE, a calorie target for your goal, and your daily protein needs.',
+      about: 'FF Fitness is a free calorie-needs calculator (BMR/TDEE) and an AI-powered personalized meal-plan generator. The meal plan (a paid feature, $5) includes full recipes, PDF export, and the option to have it emailed to you — a feature for which we use FF Fitness\'s own Gmail account only to send that one email, never your Google account.',
     },
     form: {
       sexLabel: 'Biological sex',
