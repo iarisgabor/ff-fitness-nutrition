@@ -1372,6 +1372,7 @@ function initLanguageToggle() {
 /* ---------- FAQ / Acordeon ---------- */
 function renderFAQ() {
   const container = document.getElementById('accordion');
+  if (!container) return;
   const openIndex = container.dataset.openIndex;
   container.innerHTML = '';
 
@@ -2797,7 +2798,9 @@ async function handleSendPlanEmail(event) {
     await loadPdfLibrary();
     const targets = { kcal: lastResults.target, protein: lastResults.protein, carbs: lastResults.carbs, fat: lastResults.fat };
     const doc = await buildPlanPdf(lastPlanData, targets, currentLang);
-    const pdfBase64 = doc.output('base64');
+    // 'base64' nu e un tip de output suportat de build-ul vendorizat (verificat direct în
+    // sursă) — doar 'datauristring', de unde trebuie scos manual prefixul "data:...;base64,".
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
 
     const res = await fetch(SEND_PLAN_EMAIL_API_URL, {
       method: 'POST',

@@ -1096,21 +1096,25 @@ function isValidEmail(value) {
   return typeof value === 'string' && value.length > 0 && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+// Întoarce motivul exact al eșecului (nu doar true/false) — diagnostic temporar, util și pe
+// termen lung în loc de un 400 mut.
 function validateSendPlanEmailPayload(body) {
-  if (!body || typeof body !== 'object') return false;
-  if (!isValidEmail(body.email)) return false;
-  if (!isNonEmptyString(body.paymentSessionId, 200)) return false;
+  if (!body || typeof body !== 'object') return 'body';
+  if (!isValidEmail(body.email)) return 'email';
+  if (!isNonEmptyString(body.paymentSessionId, 200)) return 'paymentSessionId';
   const numFields = ['targetKcal', 'targetProtein', 'targetCarbs', 'targetFat'];
-  if (!numFields.every((f) => typeof body[f] === 'number' && body[f] > 0 && body[f] < 10000)) return false;
-  if (!['lose', 'maintain', 'gain'].includes(body.goal)) return false;
-  if (!['ro', 'en'].includes(body.lang)) return false;
-  if (!Array.isArray(body.excludedTags) || body.excludedTags.length > 9) return false;
-  if (body.stores !== undefined) {
-    if (!Array.isArray(body.stores) || body.stores.length > STORE_IDS.length) return false;
-    if (!body.stores.every((s) => STORE_IDS.includes(s))) return false;
+  for (const f of numFields) {
+    if (!(typeof body[f] === 'number' && body[f] > 0 && body[f] < 10000)) return `numField:${f}`;
   }
-  if (typeof body.pdfBase64 !== 'string' || body.pdfBase64.length === 0 || body.pdfBase64.length > MAX_PDF_BASE64_CHARS) return false;
-  return true;
+  if (!['lose', 'maintain', 'gain'].includes(body.goal)) return 'goal';
+  if (!['ro', 'en'].includes(body.lang)) return 'lang';
+  if (!Array.isArray(body.excludedTags) || body.excludedTags.length > 9) return 'excludedTags';
+  if (body.stores !== undefined) {
+    if (!Array.isArray(body.stores) || body.stores.length > STORE_IDS.length) return 'stores:shape';
+    if (!body.stores.every((s) => STORE_IDS.includes(s))) return 'stores:values';
+  }
+  if (typeof body.pdfBase64 !== 'string' || body.pdfBase64.length === 0 || body.pdfBase64.length > MAX_PDF_BASE64_CHARS) return 'pdfBase64';
+  return null;
 }
 
 function base64ToUint8Array(base64) {
@@ -1386,8 +1390,13 @@ async function handleSendPlanEmail(request, env, origin, ip) {
     return jsonResponse({ error: 'invalid_json' }, 400, origin);
   }
 
-  if (!validateSendPlanEmailPayload(body)) {
-    return jsonResponse({ error: 'invalid_payload' }, 400, origin);
+  const invalidField = validateSendPlanEmailPayload(body);
+  if (invalidField) {
+    // Diagnostic temporar — util să vedem forma exactă primită, nu doar numele câmpului.
+    const debug = invalidField === 'pdfBase64'
+      ? { pdfBase64Type: typeof body.pdfBase64, pdfBase64Length: body.pdfBase64 ? body.pdfBase64.length : null, maxAllowed: MAX_PDF_BASE64_CHARS }
+      : undefined;
+    return jsonResponse({ error: 'invalid_payload', field: invalidField, debug }, 400, origin);
   }
 
   // Aceleași câmpuri definitorii ale planului ca la /api/generate-plan, ca semnătura să
