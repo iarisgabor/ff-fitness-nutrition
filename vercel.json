@@ -1,5 +1,1 @@
-{
-  "functions": {
-    "api/generate-recipe.js": { "maxDuration": 30 }
-  }
-}
+{}

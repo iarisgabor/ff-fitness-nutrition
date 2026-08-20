@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Politică de confidențialitate — FF Fitness</title>
+<meta name="description" content="Politica de confidențialitate a FF Fitness — ce date colectăm, cum le folosim și cu cine le partajăm.">
+<meta name="theme-color" content="#0B0710">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .legal-content { max-width: 760px; margin-inline: auto; padding-block: var(--space-8); display: flex; flex-direction: column; gap: var(--space-6); }
+  .legal-content h1 { font-size: clamp(1.8rem, 3vw + 1rem, 2.6rem); }
+  .legal-content h2 { font-size: 1.3rem; margin-top: var(--space-4); }
+  .legal-content p, .legal-content li { color: var(--text-secondary); line-height: 1.6; }
+  .legal-content ul { padding-left: var(--space-6); list-style: disc; display: flex; flex-direction: column; gap: var(--space-2); }
+  .legal-content section { display: flex; flex-direction: column; gap: var(--space-3); }
+  .legal-updated { color: var(--text-secondary); font-size: 0.9rem; }
+  .lang-divider { border: none; border-top: 1px solid var(--border); margin-block: var(--space-8); }
+</style>
+</head>
+<body data-page="privacy">
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="index.html">
+      <img class="logo" src="assets/logo.png" alt="FF Fitness">
+      <span class="brand-name">FF Fitness</span>
+    </a>
+  </div>
+</header>
+
+<main class="container">
+  <div class="legal-content">
+    <section>
+      <h1>Politică de confidențialitate</h1>
+      <p class="legal-updated">Ultima actualizare: 20 august 2026</p>
+      <p>FF Fitness este un calculator de necesar caloric și un generator de plan alimentar AI. Această pagină explică ce date colectăm, de ce, și cu ce servicii terțe le partajăm.</p>
+    </section>
+
+    <section>
+      <h2>Ce date colectăm</h2>
+      <ul>
+        <li><strong>Datele calculatorului</strong> (sex, vârstă, greutate, înălțime, nivel de activitate, obiectiv) — folosite doar pentru a calcula BMR/TDEE și pentru a genera planul alimentar. Rezultatele sunt salvate local, în browser-ul tău (<code>localStorage</code>) — nu într-o bază de date a noastră.</li>
+        <li><strong>Preferințele planului</strong> (alergii, magazine preferate, alimente nedorite) — folosite pentru a personaliza planul generat de AI. Salvate la fel, local, în browser.</li>
+        <li><strong>Adresa de email</strong> — colectată doar dacă alegi explicit să-ți trimiți planul pe email. Folosită o singură dată, pentru trimiterea acelui email — nu e adăugată într-o listă de marketing și nu e folosită în alt scop.</li>
+        <li><strong>Date de plată</strong> — procesate integral de Stripe; noi nu vedem și nu stocăm niciodată numărul cardului tău.</li>
+        <li><strong>Adresa IP</strong> — folosită tehnic, temporar, doar pentru limitarea numărului de cereri (anti-abuz), nu e asociată cu un profil de utilizator.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Cu cine partajăm date și de ce</h2>
+      <ul>
+        <li><strong>Anthropic</strong> (API Claude) — primește datele calculatorului/preferințele tale pentru a genera planul alimentar și rețetele, prin AI.</li>
+        <li><strong>Stripe</strong> — procesează plata de $5 pentru planul alimentar. Vezi <a href="https://stripe.com/privacy" target="_blank" rel="noopener">politica de confidențialitate Stripe</a>.</li>
+        <li><strong>Google (Gmail API)</strong> — folosit exclusiv ca să trimitem, prin contul de Gmail al FF Fitness, emailul cu planul tău (PDF atașat), dacă alegi să folosești această funcție. Nu citim, nu procesăm și nu avem acces la inbox-ul tău — folosim doar permisiunea de a trimite un email.</li>
+        <li><strong>Cloudflare</strong> — găzduiește backend-ul (Worker) care generează planurile și rețetele, și cache-uiește temporar (până la 30 de zile) planuri/rețete deja generate, ca să răspundă mai rapid și mai ieftin pentru configurații similare cerute de alți utilizatori.</li>
+      </ul>
+      <p>Nu vindem și nu închiriem datele tale către nimeni, în niciun scop.</p>
+    </section>
+
+    <section>
+      <h2>Cât timp păstrăm datele</h2>
+      <p>Planurile și rețetele generate rămân în cache server-side cel mult 30 de zile, apoi expiră automat. Nu ținem o bază de date permanentă cu utilizatori sau planurile lor. Datele salvate local (<code>localStorage</code>) rămân doar în browser-ul tău, până le ștergi tu (din setările browser-ului) sau până le suprascrii cu o nouă generare.</p>
+    </section>
+
+    <section>
+      <h2>Drepturile tale</h2>
+      <p>Poți cere oricând ștergerea sau clarificări despre datele tale, scriind la adresa de contact de mai jos.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>Pentru întrebări despre această politică: <a href="mailto:iaris.gabor28@gmail.com">iaris.gabor28@gmail.com</a></p>
+    </section>
+
+    <hr class="lang-divider">
+
+    <section>
+      <h1>Privacy Policy</h1>
+      <p class="legal-updated">Last updated: August 20, 2026</p>
+      <p>FF Fitness is a calorie-target calculator and AI meal-plan generator. This page explains what data we collect, why, and which third-party services we share it with.</p>
+    </section>
+
+    <section>
+      <h2>What we collect</h2>
+      <ul>
+        <li><strong>Calculator inputs</strong> (sex, age, weight, height, activity level, goal) — used only to compute your BMR/TDEE and to generate your meal plan. Results are saved locally in your browser (<code>localStorage</code>) — not in a database of ours.</li>
+        <li><strong>Plan preferences</strong> (allergies, preferred stores, disliked foods) — used to personalize the AI-generated plan. Also saved locally, in your browser.</li>
+        <li><strong>Email address</strong> — collected only if you explicitly choose to email yourself the plan. Used once, to send that one email — never added to a marketing list or used for anything else.</li>
+        <li><strong>Payment details</strong> — handled entirely by Stripe; we never see or store your card number.</li>
+        <li><strong>IP address</strong> — used technically, temporarily, only for request rate-limiting (abuse prevention), not tied to a user profile.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Who we share data with, and why</h2>
+      <ul>
+        <li><strong>Anthropic</strong> (Claude API) — receives your calculator inputs/preferences to generate your meal plan and recipes via AI.</li>
+        <li><strong>Stripe</strong> — processes the $5 payment for the meal plan. See <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe's privacy policy</a>.</li>
+        <li><strong>Google (Gmail API)</strong> — used solely to send, from FF Fitness's own Gmail account, the email containing your plan (PDF attached), if you choose to use that feature. We do not read, process, or access your inbox — we only use permission to send a message.</li>
+        <li><strong>Cloudflare</strong> — hosts the backend (Worker) that generates plans and recipes, and temporarily caches (up to 30 days) already-generated plans/recipes, to respond faster and more cheaply for similar configurations requested by other users.</li>
+      </ul>
+      <p>We do not sell or rent your data to anyone, for any purpose.</p>
+    </section>
+
+    <section>
+      <h2>How long we keep data</h2>
+      <p>Generated plans and recipes stay in server-side cache for at most 30 days, then expire automatically. We do not maintain a permanent database of users or their plans. Data saved locally (<code>localStorage</code>) stays only in your browser, until you clear it (via browser settings) or overwrite it by generating a new plan.</p>
+    </section>
+
+    <section>
+      <h2>Your rights</h2>
+      <p>You can request deletion of, or ask questions about, your data at any time by writing to the contact address below.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>For questions about this policy: <a href="mailto:iaris.gabor28@gmail.com">iaris.gabor28@gmail.com</a></p>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <a class="footer-brand" href="index.html">
+      <img class="logo-small" src="assets/logo.png" alt="FF Fitness">
+      <span class="brand-name">FF Fitness</span>
+    </a>
+    <nav class="footer-nav" aria-label="Footer">
+      <a class="footer-link" href="index.html">Calculator</a>
+    </nav>
+    <p class="copyright">© 2026 FF Fitness</p>
+  </div>
+</footer>
+
+</body>
+</html>

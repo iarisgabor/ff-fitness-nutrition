@@ -22,6 +22,12 @@ const STRIPE_API_BASE = 'https://api.stripe.com/v1';
 const CHECKOUT_PRICE_USD_CENTS = 500;
 const CHECKOUT_RATE_LIMIT_PER_HOUR = 20;
 const PAID_SESSION_KV_PREFIX = 'paid_session:';
+const RECIPE_CACHE_VERSION = 'v1';
+const SEND_EMAIL_RATE_LIMIT_PER_HOUR = 5;
+const EMAIL_SEND_CAP_PER_SESSION = 5;
+const MAX_PDF_BASE64_CHARS = 7000000; // ~5MB decodat, generos față de un PDF de plan (estimat 1-3MB), mult sub plafonul Gmail de 25MB per mesaj
+const GMAIL_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GMAIL_SEND_URL = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send';
 const WORKOUT_MUSCLE_GROUPS = ['chest', 'shoulders', 'biceps', 'forearms', 'abs', 'quads', 'calves', 'back', 'traps', 'triceps', 'glutes', 'hamstrings'];
 
 // Catalog minimal (id, grupă musculară, echipament, nume EN) al exercițiilor curate din
@@ -997,21 +1003,239 @@ async function verifyPaidEntitlement(env, sessionId, signature) {
   }
 
   if (record && record.signature) {
-    if (record.signature === signature) return { ok: true };
+    if (record.signature === signature) return { ok: true, record };
     return { ok: false, status: 403, error: 'payment_mismatch' };
   }
 
+  const newRecord = { signature, boundAt: Date.now(), emailsSent: 0 };
   try {
-    await env.RATE_LIMIT_KV.put(kvKey, JSON.stringify({ signature, boundAt: Date.now() }), {
+    await env.RATE_LIMIT_KV.put(kvKey, JSON.stringify(newRecord), {
       expirationTtl: PLAN_CACHE_TTL_SECONDS,
     });
   } catch (err) {
     return { ok: false, status: 502, error: 'upstream_failed' };
   }
-  return { ok: true };
+  return { ok: true, record: newRecord };
 }
 
-async function handleGeneratePlan(request, env, origin, ip) {
+// Cheie de cache pentru o rețetă individuală — hash SHA-256 (Web Crypto nativ, fără dependență
+// nouă) din numele/descrierea (ancoră stabilă .en, ca la computePlanSignature) + macro-uri
+// rotunjite la întreg. Deliberat FĂRĂ magazine: rețeta nu depinde de ele în prompt (magazinele
+// se adaugă client-side la ingrediente după primire) — a le include ar fragmenta inutil cache-ul.
+async function buildRecipeCacheKey(payload) {
+  const macro = (n) => Math.round(Number(n) || 0);
+  const raw = [
+    payload.name.en,
+    payload.description.en,
+    macro(payload.kcal),
+    macro(payload.protein),
+    macro(payload.carbs),
+    macro(payload.fat),
+  ].join('|');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `recipe-cache:${RECIPE_CACHE_VERSION}:${hex}`;
+}
+
+// Niciodată nu aruncă excepție — orice eșec (KV nelegat, JSON corupt) devine cache-miss.
+async function readRecipeCache(env, cacheKey) {
+  if (!env.RATE_LIMIT_KV) return null;
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(cacheKey);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Niciodată nu aruncă excepție — un eșec de scriere nu trebuie să strice răspunsul deja livrat.
+async function writeRecipeCache(env, cacheKey, recipe) {
+  if (!env.RATE_LIMIT_KV) return;
+  try {
+    await env.RATE_LIMIT_KV.put(cacheKey, JSON.stringify(recipe), { expirationTtl: PLAN_CACHE_TTL_SECONDS });
+  } catch (err) {
+    // eșec silențios — cache-ul e doar o optimizare
+  }
+}
+
+// Pornită în fundal (ctx.waitUntil, vezi handleGeneratePlan) imediat ce un plan nou intră în
+// pool — generează în paralel rețetele lipsă din cache pentru toate mesele planului, ca
+// vizualizările/exporturile ulterioare să fie instant. waitUntil() are un plafon propriu de
+// ~30s după trimiterea răspunsului — nu garantăm acoperire completă la un singur apel (de
+// aceea NU batching: loturi ulterioare ar avea și mai puțin timp rămas, e mai rău, nu mai bine).
+// Ce nu apucă rămâne cache-miss, preluat mai târziu de generarea live-la-cerere (fallback deja
+// existent, per masă, în handleGenerateRecipe).
+async function pregenerateRecipesForPlan(env, days) {
+  if (!env.RATE_LIMIT_KV || !env.ANTHROPIC_API_KEY) return;
+  const uniqueMeals = new Map();
+  for (const day of days) {
+    for (const meal of day.meals) {
+      const cacheKey = await buildRecipeCacheKey(meal);
+      if (!uniqueMeals.has(cacheKey)) uniqueMeals.set(cacheKey, meal);
+    }
+  }
+  const tasks = Array.from(uniqueMeals, async ([cacheKey, meal]) => {
+    if (await readRecipeCache(env, cacheKey)) return;
+    try {
+      const recipe = await callClaude(env, {
+        system: buildRecipeSystemPrompt(),
+        userMessage: buildRecipeUserMessage(meal),
+        schema: RECIPE_JSON_SCHEMA,
+        maxTokens: RECIPE_MAX_TOKENS,
+        effort: 'low',
+      });
+      await writeRecipeCache(env, cacheKey, recipe);
+    } catch (err) {
+      // best-effort — rămâne cache-miss, preluată mai târziu
+    }
+  });
+  await Promise.allSettled(tasks);
+}
+
+function isValidEmail(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function validateSendPlanEmailPayload(body) {
+  if (!body || typeof body !== 'object') return false;
+  if (!isValidEmail(body.email)) return false;
+  if (!isNonEmptyString(body.paymentSessionId, 200)) return false;
+  const numFields = ['targetKcal', 'targetProtein', 'targetCarbs', 'targetFat'];
+  if (!numFields.every((f) => typeof body[f] === 'number' && body[f] > 0 && body[f] < 10000)) return false;
+  if (!['lose', 'maintain', 'gain'].includes(body.goal)) return false;
+  if (!['ro', 'en'].includes(body.lang)) return false;
+  if (!Array.isArray(body.excludedTags) || body.excludedTags.length > 9) return false;
+  if (body.stores !== undefined) {
+    if (!Array.isArray(body.stores) || body.stores.length > STORE_IDS.length) return false;
+    if (!body.stores.every((s) => STORE_IDS.includes(s))) return false;
+  }
+  if (typeof body.pdfBase64 !== 'string' || body.pdfBase64.length === 0 || body.pdfBase64.length > MAX_PDF_BASE64_CHARS) return false;
+  return true;
+}
+
+function base64ToUint8Array(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function uint8ArrayToBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+// Gmail cere corpul mesajului brut (RFC 2822) codat base64url — variantă de base64 fără
+// caracterele +/= (incompatibile cu URL-uri/JSON), nu base64 obișnuit.
+function base64UrlEncode(bytes) {
+  return uint8ArrayToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Encoded-word RFC 2047, necesar pentru diacritice românești în headere (Subject, From) —
+// un header de email nu poate conține UTF-8 brut, doar ASCII sau acest format.
+function encodeMimeHeaderWord(text) {
+  const bytes = new TextEncoder().encode(text);
+  return `=?UTF-8?B?${uint8ArrayToBase64(bytes)}?=`;
+}
+
+// Gmail API cere mesajul complet ca RFC 2822 brut (nu câmpuri structurate) — îl construim manual.
+function buildGmailMimeMessage({ fromEmail, fromName, to, subject, text, pdfBase64, pdfFileName }) {
+  const boundary = 'ffFitnessBoundary' + crypto.randomUUID().replace(/-/g, '');
+  const lines = [
+    `From: ${encodeMimeHeaderWord(fromName)} <${fromEmail}>`,
+    `To: ${to}`,
+    `Subject: ${encodeMimeHeaderWord(subject)}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    'Content-Transfer-Encoding: base64',
+    '',
+    uint8ArrayToBase64(new TextEncoder().encode(text)),
+    '',
+    `--${boundary}`,
+    `Content-Type: application/pdf; name="${pdfFileName}"`,
+    'Content-Transfer-Encoding: base64',
+    `Content-Disposition: attachment; filename="${pdfFileName}"`,
+    '',
+  ];
+  // Rupt în linii de 76 caractere — convenția MIME (RFC 2045), nu strict obligatorie peste tot,
+  // dar respectată de bună practică.
+  for (let i = 0; i < pdfBase64.length; i += 76) {
+    lines.push(pdfBase64.slice(i, i + 76));
+  }
+  lines.push('', `--${boundary}--`);
+  return lines.join('\r\n');
+}
+
+// Token de acces Gmail — obținut din nou la fiecare trimitere (nu cache-uit): tokenurile de
+// acces expiră în ~1h, iar volumul (max 5 emailuri/oră/IP, plafonate la 5/sesiune plătită) nu
+// justifică complexitatea unui cache. Refresh token-ul (permanent, obținut o singură dată prin
+// autorizare manuală) e singurul secret pe termen lung.
+async function getGmailAccessToken(env) {
+  const res = await fetch(GMAIL_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.GMAIL_CLIENT_ID,
+      client_secret: env.GMAIL_CLIENT_SECRET,
+      refresh_token: env.GMAIL_REFRESH_TOKEN,
+      grant_type: 'refresh_token',
+    }).toString(),
+  });
+  if (!res.ok) return null;
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    return null;
+  }
+  return (data && data.access_token) || null;
+}
+
+async function sendGmailEmail(env, { to, subject, text, pdfBase64, pdfFileName }) {
+  const accessToken = await getGmailAccessToken(env);
+  if (!accessToken) {
+    const err = new Error('Failed to obtain Gmail access token');
+    err.code = 'GMAIL_AUTH_FAILED';
+    throw err;
+  }
+
+  const rawMessage = buildGmailMimeMessage({
+    fromEmail: env.GMAIL_FROM_ADDRESS,
+    fromName: 'FF Fitness',
+    to,
+    subject,
+    text,
+    pdfBase64,
+    pdfFileName,
+  });
+  const rawBase64Url = base64UrlEncode(new TextEncoder().encode(rawMessage));
+
+  const res = await fetch(GMAIL_SEND_URL, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ raw: rawBase64Url }),
+  });
+
+  if (!res.ok) {
+    let detail = '';
+    try { detail = await res.text(); } catch (err) { /* ignore */ }
+    const err = new Error(`Gmail send failed (${res.status}): ${detail}`);
+    err.code = res.status === 401 || res.status === 403 ? 'GMAIL_AUTH_FAILED' : 'GMAIL_SEND_FAILED';
+    throw err;
+  }
+
+  const data = await res.json().catch(() => ({}));
+  return { messageId: data.id };
+}
+
+async function handleGeneratePlan(request, env, origin, ip, ctx) {
   let body;
   try {
     body = await request.json();
@@ -1072,8 +1296,12 @@ async function handleGeneratePlan(request, env, origin, ip) {
           effort: 'medium',
           toBilingual: collectingToBilingual,
         }, controller);
-        if (!bypassCache && collectedDays.length === PLAN_DAY_COUNT) {
-          await writePlanCachePool(env, cacheKey, collectedDays);
+        if (collectedDays.length === PLAN_DAY_COUNT) {
+          if (!bypassCache) {
+            await writePlanCachePool(env, cacheKey, collectedDays);
+          }
+          // Pornește indiferent de bypassCache — beneficiază chiar userul curent la exportul lui.
+          ctx.waitUntil(pregenerateRecipesForPlan(env, collectedDays));
         }
       } catch (err) {
         controller.enqueue(encoder.encode(JSON.stringify({ error: 'upstream_failed', message: String(err) }) + '\n'));
@@ -1122,7 +1350,7 @@ async function handleCreateCheckoutSession(request, env, origin, ip) {
     const res = await stripeRequest(env, 'POST', '/checkout/sessions', {
       ui_mode: 'embedded_page',
       mode: 'payment',
-      return_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
+      return_url: `${origin}/plan.html?session_id={CHECKOUT_SESSION_ID}`,
       redirect_on_completion: 'always',
       locale: body.lang,
       line_items: [
@@ -1150,6 +1378,89 @@ async function handleCreateCheckoutSession(request, env, origin, ip) {
   }
 }
 
+async function handleSendPlanEmail(request, env, origin, ip) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return jsonResponse({ error: 'invalid_json' }, 400, origin);
+  }
+
+  if (!validateSendPlanEmailPayload(body)) {
+    return jsonResponse({ error: 'invalid_payload' }, 400, origin);
+  }
+
+  // Aceleași câmpuri definitorii ale planului ca la /api/generate-plan, ca semnătura să
+  // coincidă și reverificarea plății să funcționeze exact la fel — vezi verifyPaidEntitlement.
+  const cacheKey = buildPlanCacheKey(body);
+  const entitlement = await verifyPaidEntitlement(env, body.paymentSessionId, cacheKey);
+  if (!entitlement.ok) {
+    return jsonResponse({ error: entitlement.error }, entitlement.status, origin);
+  }
+
+  if (!env.GMAIL_CLIENT_ID || !env.GMAIL_CLIENT_SECRET || !env.GMAIL_REFRESH_TOKEN || !env.GMAIL_FROM_ADDRESS) {
+    return jsonResponse({ error: 'not_configured' }, 503, origin);
+  }
+
+  const allowed = await checkRateLimit(env, ip, 'sendEmail', SEND_EMAIL_RATE_LIMIT_PER_HOUR);
+  if (!allowed) {
+    return jsonResponse({ error: 'rate_limited' }, 429, origin);
+  }
+
+  const emailsSent = (entitlement.record && entitlement.record.emailsSent) || 0;
+  if (emailsSent >= EMAIL_SEND_CAP_PER_SESSION) {
+    return jsonResponse({ error: 'email_cap_reached' }, 403, origin);
+  }
+
+  // Validează că e base64 bine-format înainte să-l bage în mesajul MIME — decodarea în sine
+  // nu mai e refolosită (buildGmailMimeMessage lucrează direct cu stringul base64 primit).
+  try {
+    base64ToUint8Array(body.pdfBase64);
+  } catch (err) {
+    return jsonResponse({ error: 'invalid_payload' }, 400, origin);
+  }
+
+  // Nume de fișier derivat server-side din `lang`, niciodată dintr-o valoare trimisă de
+  // client — evită să băgăm input necontrolat într-un header MIME de email.
+  const isEn = body.lang === 'en';
+  const subject = isEn ? 'Your AI Nutrition Plan — FF Fitness' : 'Planul tău de nutriție AI — FF Fitness';
+  const textBody = isEn
+    ? 'Hi!\n\nAttached is your personalized 7-day meal plan, generated by FF Fitness.\n\nEnjoy!'
+    : 'Salut!\n\nÎn atașament găsești planul tău alimentar personalizat pe 7 zile, generat de FF Fitness.\n\nPoftă bună!';
+  const fileName = isEn ? 'FF-Fitness-Meal-Plan.pdf' : 'FF-Fitness-Plan-Alimentar.pdf';
+
+  let response;
+  try {
+    response = await sendGmailEmail(env, {
+      to: body.email,
+      subject,
+      text: textBody,
+      pdfBase64: body.pdfBase64,
+      pdfFileName: fileName,
+    });
+  } catch (err) {
+    if (err && err.code === 'GMAIL_AUTH_FAILED') {
+      return jsonResponse({ error: 'not_configured' }, 503, origin);
+    }
+    return jsonResponse({ error: 'email_send_failed', message: String(err) }, 502, origin);
+  }
+
+  // Contorul se incrementează DOAR după o trimitere reușită — un eșec nu trebuie să coste
+  // din plafonul userului. Fereastră mică de race sub concurență (KV nu are increment atomic),
+  // acceptată deliberat — e o frână anti-abuz, nu o graniță de corectitudine financiară,
+  // aceeași clasă de compromis ca la checkRateLimit.
+  const updatedRecord = { ...entitlement.record, emailsSent: emailsSent + 1 };
+  try {
+    await env.RATE_LIMIT_KV.put(`${PAID_SESSION_KV_PREFIX}${body.paymentSessionId}`, JSON.stringify(updatedRecord), {
+      expirationTtl: PLAN_CACHE_TTL_SECONDS,
+    });
+  } catch (err) {
+    // eșec silențios — emailul a plecat deja, un plafon ratat o dată nu justifică un răspuns de eroare
+  }
+
+  return jsonResponse({ ok: true, emailsSent: updatedRecord.emailsSent, messageId: response && response.messageId }, 200, origin);
+}
+
 async function handleGenerateRecipe(request, env, origin, ip) {
   let body;
   try {
@@ -1161,6 +1472,10 @@ async function handleGenerateRecipe(request, env, origin, ip) {
   if (!validateRecipePayload(body)) {
     return jsonResponse({ error: 'invalid_payload' }, 400, origin);
   }
+
+  const cacheKey = await buildRecipeCacheKey(body);
+  const cached = await readRecipeCache(env, cacheKey);
+  if (cached) return jsonResponse(cached, 200, origin);
 
   if (!env.ANTHROPIC_API_KEY) {
     return jsonResponse({ error: 'not_configured' }, 503, origin);
@@ -1179,6 +1494,7 @@ async function handleGenerateRecipe(request, env, origin, ip) {
       maxTokens: RECIPE_MAX_TOKENS,
       effort: 'low',
     });
+    await writeRecipeCache(env, cacheKey, recipe);
     return jsonResponse(recipe, 200, origin);
   } catch (err) {
     return jsonResponse({ error: 'upstream_failed', message: String(err) }, 502, origin);
@@ -1330,7 +1646,7 @@ async function handleTranslateWorkoutPlan(request, env, origin, ip) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin');
 
     if (request.method === 'OPTIONS') {
@@ -1341,11 +1657,15 @@ export default {
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 
     if (url.pathname === '/api/generate-plan' && request.method === 'POST') {
-      return handleGeneratePlan(request, env, origin, ip);
+      return handleGeneratePlan(request, env, origin, ip, ctx);
     }
 
     if (url.pathname === '/api/create-checkout-session' && request.method === 'POST') {
       return handleCreateCheckoutSession(request, env, origin, ip);
+    }
+
+    if (url.pathname === '/api/send-plan-email' && request.method === 'POST') {
+      return handleSendPlanEmail(request, env, origin, ip);
     }
 
     if (url.pathname === '/api/generate-recipe' && request.method === 'POST') {

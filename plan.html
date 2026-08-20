@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="planPage.meta.title">Planul tău alimentar AI — FF Fitness</title>
+<meta name="description" content="Alege alergiile și magazinele preferate, generează-ți planul alimentar AI pe 7 zile și exportă-l ca PDF sau trimite-l pe email." data-i18n-attr="content:planPage.meta.description">
+<meta name="theme-color" content="#0B0710">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="plan">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ai-badge-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF2E96"></stop>
+      <stop offset="100%" stop-color="#C70E6E"></stop>
+    </linearGradient>
+  </defs>
+</svg>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="index.html">
+      <img class="logo" src="assets/logo.png" alt="FF Fitness">
+      <span class="brand-name">FF Fitness</span>
+    </a>
+
+    <nav class="main-nav" id="main-nav" aria-label="Principal">
+      <a class="nav-link" href="index.html" data-i18n="nav.calculator">Calculator</a>
+      <a class="nav-link" href="index.html" data-i18n="nav.exercises">Exerciții</a>
+      <a class="nav-link" href="index.html" data-i18n="nav.faq">FAQ</a>
+    </nav>
+
+    <div class="header-actions">
+      <div class="lang-toggle" role="group" aria-label="Limbă / Language">
+        <button type="button" class="lang-btn" data-lang="ro">RO</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <button type="button" class="hamburger" id="hamburger" aria-label="Comută meniul" aria-expanded="false" aria-controls="main-nav">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <section id="plan-page" class="view">
+    <div class="hero">
+      <h1 data-i18n="planPage.heading">Planul tău alimentar AI</h1>
+      <p class="hero-sub" data-i18n="planPage.subheading">Alege alergiile și magazinele preferate, apoi generează-ți planul de mese pe 7 zile.</p>
+    </div>
+
+    <div class="plan-locked-card" id="plan-locked-state">
+      <h2 data-i18n="planPage.locked.title">Nu ai încă un plan generat</h2>
+      <p data-i18n="planPage.locked.body">Ca să ajungi aici, trebuie mai întâi să-ți calculezi necesarul caloric și să deblochezi planul alimentar AI.</p>
+      <a class="btn-primary" href="index.html" data-i18n="planPage.locked.ctaButton">Mergi la calculator</a>
+    </div>
+
+    <div class="plan-locked-card" id="plan-missing-results-state" hidden>
+      <h2 data-i18n="planPage.missingResults.title">Ți-am găsit plata, dar nu și calculul</h2>
+      <p data-i18n="planPage.missingResults.body">Plata ta e confirmată, dar acest browser nu are datele calculatorului tău (calorii/macro-uri) — probabil ai deschis link-ul de plată pe alt dispozitiv. Mergi la calculator, recalculează, apoi revino aici.</p>
+      <a class="btn-primary" href="index.html" data-i18n="planPage.missingResults.ctaButton">Mergi la calculator</a>
+    </div>
+
+    <div id="plan-ready-state" hidden>
+      <div class="ai-plan-header">
+        <svg class="ai-badge" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
+        </svg>
+        <h2 data-i18n="aiPlan.title">Plan de nutriție cu AI</h2>
+      </div>
+      <p class="ai-plan-intro" data-i18n="aiPlan.intro">Generează un plan de mese pe 7 zile, calculat să se încadreze în targetul tău caloric și de macronutrienți.</p>
+
+      <p class="plan-target-summary" id="plan-target-summary"></p>
+
+      <form id="plan-form" novalidate>
+        <fieldset class="field-group">
+          <legend data-i18n="aiPlan.allergensLabel">Alergii sau intoleranțe</legend>
+          <p class="field-hint" data-i18n="aiPlan.allergensHint">Bifează alergiile sau intoleranțele tale — excludem complet din generator orice rețetă care conține aceste ingrediente.</p>
+          <div class="pill-group" id="allergen-group">
+            <label class="pill"><input type="checkbox" name="allergen" value="dairy"><span data-i18n="aiPlan.allergens.dairy">Lactate</span></label>
+            <label class="pill"><input type="checkbox" name="allergen" value="egg"><span data-i18n="aiPlan.allergens.egg">Ouă</span></label>
+            <label class="pill"><input type="checkbox" name="allergen" value="fish"><span data-i18n="aiPlan.allergens.fish">Pește</span></label>
+            <label class="pill"><input type="checkbox" name="allergen" value="shellfish"><span data-i18n="aiPlan.allergens.shellfish">Fructe de mare</span></label>
+            <label class="pill"><input type="checkbox" name="allergen" value="treenut"><span data-i18n="aiPlan.allergens.treenut">Nuci</span></label>
+            <label class="pill"><input type="checkbox" name="allergen" value="peanut"><span data-i18n="aiPlan.allergens.peanut">Arahide</span></label>
+            <label class="pill"><input type="checkbox" name="allergen" value="gluten"><span data-i18n="aiPlan.allergens.gluten">Gluten</span></label>
+            <label class="pill"><input type="checkbox" name="allergen" value="soy"><span data-i18n="aiPlan.allergens.soy">Soia</span></label>
+            <label class="pill"><input type="checkbox" name="allergen" value="sesame"><span data-i18n="aiPlan.allergens.sesame">Susan</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend data-i18n="aiPlan.storesLabel">Magazine disponibile</legend>
+          <p class="field-hint" data-i18n="aiPlan.storesHint">Alege din ce magazine poți cumpăra — planul va folosi doar produse plauzibile pentru magazinele bifate.</p>
+          <div class="store-group" id="store-group">
+            <label class="store-option">
+              <input type="checkbox" name="store" value="lidl" checked>
+              <span class="store-option-avatar"><img src="assets/stores/lidl.png" alt="Lidl" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Lidl</span></span>
+            </label>
+            <label class="store-option">
+              <input type="checkbox" name="store" value="kaufland" checked>
+              <span class="store-option-avatar"><img src="assets/stores/kaufland.png" alt="Kaufland" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Kaufland</span></span>
+            </label>
+            <label class="store-option">
+              <input type="checkbox" name="store" value="profi" checked>
+              <span class="store-option-avatar"><img src="assets/stores/profi.png" alt="Profi" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Profi</span></span>
+            </label>
+            <label class="store-option">
+              <input type="checkbox" name="store" value="mega-image" checked>
+              <span class="store-option-avatar"><img src="assets/stores/megaimage.png" alt="Mega Image" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Mega Image</span></span>
+            </label>
+            <label class="store-option">
+              <input type="checkbox" name="store" value="carrefour" checked>
+              <span class="store-option-avatar"><img src="assets/stores/carefour.png" alt="Carrefour" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Carrefour</span></span>
+            </label>
+            <label class="store-option">
+              <input type="checkbox" name="store" value="auchan" checked>
+              <span class="store-option-avatar"><img src="assets/stores/auchan.jpg" alt="Auchan" onerror="this.closest('.store-option-avatar').classList.add('store-option-avatar--fallback');this.remove();"><span class="store-option-fallback">Auchan</span></span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label for="plan-dislikes" data-i18n="aiPlan.dislikesLabel">Alte alimente pe care nu le placi</label>
+          <p class="field-hint" data-i18n="aiPlan.dislikesHint">Opțional. Folosim acest câmp ca ghid orientativ, nu ca o excludere garantată — pentru alergii reale, folosește bifele de mai sus.</p>
+          <input type="text" id="plan-dislikes" name="dislikes" data-i18n-attr="placeholder:aiPlan.dislikesPlaceholder" placeholder="ex: ciuperci, măsline…">
+        </div>
+
+        <button type="submit" class="btn-primary" id="plan-generate-btn" data-i18n="aiPlan.generateButton">Generează planul</button>
+      </form>
+
+      <div id="plan-loading" class="plan-loading" hidden>
+        <svg class="ai-badge ai-badge--thinking" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
+        </svg>
+        <span id="plan-loading-text"></span>
+        <span id="plan-loading-announce" class="visually-hidden" aria-live="polite"></span>
+      </div>
+
+      <p id="plan-error" class="field-error" role="alert"></p>
+
+      <div id="plan-output" hidden>
+        <div class="accordion" id="plan-accordion"></div>
+
+        <div class="plan-output-actions">
+          <button type="button" class="btn-primary" id="plan-regenerate-btn" data-i18n="aiPlan.regenerateButton" hidden>Regenerează planul</button>
+          <button type="button" class="pdf-download-btn" id="plan-pdf-all-btn" hidden>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="plan-pdf-all-btn-label" data-i18n="aiPlan.pdfAllButton">Descarcă tot planul (PDF)</span>
+          </button>
+        </div>
+
+        <div class="plan-loading" id="plan-export-status" hidden aria-live="polite">
+          <svg class="ai-badge ai-badge--pulse" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
+          </svg>
+          <span id="plan-export-status-text"></span>
+        </div>
+
+        <div class="plan-email-card" id="plan-email-card" hidden>
+          <h3 data-i18n="planPage.email.title">Trimite planul pe email</h3>
+          <p class="field-hint" data-i18n="planPage.email.hint">Primești planul complet, cu rețete cu tot, ca PDF atașat.</p>
+          <form id="plan-email-form" novalidate>
+            <div class="field">
+              <label for="plan-email-input" data-i18n="planPage.email.label">Adresa ta de email</label>
+              <input type="email" id="plan-email-input" name="email" required data-i18n-attr="placeholder:planPage.email.placeholder" placeholder="nume@exemplu.com">
+            </div>
+            <p id="plan-email-error" class="field-error" role="alert"></p>
+            <button type="submit" class="btn-primary" id="plan-email-submit-btn" data-i18n="planPage.email.submitButton">Trimite pe email</button>
+            <p id="plan-email-status" aria-live="polite"></p>
+          </form>
+          <p class="plan-paywall-fineprint" data-i18n="planPage.email.fineprint">O singură trimitere per click — datele tale nu sunt folosite în alt scop.</p>
+        </div>
+      </div>
+
+      <p class="disclaimer" data-i18n="aiPlan.disclaimer">Planul de mese este generat automat, pe baza unei baze de date nutriționale și a targetului tău caloric și de macronutrienți — nu este creat sau verificat de un nutriționist și nu constituie sfat medical sau dietetic personalizat. Bifele de alergii exclud cu strictețe rețetele care conțin acel ingredient, dar nu pot garanta absența urmelor sau a contaminării încrucișate din bucătăria ta. Câmpul liber pentru alte preferințe este orientativ și nu filtrează la fel de sigur ca bifele — nu te baza pe el dacă ai o alergie reală. Dacă ai o alergie alimentară diagnosticată, o intoleranță sau altă afecțiune medicală, verifică fiecare rețetă pe cont propriu și consultă un medic sau un dietetician autorizat.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <a class="footer-brand" href="index.html">
+      <img class="logo-small" src="assets/logo.png" alt="FF Fitness">
+      <span class="brand-name">FF Fitness</span>
+    </a>
+
+    <nav class="footer-nav" aria-label="Footer">
+      <a class="footer-link" href="index.html" data-i18n="nav.calculator">Calculator</a>
+      <a class="footer-link" href="index.html" data-i18n="nav.exercises">Exerciții</a>
+      <a class="footer-link" href="index.html" data-i18n="nav.faq">FAQ</a>
+    </nav>
+
+    <p class="copyright" id="copyright-text"></p>
+    <p class="disclaimer" data-i18n="footer.disclaimer">Rezultatele sunt estimări cu scop informativ general și nu reprezintă sfat medical. Consultă un specialist înainte de a începe un plan de dietă sau antrenament.</p>
+  </div>
+</footer>
+
+<dialog id="recipe-modal" class="recipe-modal">
+  <div class="recipe-modal-header">
+    <h3 id="recipe-modal-title"></h3>
+    <button type="button" class="recipe-modal-close" id="recipe-modal-close" data-i18n-attr="aria-label:aiPlan.recipeCloseLabel" aria-label="Închide">×</button>
+  </div>
+  <p class="recipe-modal-macros" id="recipe-modal-macros"></p>
+  <div class="recipe-modal-loading" id="recipe-modal-loading" hidden aria-live="polite">
+    <svg class="ai-badge ai-badge--pulse" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
+    </svg>
+    <span data-i18n="aiPlan.recipeLoading">Se generează rețeta…</span>
+  </div>
+  <div class="recipe-modal-body" id="recipe-modal-body" hidden>
+    <h4 data-i18n="aiPlan.ingredientsLabel">Ingrediente</h4>
+    <ul id="recipe-modal-ingredients"></ul>
+    <h4 data-i18n="aiPlan.stepsLabel">Mod de preparare</h4>
+    <ol id="recipe-modal-steps"></ol>
+    <div class="recipe-modal-footer">
+      <button type="button" class="pdf-download-btn" id="recipe-pdf-btn">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="recipe-pdf-btn-label" data-i18n="aiPlan.pdfButton">Descarcă PDF</span>
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="payment-modal" class="payment-modal">
+  <div class="payment-modal-header">
+    <h3 id="payment-modal-title" data-i18n="aiPlan.paywall.modalTitle">Finalizează plata</h3>
+    <button type="button" class="payment-modal-close" id="payment-modal-close" data-i18n-attr="aria-label:aiPlan.paywall.modalCloseLabel" aria-label="Închide">×</button>
+  </div>
+  <div class="payment-modal-loading" id="payment-modal-loading" aria-live="polite">
+    <svg class="ai-badge ai-badge--pulse" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
+    </svg>
+    <span data-i18n="aiPlan.paywall.modalLoadingText">Se pregătește plata…</span>
+  </div>
+  <p class="field-error" id="payment-modal-error" role="alert"></p>
+  <div id="payment-modal-mount"></div>
+</dialog>
+
+<script src="script.js" defer></script>
+</body>
+</html>

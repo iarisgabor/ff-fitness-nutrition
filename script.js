@@ -16,8 +16,9 @@ const STRIPE_PUBLISHABLE_KEY = 'pk_test_51U6TNTHpxrmSgd21A66pxhqEKFqXUnouZuNt5DO
 const STRIPE_JS_URL = 'https://js.stripe.com/v3/';
 const CHECKOUT_FETCH_TIMEOUT_MS = 15000;
 const PAID_SESSION_STORAGE_KEY = 'ffFitnessPaidSessionId';
-const PENDING_PLAN_STATE_STORAGE_KEY = 'ffFitnessPendingPlanState';
-const RECIPE_API_URL = '/api/generate-recipe';
+const LAST_RESULTS_STORAGE_KEY = 'ffFitnessLastResults';
+const RECIPE_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/generate-recipe';
+const SEND_PLAN_EMAIL_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/send-plan-email';
 const TRANSLATE_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/translate-plan';
 const WORKOUT_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/generate-workout-plan';
 const TRANSLATE_WORKOUT_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/translate-workout-plan';
@@ -152,7 +153,7 @@ const CONTENT = {
         subtitle: 'O plată unică — acces complet la planul tău alimentar AI.',
         benefit1: 'Plan de mese personalizat pe 7 zile, calculat pe targetul tău caloric și de macronutrienți',
         benefit2: 'Rețete AI detaliate pentru fiecare masă din plan',
-        benefit3: 'Export PDF pentru orice rețetă',
+        benefit3: 'Export PDF (rețete și plan complet) + trimitere pe email',
         benefit4: 'Adaptat la alergiile și magazinele tale preferate',
         priceNote: 'plată unică — regenerările sunt incluse',
         ctaButton: 'Deblochează planul — $5',
@@ -162,7 +163,7 @@ const CONTENT = {
         modalLoadingText: 'Se pregătește plata…',
         checkoutLoadError: 'Nu am putut încărca formularul de plată. Încearcă din nou.',
         paymentMismatchError: 'Ai schimbat datele calculatorului — planul acesta e o configurație nouă și necesită o nouă plată.',
-        paymentConfirmedNoStateNotice: 'Plata a fost confirmată. Completează din nou preferințele de mai jos și generează planul.',
+        goToPlanButton: 'Vezi planul tău →',
       },
       allergensLabel: 'Alergii sau intoleranțe',
       allergensHint: 'Bifează alergiile sau intoleranțele tale — excludem complet din generator orice rețetă care conține aceste ingrediente.',
@@ -200,6 +201,51 @@ const CONTENT = {
       pdfGenerating: 'Se generează PDF-ul…',
       pdfError: 'A apărut o eroare — încearcă din nou',
       pdfFooterNote: 'Generat automat de FF Fitness — nu constituie sfat medical sau dietetic personalizat.',
+      pdfAllButton: 'Descarcă tot planul (PDF)',
+      pdfAllGenerating: 'Se generează PDF-ul…',
+      pdfAllError: 'A apărut o eroare — încearcă din nou',
+      pdfAllFooterNote: 'Generat automat de FF Fitness — nu constituie sfat medical sau dietetic personalizat.',
+      recipesPreparing: 'Se pregătesc rețetele…',
+      recipesPreparingProgress: 'Se pregătesc rețetele… ({done}/{total})',
+    },
+    planPage: {
+      meta: {
+        title: 'Planul tău alimentar AI — FF Fitness',
+        description: 'Alege alergiile și magazinele preferate, generează-ți planul alimentar AI pe 7 zile și exportă-l ca PDF sau trimite-l pe email.',
+      },
+      heading: 'Planul tău alimentar AI',
+      subheading: 'Alege alergiile și magazinele preferate, apoi generează-ți planul de mese pe 7 zile.',
+      locked: {
+        title: 'Nu ai încă un plan generat',
+        body: 'Ca să ajungi aici, trebuie mai întâi să-ți calculezi necesarul caloric și să deblochezi planul alimentar AI.',
+        ctaButton: 'Mergi la calculator',
+      },
+      missingResults: {
+        title: 'Ți-am găsit plata, dar nu și calculul',
+        body: 'Plata ta e confirmată, dar acest browser nu are datele calculatorului tău (calorii/macro-uri) — probabil ai deschis link-ul de plată pe alt dispozitiv. Mergi la calculator, recalculează, apoi revino aici.',
+        ctaButton: 'Mergi la calculator',
+      },
+      targetSummary: {
+        text: 'Plan calculat pentru {kcal} kcal/zi — {protein}g proteine, {carbs}g carbohidrați, {fat}g grăsimi.',
+      },
+      email: {
+        title: 'Trimite planul pe email',
+        hint: 'Primești planul complet, cu rețete cu tot, ca PDF atașat.',
+        label: 'Adresa ta de email',
+        placeholder: 'nume@exemplu.com',
+        submitButton: 'Trimite pe email',
+        sending: 'Se trimite…',
+        success: 'Trimis! Verifică-ți inboxul (și folderul de spam).',
+        fineprint: 'O singură trimitere per click — datele tale nu sunt folosite în alt scop.',
+        errors: {
+          invalidEmail: 'Introdu o adresă de email validă.',
+          paymentRequired: 'Nu am găsit o plată validă pentru acest plan — încearcă din nou din pagina de plată.',
+          paymentMismatch: 'Ai schimbat datele calculatorului — planul acesta e o configurație nouă și necesită o nouă plată.',
+          capReached: 'Ai atins limita de trimiteri pe email pentru acest plan.',
+          rateLimited: 'Prea multe încercări — mai încearcă o dată peste câteva minute.',
+          generic: 'Trimiterea a eșuat. Încearcă din nou.',
+        },
+      },
     },
     advice: {
       lose: 'Un deficit de 20% e suficient pentru o slăbire constantă și sustenabilă — nu e nevoie să tai mai mult. Menține proteina ridicată ca să-ți protejezi masa musculară, continuă antrenamentele de forță, dormi 7-9 ore pe noapte și lasă rezultatele să apară în câteva săptămâni, nu peste noapte.',
@@ -354,7 +400,7 @@ const CONTENT = {
         subtitle: 'A one-time payment — full access to your AI nutrition plan.',
         benefit1: 'Personalized 7-day meal plan, calculated to your calorie and macro targets',
         benefit2: 'Detailed AI recipes for every meal in the plan',
-        benefit3: 'PDF export for any recipe',
+        benefit3: 'PDF export (recipes and full plan) + email delivery',
         benefit4: 'Adapted to your allergies and preferred stores',
         priceNote: 'one-time payment — regenerations included',
         ctaButton: 'Unlock plan — $5',
@@ -364,7 +410,7 @@ const CONTENT = {
         modalLoadingText: 'Preparing payment…',
         checkoutLoadError: 'We couldn’t load the payment form. Please try again.',
         paymentMismatchError: 'You changed the calculator inputs — this is a new plan configuration and needs a new payment.',
-        paymentConfirmedNoStateNotice: 'Payment confirmed. Fill in your preferences below again and generate the plan.',
+        goToPlanButton: 'View your plan →',
       },
       allergensLabel: 'Allergies or intolerances',
       allergensHint: 'Check any allergies or intolerances — we completely exclude any recipe containing these ingredients from the generator.',
@@ -402,6 +448,51 @@ const CONTENT = {
       pdfGenerating: 'Generating PDF…',
       pdfError: 'Something went wrong — try again',
       pdfFooterNote: 'Automatically generated by FF Fitness — not personalized medical or dietary advice.',
+      pdfAllButton: 'Download full plan (PDF)',
+      pdfAllGenerating: 'Generating PDF…',
+      pdfAllError: 'Something went wrong — try again',
+      pdfAllFooterNote: 'Automatically generated by FF Fitness — not personalized medical or dietary advice.',
+      recipesPreparing: 'Preparing recipes…',
+      recipesPreparingProgress: 'Preparing recipes… ({done}/{total})',
+    },
+    planPage: {
+      meta: {
+        title: 'Your AI Meal Plan — FF Fitness',
+        description: 'Choose your allergies and preferred stores, generate your 7-day AI meal plan, and export it as a PDF or send it by email.',
+      },
+      heading: 'Your AI Meal Plan',
+      subheading: 'Choose your allergies and preferred stores, then generate your 7-day meal plan.',
+      locked: {
+        title: 'You don’t have a plan yet',
+        body: 'To get here, you first need to calculate your calorie target and unlock the AI nutrition plan.',
+        ctaButton: 'Go to calculator',
+      },
+      missingResults: {
+        title: 'We found your payment, but not your numbers',
+        body: 'Your payment is confirmed, but this browser doesn’t have your calculator data (calories/macros) — you probably opened the payment link on a different device. Go to the calculator, recalculate, then come back here.',
+        ctaButton: 'Go to calculator',
+      },
+      targetSummary: {
+        text: 'Plan calculated for {kcal} kcal/day — {protein}g protein, {carbs}g carbs, {fat}g fat.',
+      },
+      email: {
+        title: 'Email me the plan',
+        hint: 'You’ll get the full plan, recipes included, as a PDF attachment.',
+        label: 'Your email address',
+        placeholder: 'name@example.com',
+        submitButton: 'Send by email',
+        sending: 'Sending…',
+        success: 'Sent! Check your inbox (and spam folder).',
+        fineprint: 'A single send per click — your data isn’t used for anything else.',
+        errors: {
+          invalidEmail: 'Enter a valid email address.',
+          paymentRequired: 'We couldn’t find a valid payment for this plan — try again from the payment page.',
+          paymentMismatch: 'You changed the calculator inputs — this is a new plan configuration and needs a new payment.',
+          capReached: 'You’ve reached the email-send limit for this plan.',
+          rateLimited: 'Too many attempts — try again in a few minutes.',
+          generic: 'Sending failed. Please try again.',
+        },
+      },
     },
     advice: {
       lose: 'A 20% deficit is enough for steady, sustainable fat loss — no need to cut further. Keep protein high to protect your muscle mass, keep lifting, get 7-9 hours of sleep, and let results show up over weeks, not overnight.',
@@ -949,7 +1040,17 @@ function generateWeekPlanLocal(targets, excludedTags, dislikeText, lang) {
 
 /* ---------- Stare ---------- */
 let currentLang = localStorage.getItem('ffFitnessLang') || 'ro';
-let lastResults = null; // { bmr, tdee, target, protein, carbs, fat, goal, belowFloor }
+// { bmr, tdee, target, protein, carbs, fat, goal, belowFloor } — persistat durabil (nu doar în
+// memorie), pentru că plan.html are nevoie de targeturi la fiecare vizită, nu doar imediat
+// după revenirea de la Stripe.
+let lastResults = (() => {
+  try {
+    const raw = localStorage.getItem(LAST_RESULTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+})();
 let lastPlanData = null;
 let firstSubmitAttempted = false;
 let mealIndex = new Map(); // mealKey -> meal (name/description bilingve + macro-uri)
@@ -1059,6 +1160,7 @@ function applyLanguage(lang) {
   if (currentMuscleGroup) renderExerciseList(currentMuscleGroup, highlightedExerciseId);
   updateExerciseListBackLabel();
   resetBodymapCaption();
+  if (lastResults && document.getElementById('plan-target-summary')) renderPlanTargetSummary();
 
   if (lastWorkoutPlanData) {
     const workoutNeedsTranslation = lastWorkoutPlanData.lang
@@ -1076,7 +1178,8 @@ function applyLanguage(lang) {
     }
   }
 
-  refreshErrorMessages(document.getElementById('calc-form'));
+  const calcForm = document.getElementById('calc-form');
+  if (calcForm) refreshErrorMessages(calcForm);
 }
 
 function updateCopyright() {
@@ -1170,6 +1273,14 @@ function getAdviceText(goalKey) {
 
 function renderResults(data, animate = true) {
   lastResults = data;
+  try { localStorage.setItem(LAST_RESULTS_STORAGE_KEY, JSON.stringify(data)); } catch (err) { /* ignore */ }
+
+  // #results nu există pe plan.html — applyLanguage() re-cheamă renderResults() ori de câte
+  // ori lastResults e adevărat, pe ambele pagini, deci funcția trebuie să rămână sigură de
+  // apelat acolo: salvăm targetul mai sus, dar nu mai atingem DOM inexistent.
+  const panel = document.getElementById('results');
+  if (!panel) return;
+
   const t = CONTENT[currentLang].results;
 
   document.getElementById('bmr-value').textContent = formatNumber(data.bmr);
@@ -1185,7 +1296,6 @@ function renderResults(data, animate = true) {
 
   document.getElementById('advice-text').textContent = getAdviceText(data.goal);
 
-  const panel = document.getElementById('results');
   panel.hidden = false;
 
   if (animate) {
@@ -1337,7 +1447,8 @@ function showBodyView(view) {
 }
 
 function setBodymapCaption(text) {
-  document.getElementById('bodymap-caption').textContent = text;
+  const el = document.getElementById('bodymap-caption');
+  if (el) el.textContent = text;
 }
 
 function resetBodymapCaption() {
@@ -1356,7 +1467,7 @@ function openExerciseList(muscleId, options = {}) {
 function updateExerciseListBackLabel() {
   const t = CONTENT[currentLang].exercises;
   const btn = document.getElementById('exercise-list-back-btn');
-  btn.textContent = exerciseListReturnTarget ? t.backToPlan : t.backToMap;
+  if (btn) btn.textContent = exerciseListReturnTarget ? t.backToPlan : t.backToMap;
 }
 
 function goBackFromExerciseList() {
@@ -1516,14 +1627,14 @@ function getSelectedStores(form) {
 function loadSavedAllergyPrefs() {
   try {
     const raw = localStorage.getItem('ffFitnessAllergyPrefs');
-    return raw ? JSON.parse(raw) : { allergens: [], dislikes: '' };
+    return raw ? JSON.parse(raw) : { allergens: [], stores: [], dislikes: '' };
   } catch (err) {
-    return { allergens: [], dislikes: '' };
+    return { allergens: [], stores: [], dislikes: '' };
   }
 }
 
-function saveAllergyPrefs(allergens, dislikes) {
-  localStorage.setItem('ffFitnessAllergyPrefs', JSON.stringify({ allergens, dislikes }));
+function saveAllergyPrefs(allergens, stores, dislikes) {
+  localStorage.setItem('ffFitnessAllergyPrefs', JSON.stringify({ allergens, stores, dislikes }));
 }
 
 function applySavedAllergyPrefs(form) {
@@ -1531,6 +1642,13 @@ function applySavedAllergyPrefs(form) {
   form.querySelectorAll('input[name="allergen"]').forEach((el) => {
     el.checked = saved.allergens.includes(el.value);
   });
+  // Suprascrie bifele implicite (toate bifate în HTML) DOAR dacă există o selecție salvată —
+  // altfel un vizitator nou păstrează implicitul sensibil (toate magazinele bifate).
+  if (saved.stores && saved.stores.length) {
+    form.querySelectorAll('input[name="store"]').forEach((el) => {
+      el.checked = saved.stores.includes(el.value);
+    });
+  }
   form.dislikes.value = saved.dislikes || '';
 }
 
@@ -1645,40 +1763,16 @@ function clearStoredPaidSessionId() {
   try { localStorage.removeItem(PAID_SESSION_STORAGE_KEY); } catch (err) { /* ignore */ }
 }
 
-function updatePaywallCardVisibility() {
-  const card = document.getElementById('plan-paywall-card');
-  if (card) card.hidden = Boolean(currentPaidSessionId);
-}
-
 // Aproximare cosmetică ("a plătit browserul ăsta vreodată"), nu autoritativă — gate-ul real e
 // server-side (verifyPaidEntitlement în worker/index.js). O aproximare greșită aici înseamnă
-// cel mult un modal de plată redundant, niciodată un ocol al plății.
-function savePendingPlanState(bypassCache, pendingSessionId) {
-  const form = document.getElementById('plan-form');
-  const state = {
-    lastResults,
-    allergens: getSelectedAllergens(form),
-    stores: getSelectedStores(form),
-    dislikes: form.dislikes.value.trim(),
-    bypassCache,
-    pendingSessionId,
-  };
-  try {
-    sessionStorage.setItem(PENDING_PLAN_STATE_STORAGE_KEY, JSON.stringify(state));
-  } catch (err) { /* ignore — cel mai rău caz, nu se restaurează automat la revenire */ }
-}
-
-function loadPendingPlanState() {
-  try {
-    const raw = sessionStorage.getItem(PENDING_PLAN_STATE_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (err) {
-    return null;
-  }
-}
-
-function clearPendingPlanState() {
-  try { sessionStorage.removeItem(PENDING_PLAN_STATE_STORAGE_KEY); } catch (err) { /* ignore */ }
+// cel mult un buton redundant, niciodată un ocol al plății.
+function updateIndexPaywallState() {
+  const unlockBtn = document.getElementById('plan-unlock-btn');
+  const goToPlanBtn = document.getElementById('plan-go-to-plan-btn');
+  if (!unlockBtn || !goToPlanBtn) return;
+  const hasSession = Boolean(currentPaidSessionId);
+  unlockBtn.hidden = hasSession;
+  goToPlanBtn.hidden = !hasSession;
 }
 
 function loadStripeJs() {
@@ -1712,7 +1806,7 @@ async function createCheckoutSession() {
   }
 }
 
-async function openPaymentModal(bypassCache) {
+async function openPaymentModal() {
   const dialog = document.getElementById('payment-modal');
   const loadingEl = document.getElementById('payment-modal-loading');
   const errorEl = document.getElementById('payment-modal-error');
@@ -1732,10 +1826,6 @@ async function openPaymentModal(bypassCache) {
       errorEl.textContent = t.checkoutLoadError;
       return;
     }
-
-    // Salvat ÎNAINTE de montare — Embedded Checkout poate naviga toată pagina departe de aici
-    // în orice moment după ce userul completează plata (vezi return_url din Worker).
-    savePendingPlanState(bypassCache, session.sessionId);
 
     if (!stripeClientInstance) stripeClientInstance = window.Stripe(STRIPE_PUBLISHABLE_KEY);
     embeddedCheckoutInstance = await stripeClientInstance.createEmbeddedCheckoutPage({
@@ -1772,40 +1862,53 @@ function initPaymentModal() {
   });
 }
 
-// Apelat o singură dată, la boot: dacă userul tocmai s-a întors de la Stripe (Embedded
-// Checkout navighează întreaga pagină către return_url la finalul plății), restaurează
-// starea salvată în sessionStorage și reia automat generarea planului, fără ca userul să
-// completeze nimic a doua oară.
-function resumeAfterPaymentReturn() {
-  const sessionId = new URLSearchParams(location.search).get('session_id');
-  if (!sessionId) return;
+function renderPlanTargetSummary() {
+  const el = document.getElementById('plan-target-summary');
+  if (!el || !lastResults) return;
+  const t = CONTENT[currentLang].planPage.targetSummary;
+  el.textContent = t.text
+    .replace('{kcal}', formatNumber(lastResults.target))
+    .replace('{protein}', formatNumber(lastResults.protein))
+    .replace('{carbs}', formatNumber(lastResults.carbs))
+    .replace('{fat}', formatNumber(lastResults.fat));
+}
 
-  history.replaceState(null, '', location.pathname);
+// plan.html are trei stări posibile: fără sesiune plătită cunoscută (locked), sesiune plătită
+// dar fără targeturi de calculator în acest browser (missing-results — ex. link-ul de plată
+// deschis pe alt dispozitiv), sau amândouă prezente (ready). Verificarea reală a plății rămâne
+// exclusiv server-side (verifyPaidEntitlement) — starea de aici e doar UX, nu o graniță de
+// securitate: o aproximare greșită duce cel mult la un formular arătat degeaba, niciodată la
+// generare gratuită (server-ul respinge oricum fără paymentSessionId valid).
+function updatePlanPageState() {
+  const lockedEl = document.getElementById('plan-locked-state');
+  const missingEl = document.getElementById('plan-missing-results-state');
+  const readyEl = document.getElementById('plan-ready-state');
+  if (!lockedEl || !missingEl || !readyEl) return;
 
-  const pending = loadPendingPlanState();
-  clearPendingPlanState();
-  setStoredPaidSessionId(sessionId);
-  updatePaywallCardVisibility();
+  const hasSession = Boolean(currentPaidSessionId);
+  const hasResults = Boolean(lastResults);
 
-  if (!pending || pending.pendingSessionId !== sessionId || !pending.lastResults) {
-    const errorEl = document.getElementById('plan-error');
-    if (errorEl) errorEl.textContent = CONTENT[currentLang].aiPlan.paywall.paymentConfirmedNoStateNotice;
-    return;
+  lockedEl.hidden = hasSession;
+  missingEl.hidden = !(hasSession && !hasResults);
+  readyEl.hidden = !(hasSession && hasResults);
+
+  if (hasSession && hasResults) {
+    applySavedAllergyPrefs(document.getElementById('plan-form'));
+    renderPlanTargetSummary();
   }
+}
 
-  showView('calculator');
-  renderResults(pending.lastResults, false);
-
-  const form = document.getElementById('plan-form');
-  form.querySelectorAll('input[name="allergen"]').forEach((el) => {
-    el.checked = pending.allergens.includes(el.value);
-  });
-  form.querySelectorAll('input[name="store"]').forEach((el) => {
-    el.checked = pending.stores.includes(el.value);
-  });
-  form.dislikes.value = pending.dislikes || '';
-
-  handlePlanGenerate(pending.bypassCache);
+// Apelat o singură dată, la boot pe plan.html: dacă userul tocmai s-a întors de la Stripe
+// (Embedded Checkout navighează întreaga pagină către return_url la finalul plății), preia
+// sesiunea plătită din URL și curăță URL-ul. Nu declanșează generarea automat — userul alege
+// activ alergeni/magazine și apasă Generează, exact scopul mutării formularului pe această pagină.
+function initPlanPageArrival() {
+  const sessionId = new URLSearchParams(location.search).get('session_id');
+  if (sessionId) {
+    history.replaceState(null, '', location.pathname);
+    setStoredPaidSessionId(sessionId);
+  }
+  updatePlanPageState();
 }
 
 async function translatePlanMeals(planData, targetLang) {
@@ -2320,18 +2423,12 @@ function pdfSectionHeading(doc, cursor, label) {
   cursor.y += 7;
 }
 
-async function buildRecipePdf(meal, recipe, lang) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-  await registerPdfFonts(doc);
-
-  const t = CONTENT[lang].aiPlan;
-  const r = CONTENT[lang].results;
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  pdfFillBackground(doc);
-
+// Banner-ul de header (fundal, gradient, logo, "FF FITNESS", badge AI) — identic pentru orice
+// PDF FF Fitness. Extras din buildRecipePdf, refolosit acum și de buildPlanPdf. Returnează
+// înălțimea banner-ului, ca apelantul să știe de unde pornește conținutul.
+async function drawPdfHeaderBanner(doc, pageWidth) {
   const headerHeight = 34;
+  pdfFillBackground(doc);
   drawGradientRect(doc, 0, 0, pageWidth, headerHeight, PDF_COLORS.primaryButton, PDF_COLORS.primaryHover, 48);
 
   try {
@@ -2354,6 +2451,61 @@ async function buildRecipePdf(meal, recipe, lang) {
     }
   } catch (err) { /* decorativ — opțional */ }
 
+  return headerHeight;
+}
+
+// Lista de ingrediente + pașii numerotați — extras din buildRecipePdf, refolosit acum și per
+// masă în buildPlanPdf. Mută cursorul (obiect, mutat direct) pe măsură ce desenează.
+function drawRecipeIngredientsAndSteps(doc, cursor, recipe, lang, t) {
+  pdfEnsureSpace(doc, cursor, 20);
+  pdfSectionHeading(doc, cursor, t.ingredientsLabel);
+  doc.setFont('Inter', 'normal');
+  doc.setFontSize(10.5);
+  doc.setTextColor(PDF_COLORS.textPrimary);
+  recipe.ingredients[lang].forEach((ingredient) => {
+    const lines = doc.splitTextToSize('•  ' + ingredient, PDF_CONTENT_WIDTH - 4);
+    pdfEnsureSpace(doc, cursor, lines.length * 5.5 + 2);
+    doc.text(lines, PDF_PAGE_MARGIN + 2, cursor.y);
+    cursor.y += lines.length * 5.5 + 2;
+  });
+  cursor.y += 6;
+
+  pdfEnsureSpace(doc, cursor, 20);
+  pdfSectionHeading(doc, cursor, t.stepsLabel);
+  const stepIndent = 10;
+  recipe.steps[lang].forEach((step, index) => {
+    doc.setFont('Inter', 'normal');
+    doc.setFontSize(10.5);
+    const lines = doc.splitTextToSize(step, PDF_CONTENT_WIDTH - stepIndent);
+    const blockHeight = lines.length * 5.5 + 3;
+    pdfEnsureSpace(doc, cursor, blockHeight);
+
+    doc.setFillColor(PDF_COLORS.primaryHover);
+    doc.circle(PDF_PAGE_MARGIN + 3, cursor.y - 1.6, 3, 'F');
+    doc.setFont('Inter', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor('#FFFFFF');
+    doc.text(String(index + 1), PDF_PAGE_MARGIN + 3, cursor.y - 0.3, { align: 'center' });
+
+    doc.setFont('Inter', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(PDF_COLORS.textPrimary);
+    doc.text(lines, PDF_PAGE_MARGIN + stepIndent, cursor.y);
+    cursor.y += blockHeight;
+  });
+  cursor.y += 8;
+}
+
+async function buildRecipePdf(meal, recipe, lang) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  await registerPdfFonts(doc);
+
+  const t = CONTENT[lang].aiPlan;
+  const r = CONTENT[lang].results;
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  const headerHeight = await drawPdfHeaderBanner(doc, pageWidth);
   const cursor = { y: headerHeight + 15 };
 
   doc.setFont('Oswald', 'bold');
@@ -2400,43 +2552,7 @@ async function buildRecipePdf(meal, recipe, lang) {
   });
   cursor.y += statCardHeight + 12;
 
-  pdfEnsureSpace(doc, cursor, 20);
-  pdfSectionHeading(doc, cursor, t.ingredientsLabel);
-  doc.setFont('Inter', 'normal');
-  doc.setFontSize(10.5);
-  doc.setTextColor(PDF_COLORS.textPrimary);
-  recipe.ingredients[lang].forEach((ingredient) => {
-    const lines = doc.splitTextToSize('•  ' + ingredient, PDF_CONTENT_WIDTH - 4);
-    pdfEnsureSpace(doc, cursor, lines.length * 5.5 + 2);
-    doc.text(lines, PDF_PAGE_MARGIN + 2, cursor.y);
-    cursor.y += lines.length * 5.5 + 2;
-  });
-  cursor.y += 6;
-
-  pdfEnsureSpace(doc, cursor, 20);
-  pdfSectionHeading(doc, cursor, t.stepsLabel);
-  const stepIndent = 10;
-  recipe.steps[lang].forEach((step, index) => {
-    doc.setFont('Inter', 'normal');
-    doc.setFontSize(10.5);
-    const lines = doc.splitTextToSize(step, PDF_CONTENT_WIDTH - stepIndent);
-    const blockHeight = lines.length * 5.5 + 3;
-    pdfEnsureSpace(doc, cursor, blockHeight);
-
-    doc.setFillColor(PDF_COLORS.primaryHover);
-    doc.circle(PDF_PAGE_MARGIN + 3, cursor.y - 1.6, 3, 'F');
-    doc.setFont('Inter', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor('#FFFFFF');
-    doc.text(String(index + 1), PDF_PAGE_MARGIN + 3, cursor.y - 0.3, { align: 'center' });
-
-    doc.setFont('Inter', 'normal');
-    doc.setFontSize(10.5);
-    doc.setTextColor(PDF_COLORS.textPrimary);
-    doc.text(lines, PDF_PAGE_MARGIN + stepIndent, cursor.y);
-    cursor.y += blockHeight;
-  });
-  cursor.y += 8;
+  drawRecipeIngredientsAndSteps(doc, cursor, recipe, lang, t);
 
   pdfEnsureSpace(doc, cursor, 16);
   doc.setDrawColor(PDF_COLORS.border);
@@ -2449,6 +2565,124 @@ async function buildRecipePdf(meal, recipe, lang) {
   doc.text(footerLines, PDF_PAGE_MARGIN, cursor.y);
 
   return doc;
+}
+
+// Documentul complet al planului (7 zile, toate mesele, cu rețete complete — ingrediente+pași).
+// Presupune că recipeCache are deja fiecare masă încărcată (vezi ensureAllRecipesLoaded, apelat
+// înainte, de handleDownloadPlanPdf/handleSendPlanEmail) — buildLocalRecipe e doar o plasă de
+// siguranță finală, nu calea normală. lang trebuie să fie currentLang (altfel toate lookup-urile
+// din recipeCache ratează, fiindcă mealKey include limba din numele mesei).
+async function buildPlanPdf(planData, targets, lang) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  await registerPdfFonts(doc);
+
+  const t = CONTENT[lang].aiPlan;
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  const headerHeight = await drawPdfHeaderBanner(doc, pageWidth);
+  const cursor = { y: headerHeight + 15 };
+
+  doc.setFont('Oswald', 'bold');
+  doc.setFontSize(21);
+  doc.setTextColor(PDF_COLORS.textPrimary);
+  doc.text(t.title.toUpperCase(), PDF_PAGE_MARGIN, cursor.y);
+  cursor.y += 10;
+
+  doc.setFont('Inter', 'normal');
+  doc.setFontSize(10.5);
+  doc.setTextColor(PDF_COLORS.textSecondary);
+  doc.text(
+    `${t.targetWord}: ${formatNumber(targets.kcal)} kcal · P ${formatNumber(targets.protein)}g · C ${formatNumber(targets.carbs)}g · G ${formatNumber(targets.fat)}g`,
+    PDF_PAGE_MARGIN,
+    cursor.y,
+  );
+  cursor.y += 12;
+
+  planData.days.forEach((day, dayIndex) => {
+    pdfEnsureSpace(doc, cursor, 20);
+    pdfSectionHeading(doc, cursor, `${t.dayLabel} ${day.day} · ${formatNumber(day.totalKcal)} kcal`);
+
+    PLAN_SLOT_ORDER.forEach((slot) => {
+      const mealsInSlot = day.meals.filter((m) => m.slot === slot);
+      mealsInSlot.forEach((meal) => {
+        const mealKey = `${dayIndex}-${slot}-${meal.name[lang]}`;
+        const recipe = recipeCache.get(mealKey) || buildLocalRecipe(meal);
+
+        pdfEnsureSpace(doc, cursor, 14);
+        doc.setFont('Oswald', 'bold');
+        doc.setFontSize(12.5);
+        doc.setTextColor(PDF_COLORS.textPrimary);
+        const nameLines = doc.splitTextToSize(meal.name[lang], PDF_CONTENT_WIDTH);
+        doc.text(nameLines, PDF_PAGE_MARGIN, cursor.y);
+        cursor.y += nameLines.length * 5.5;
+
+        doc.setFont('Inter', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(PDF_COLORS.primaryHover);
+        const slotLabel = (t.slots && t.slots[slot]) || slot;
+        const slotAndMacros = `${slotLabel} · ${formatNumber(meal.kcal)} kcal · P ${formatNumber(meal.protein)}g · C ${formatNumber(meal.carbs)}g · G ${formatNumber(meal.fat)}g`;
+        doc.text(slotAndMacros.toUpperCase(), PDF_PAGE_MARGIN, cursor.y);
+        cursor.y += 7;
+
+        drawRecipeIngredientsAndSteps(doc, cursor, recipe, lang, t);
+
+        pdfEnsureSpace(doc, cursor, 6);
+        doc.setDrawColor(PDF_COLORS.border);
+        doc.line(PDF_PAGE_MARGIN, cursor.y, pageWidth - PDF_PAGE_MARGIN, cursor.y);
+        cursor.y += 8;
+      });
+    });
+
+    pdfEnsureSpace(doc, cursor, 10);
+    doc.setFont('Inter', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(PDF_COLORS.textSecondary);
+    doc.text(
+      `${t.totalLabel}: ${formatNumber(day.totalKcal)} kcal · P ${formatNumber(day.totalProtein)}g · C ${formatNumber(day.totalCarbs)}g · G ${formatNumber(day.totalFat)}g`,
+      PDF_PAGE_MARGIN,
+      cursor.y,
+    );
+    cursor.y += 12;
+  });
+
+  pdfEnsureSpace(doc, cursor, 16);
+  doc.setDrawColor(PDF_COLORS.border);
+  doc.line(PDF_PAGE_MARGIN, cursor.y, pageWidth - PDF_PAGE_MARGIN, cursor.y);
+  cursor.y += 6;
+  doc.setFont('Inter', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(PDF_COLORS.textSecondary);
+  const footerLines = doc.splitTextToSize(t.pdfAllFooterNote, PDF_CONTENT_WIDTH);
+  doc.text(footerLines, PDF_PAGE_MARGIN, cursor.y);
+
+  return doc;
+}
+
+// Se asigură, înainte de a construi PDF-ul complet, că fiecare masă din plan are rețeta
+// încărcată în recipeCache — din cache-ul server (rapid, cazul obișnuit pentru planuri deja
+// pre-generate în fundal) sau, doar dacă lipsește de tot, generată live pe loc (getRecipe are
+// deja acest fallback, plus fallback-ul local dacă rețeaua eșuează — niciodată nu respinge).
+async function ensureAllRecipesLoaded(planData, stores, onProgress) {
+  const tasks = [];
+  let done = 0;
+  const total = planData.days.reduce((sum, d) => sum + d.meals.length, 0);
+  planData.days.forEach((day, dayIndex) => {
+    day.meals.forEach((meal) => {
+      const mealKey = `${dayIndex}-${meal.slot}-${meal.name[currentLang]}`;
+      if (recipeCache.has(mealKey)) {
+        done++;
+        if (onProgress) onProgress(done, total);
+        return;
+      }
+      tasks.push(getRecipe(meal, stores).then((recipe) => {
+        recipeCache.set(mealKey, recipe);
+        done++;
+        if (onProgress) onProgress(done, total);
+      }));
+    });
+  });
+  await Promise.all(tasks);
 }
 
 async function handleDownloadPdf() {
@@ -2478,6 +2712,129 @@ async function handleDownloadPdf() {
   }
 }
 
+async function handleDownloadPlanPdf() {
+  if (!lastPlanData || !lastResults) return;
+
+  const btn = document.getElementById('plan-pdf-all-btn');
+  const label = document.getElementById('plan-pdf-all-btn-label');
+  const statusEl = document.getElementById('plan-export-status');
+  const statusTextEl = document.getElementById('plan-export-status-text');
+  const t = CONTENT[currentLang].aiPlan;
+
+  btn.disabled = true;
+  label.textContent = t.pdfAllGenerating;
+  statusEl.hidden = false;
+  statusTextEl.textContent = t.recipesPreparing;
+
+  try {
+    const stores = lastPlanData.stores || [];
+    await ensureAllRecipesLoaded(lastPlanData, stores, (done, total) => {
+      statusTextEl.textContent = t.recipesPreparingProgress.replace('{done}', done).replace('{total}', total);
+    });
+    await loadPdfLibrary();
+    const targets = { kcal: lastResults.target, protein: lastResults.protein, carbs: lastResults.carbs, fat: lastResults.fat };
+    const doc = await buildPlanPdf(lastPlanData, targets, currentLang);
+    doc.save('FF-Fitness-Plan-Alimentar.pdf');
+    btn.disabled = false;
+    label.textContent = CONTENT[currentLang].aiPlan.pdfAllButton;
+  } catch (err) {
+    console.error('Plan PDF export failed:', err);
+    label.textContent = CONTENT[currentLang].aiPlan.pdfAllError;
+    setTimeout(() => {
+      btn.disabled = false;
+      label.textContent = CONTENT[currentLang].aiPlan.pdfAllButton;
+    }, 3000);
+  } finally {
+    statusEl.hidden = true;
+  }
+}
+
+function validateEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+const SEND_PLAN_EMAIL_ERROR_KEY_MAP = {
+  payment_required: 'paymentRequired',
+  payment_mismatch: 'paymentMismatch',
+  email_cap_reached: 'capReached',
+  rate_limited: 'rateLimited',
+};
+
+async function handleSendPlanEmail(event) {
+  event.preventDefault();
+  if (!currentPaidSessionId || !lastPlanData || !lastResults) return;
+
+  const emailInput = document.getElementById('plan-email-input');
+  const errorEl = document.getElementById('plan-email-error');
+  const statusEl = document.getElementById('plan-email-status');
+  const submitBtn = document.getElementById('plan-email-submit-btn');
+  const exportStatusEl = document.getElementById('plan-export-status');
+  const exportStatusTextEl = document.getElementById('plan-export-status-text');
+  const t = CONTENT[currentLang].planPage.email;
+
+  const email = emailInput.value.trim();
+  errorEl.textContent = '';
+  statusEl.textContent = '';
+  statusEl.removeAttribute('data-state');
+
+  if (!validateEmail(email)) {
+    errorEl.textContent = t.errors.invalidEmail;
+    return;
+  }
+
+  submitBtn.disabled = true;
+  statusEl.textContent = t.sending;
+
+  try {
+    const stores = lastPlanData.stores || [];
+    exportStatusEl.hidden = false;
+    exportStatusTextEl.textContent = CONTENT[currentLang].aiPlan.recipesPreparing;
+    await ensureAllRecipesLoaded(lastPlanData, stores, (done, total) => {
+      exportStatusTextEl.textContent = CONTENT[currentLang].aiPlan.recipesPreparingProgress.replace('{done}', done).replace('{total}', total);
+    });
+    await loadPdfLibrary();
+    const targets = { kcal: lastResults.target, protein: lastResults.protein, carbs: lastResults.carbs, fat: lastResults.fat };
+    const doc = await buildPlanPdf(lastPlanData, targets, currentLang);
+    const pdfBase64 = doc.output('base64');
+
+    const res = await fetch(SEND_PLAN_EMAIL_API_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        paymentSessionId: currentPaidSessionId,
+        email,
+        lang: currentLang,
+        goal: lastResults.goal,
+        targetKcal: lastResults.target,
+        targetProtein: lastResults.protein,
+        targetCarbs: lastResults.carbs,
+        targetFat: lastResults.fat,
+        excludedTags: getSelectedAllergens(document.getElementById('plan-form')),
+        stores,
+        pdfBase64,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const key = SEND_PLAN_EMAIL_ERROR_KEY_MAP[body.error];
+      statusEl.textContent = (key && t.errors[key]) || t.errors.generic;
+      statusEl.setAttribute('data-state', 'error');
+      return;
+    }
+
+    statusEl.textContent = t.success;
+    statusEl.setAttribute('data-state', 'success');
+    emailInput.value = '';
+  } catch (err) {
+    statusEl.textContent = t.errors.generic;
+    statusEl.setAttribute('data-state', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    exportStatusEl.hidden = true;
+  }
+}
+
 async function handlePlanGenerate(bypassCache = false) {
   if (!lastResults) return;
 
@@ -2490,7 +2847,6 @@ async function handlePlanGenerate(bypassCache = false) {
   const allergens = getSelectedAllergens(form);
   const dislikes = form.dislikes.value.trim();
   const stores = getSelectedStores(form);
-  saveAllergyPrefs(allergens, dislikes);
 
   const generateBtn = document.getElementById('plan-generate-btn');
   const regenerateBtn = document.getElementById('plan-regenerate-btn');
@@ -2507,8 +2863,11 @@ async function handlePlanGenerate(bypassCache = false) {
     return;
   }
 
+  // Salvat abia după validare — nu vrem să lăsăm o revenire ulterioară cu magazine 0 bifate.
+  saveAllergyPrefs(allergens, stores, dislikes);
+
   if (!currentPaidSessionId) {
-    await openPaymentModal(bypassCache);
+    await openPaymentModal();
     return;
   }
 
@@ -2554,9 +2913,9 @@ async function handlePlanGenerate(bypassCache = false) {
   if (plan && plan.paymentRequired) {
     outputEl.hidden = true;
     clearStoredPaidSessionId();
-    updatePaywallCardVisibility();
+    updatePlanPageState();
     errorEl.textContent = plan.reason === 'payment_mismatch' ? t.paywall.paymentMismatchError : '';
-    await openPaymentModal(bypassCache);
+    await openPaymentModal();
     return;
   }
 
@@ -2573,22 +2932,33 @@ async function handlePlanGenerate(bypassCache = false) {
   outputEl.hidden = false;
   regenerateBtn.hidden = false;
   regenerateBtn.disabled = true;
+  document.getElementById('plan-pdf-all-btn').hidden = false;
+  document.getElementById('plan-email-card').hidden = false;
   setTimeout(() => { regenerateBtn.disabled = false; }, REGENERATE_COOLDOWN_MS);
 }
 
-function initAiPlanSection() {
-  const form = document.getElementById('plan-form');
-  applySavedAllergyPrefs(form);
-  updatePaywallCardVisibility();
+// index.html — doar CTA-ul de plată; formularul/generarea trăiesc pe plan.html.
+function initPaywallCard() {
+  updateIndexPaywallState();
+  document.getElementById('plan-unlock-btn').addEventListener('click', () => openPaymentModal());
+}
 
+// plan.html — formular, generare, rețete, export PDF, email.
+function initPlanPage() {
+  initPlanPageArrival();
+
+  const form = document.getElementById('plan-form');
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     handlePlanGenerate(false);
   });
 
-  document.getElementById('plan-unlock-btn').addEventListener('click', () => handlePlanGenerate(false));
   document.getElementById('plan-regenerate-btn').addEventListener('click', () => handlePlanGenerate(true));
+  document.getElementById('plan-pdf-all-btn').addEventListener('click', handleDownloadPlanPdf);
+  document.getElementById('plan-email-form').addEventListener('submit', handleSendPlanEmail);
   initPlanAccordion();
+  initRecipeDialog();
+  initPaymentModal();
 }
 
 /* ---------- Plan de antrenament AI ---------- */
@@ -2948,18 +3318,23 @@ function initAiWorkoutPlanSection() {
 
 /* ---------- Bootstrap ---------- */
 function init() {
-  initNavigation();
   initHamburger();
   initLanguageToggle();
-  initAccordion();
-  initForm();
-  initAiPlanSection();
-  initRecipeDialog();
-  initPaymentModal();
-  initBodyMap();
-  initAiWorkoutPlanSection();
+
+  const page = document.body.dataset.page;
+  if (page === 'plan') {
+    initPlanPage();
+  } else {
+    initNavigation();
+    initAccordion();
+    initForm();
+    initPaywallCard();
+    initPaymentModal();
+    initBodyMap();
+    initAiWorkoutPlanSection();
+  }
+
   applyLanguage(currentLang);
-  resumeAfterPaymentReturn();
 }
 
 document.addEventListener('DOMContentLoaded', init);
