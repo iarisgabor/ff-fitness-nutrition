@@ -180,6 +180,23 @@
         </div>
         <p class="ai-plan-intro" data-i18n="aiPlan.intro">Generează un plan de mese pe 7 zile, calculat să se încadreze în targetul tău caloric și de macronutrienți.</p>
 
+        <div class="plan-paywall-card" id="plan-paywall-card">
+          <h3 class="plan-paywall-title" data-i18n="aiPlan.paywall.title">Deblochează planul tău personalizat</h3>
+          <p class="plan-paywall-subtitle" data-i18n="aiPlan.paywall.subtitle">O plată unică — acces complet la planul tău alimentar AI.</p>
+          <ul class="plan-paywall-benefits">
+            <li data-i18n="aiPlan.paywall.benefit1">Plan de mese personalizat pe 7 zile, calculat pe targetul tău caloric și de macronutrienți</li>
+            <li data-i18n="aiPlan.paywall.benefit2">Rețete AI detaliate pentru fiecare masă din plan</li>
+            <li data-i18n="aiPlan.paywall.benefit3">Export PDF pentru orice rețetă</li>
+            <li data-i18n="aiPlan.paywall.benefit4">Adaptat la alergiile și magazinele tale preferate</li>
+          </ul>
+          <div class="plan-paywall-price">
+            <span class="plan-paywall-price-amount">$5</span>
+            <span class="plan-paywall-price-note" data-i18n="aiPlan.paywall.priceNote">plată unică — regenerările sunt incluse</span>
+          </div>
+          <button type="button" class="btn-primary" id="plan-unlock-btn" data-i18n="aiPlan.paywall.ctaButton">Deblochează planul — $5</button>
+          <p class="plan-paywall-fineprint" data-i18n="aiPlan.paywall.fineprint">Plată securizată, procesată de Stripe. Fără abonament.</p>
+        </div>
+
         <form id="plan-form" novalidate>
           <fieldset class="field-group">
             <legend data-i18n="aiPlan.allergensLabel">Alergii sau intoleranțe</legend>
@@ -471,6 +488,21 @@
       </button>
     </div>
   </div>
+</dialog>
+
+<dialog id="payment-modal" class="payment-modal">
+  <div class="payment-modal-header">
+    <h3 id="payment-modal-title" data-i18n="aiPlan.paywall.modalTitle">Finalizează plata</h3>
+    <button type="button" class="payment-modal-close" id="payment-modal-close" data-i18n-attr="aria-label:aiPlan.paywall.modalCloseLabel" aria-label="Închide">×</button>
+  </div>
+  <div class="payment-modal-loading" id="payment-modal-loading" aria-live="polite">
+    <svg class="ai-badge ai-badge--pulse" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2 L14 9 L21 11 L14 13 L12 20 L10 13 L3 11 L10 9 Z" fill="url(#ai-badge-gradient)"></path>
+    </svg>
+    <span data-i18n="aiPlan.paywall.modalLoadingText">Se pregătește plata…</span>
+  </div>
+  <p class="field-error" id="payment-modal-error" role="alert"></p>
+  <div id="payment-modal-mount"></div>
 </dialog>
 
 <script src="exercises-data.js" defer></script>

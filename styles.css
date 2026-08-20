@@ -477,6 +477,54 @@ legend, .field label {
 
 .ai-plan-intro { color: var(--text-secondary); margin-top: calc(-1 * var(--space-4)); }
 
+.plan-paywall-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.plan-paywall-card[hidden] { display: none; }
+
+.plan-paywall-title { font-size: 1.4rem; }
+.plan-paywall-subtitle { color: var(--text-secondary); margin-top: calc(-1 * var(--space-2)); }
+
+.plan-paywall-benefits { display: flex; flex-direction: column; gap: var(--space-2); }
+.plan-paywall-benefits li {
+  position: relative;
+  padding-left: var(--space-6);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+.plan-paywall-benefits li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--success);
+  font-weight: 700;
+}
+
+.plan-paywall-price {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.plan-paywall-price-amount {
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--text-primary), var(--primary-hover));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.plan-paywall-price-note { color: var(--text-secondary); font-size: 0.9rem; }
+
+.plan-paywall-fineprint { color: var(--text-secondary); font-size: 0.8rem; opacity: 0.8; }
+
 #plan-form {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -653,8 +701,56 @@ legend, .field label {
 .pdf-download-btn:disabled { opacity: 0.6; cursor: default; }
 
 @media (max-width: 560px) {
-  .recipe-modal { padding: var(--space-6); }
+  .recipe-modal, .payment-modal { padding: var(--space-6); }
 }
+
+/* ---------- Modal plată ---------- */
+.payment-modal {
+  width: min(480px, 92vw);
+  max-height: min(680px, 85vh);
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+.payment-modal::backdrop {
+  background: rgba(11, 7, 16, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.payment-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.payment-modal-header h3 { font-size: 1.3rem; margin: 0; }
+.payment-modal-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.payment-modal-close:hover { color: var(--primary-hover); background: rgba(232, 17, 126, 0.12); }
+.payment-modal-close:focus-visible { outline: 2px solid var(--primary-hover); outline-offset: 2px; }
+.payment-modal-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) 0;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.payment-modal-loading[hidden] { display: none; }
+#payment-modal-mount { margin-top: var(--space-4); min-height: 420px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ai-badge--pulse { animation: none; }

@@ -18,6 +18,10 @@ const WORKOUT_PLAN_MAX_TOKENS = 8000;
 const WORKOUT_RATE_LIMIT_PER_HOUR = 20;
 const TRANSLATE_WORKOUT_RATE_LIMIT_PER_HOUR = 20;
 const TRANSLATE_WORKOUT_ITEMS_MAX = 150;
+const STRIPE_API_BASE = 'https://api.stripe.com/v1';
+const CHECKOUT_PRICE_USD_CENTS = 500;
+const CHECKOUT_RATE_LIMIT_PER_HOUR = 20;
+const PAID_SESSION_KV_PREFIX = 'paid_session:';
 const WORKOUT_MUSCLE_GROUPS = ['chest', 'shoulders', 'biceps', 'forearms', 'abs', 'quads', 'calves', 'back', 'traps', 'triceps', 'glutes', 'hamstrings'];
 
 // Catalog minimal (id, grupă musculară, echipament, nume EN) al exercițiilor curate din
@@ -568,6 +572,10 @@ function validatePayload(body) {
   return true;
 }
 
+function validateCheckoutPayload(body) {
+  return Boolean(body) && typeof body === 'object' && ['ro', 'en'].includes(body.lang);
+}
+
 function isNonEmptyBilingualString(value, maxLength) {
   return Boolean(value) && typeof value.ro === 'string' && typeof value.en === 'string'
     && value.ro.trim().length > 0 && value.en.trim().length > 0
@@ -910,6 +918,99 @@ async function streamPlanDays(env, { system, userMessage, schema, maxTokens, eff
   }
 }
 
+// Aplatizează un obiect JS în perechi cheie/valoare în notația cu paranteze pătrate așteptată
+// de API-ul Stripe (form-urlencoded), ex. { line_items: [{ quantity: 1 }] } devine
+// "line_items[0][quantity]=1". Singurul loc din Worker care vorbește cu Stripe — la fel ca
+// Anthropic (callClaude), fără SDK, printr-un fetch() brut.
+function flattenStripeParams(obj, prefix, out) {
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+    if (value === undefined || value === null) continue;
+    const paramKey = prefix ? `${prefix}[${key}]` : key;
+    if (Array.isArray(value)) {
+      value.forEach((item, i) => {
+        const arrKey = `${paramKey}[${i}]`;
+        if (item && typeof item === 'object') flattenStripeParams(item, arrKey, out);
+        else out.push([arrKey, String(item)]);
+      });
+    } else if (typeof value === 'object') {
+      flattenStripeParams(value, paramKey, out);
+    } else {
+      out.push([paramKey, String(value)]);
+    }
+  }
+  return out;
+}
+
+async function stripeRequest(env, method, path, params) {
+  const headers = { authorization: `Bearer ${env.STRIPE_SECRET_KEY}` };
+  let body;
+  if (method === 'POST') {
+    headers['content-type'] = 'application/x-www-form-urlencoded';
+    body = new URLSearchParams(flattenStripeParams(params || {}, '', [])).toString();
+  }
+  const res = await fetch(`${STRIPE_API_BASE}${path}`, { method, headers, body });
+  let data = null;
+  try { data = await res.json(); } catch (err) { data = null; }
+  return { ok: res.ok, status: res.status, data };
+}
+
+// Verifică live la Stripe (nu are încredere într-un flag trimis de client) că sesiunea de
+// checkout a fost plătită, apoi o leagă — la prima utilizare — de `signature` (semnătura
+// bucket-ului de plan cerut, vezi buildPlanCacheKey), sau verifică la utilizările ulterioare
+// că cererea curentă are aceeași semnătură. O plată deblochează o singură configurație de
+// plan: regenerarea aceleiași configurații e gratuită, una diferită cere o plată nouă.
+async function verifyPaidEntitlement(env, sessionId, signature) {
+  if (typeof sessionId !== 'string' || !sessionId.startsWith('cs_')) {
+    return { ok: false, status: 402, error: 'payment_required' };
+  }
+  if (!env.STRIPE_SECRET_KEY) {
+    return { ok: false, status: 503, error: 'not_configured' };
+  }
+  // Fail-closed deliberat, spre deosebire de checkRateLimit(): fără KV nu putem lega sau
+  // verifica o plată de o configurație, deci refuzăm — niciodată acces gratuit din eroare.
+  if (!env.RATE_LIMIT_KV) {
+    return { ok: false, status: 503, error: 'not_configured' };
+  }
+
+  let session;
+  try {
+    const res = await stripeRequest(env, 'GET', `/checkout/sessions/${encodeURIComponent(sessionId)}`, null);
+    if (!res.ok) return { ok: false, status: 402, error: 'payment_required' };
+    if (!res.data) return { ok: false, status: 502, error: 'upstream_failed' };
+    session = res.data;
+  } catch (err) {
+    return { ok: false, status: 502, error: 'upstream_failed' };
+  }
+
+  if (session.payment_status !== 'paid') {
+    return { ok: false, status: 402, error: 'payment_required' };
+  }
+
+  const kvKey = `${PAID_SESSION_KV_PREFIX}${sessionId}`;
+  let record = null;
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(kvKey);
+    if (raw) record = JSON.parse(raw);
+  } catch (err) {
+    record = null;
+  }
+
+  if (record && record.signature) {
+    if (record.signature === signature) return { ok: true };
+    return { ok: false, status: 403, error: 'payment_mismatch' };
+  }
+
+  try {
+    await env.RATE_LIMIT_KV.put(kvKey, JSON.stringify({ signature, boundAt: Date.now() }), {
+      expirationTtl: PLAN_CACHE_TTL_SECONDS,
+    });
+  } catch (err) {
+    return { ok: false, status: 502, error: 'upstream_failed' };
+  }
+  return { ok: true };
+}
+
 async function handleGeneratePlan(request, env, origin, ip) {
   let body;
   try {
@@ -923,6 +1024,12 @@ async function handleGeneratePlan(request, env, origin, ip) {
   }
 
   const cacheKey = buildPlanCacheKey(body);
+
+  const entitlement = await verifyPaidEntitlement(env, body.paymentSessionId, cacheKey);
+  if (!entitlement.ok) {
+    return jsonResponse({ error: entitlement.error }, entitlement.status, origin);
+  }
+
   // dislikeText nu intră în cheia de cache (e prea liber ca să bucketăm pe el), deci un plan
   // generat cu preferințe libere n-are ce căuta în pool-ul comun — mereu live pentru el.
   const bypassCache = body.dislikeText.trim().length > 0;
@@ -980,6 +1087,67 @@ async function handleGeneratePlan(request, env, origin, ip) {
     status: 200,
     headers: { 'content-type': 'application/x-ndjson', ...corsHeaders(origin) },
   });
+}
+
+async function handleCreateCheckoutSession(request, env, origin, ip) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return jsonResponse({ error: 'invalid_json' }, 400, origin);
+  }
+
+  if (!validateCheckoutPayload(body)) {
+    return jsonResponse({ error: 'invalid_payload' }, 400, origin);
+  }
+
+  // return_url e construit exclusiv din Origin (aceeași sursă de încredere ca corsHeaders),
+  // niciodată dintr-o valoare trimisă de client — altfel am deschide un open-redirect.
+  if (!origin) {
+    return jsonResponse({ error: 'invalid_origin' }, 400, origin);
+  }
+
+  const allowed = await checkRateLimit(env, ip, 'checkout', CHECKOUT_RATE_LIMIT_PER_HOUR);
+  if (!allowed) {
+    return jsonResponse({ error: 'rate_limited' }, 429, origin);
+  }
+
+  if (!env.STRIPE_SECRET_KEY) {
+    return jsonResponse({ error: 'not_configured' }, 503, origin);
+  }
+
+  const productName = body.lang === 'en' ? 'AI Nutrition Plan — FF Fitness' : 'Plan de nutriție AI — FF Fitness';
+
+  try {
+    const res = await stripeRequest(env, 'POST', '/checkout/sessions', {
+      ui_mode: 'embedded_page',
+      mode: 'payment',
+      return_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
+      redirect_on_completion: 'always',
+      locale: body.lang,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: CHECKOUT_PRICE_USD_CENTS,
+            product_data: { name: productName },
+          },
+        },
+      ],
+      branding_settings: {
+        background_color: '#17111F',
+        button_color: '#C70E6E',
+        border_style: 'rounded',
+      },
+    });
+    if (!res.ok || !res.data) {
+      return jsonResponse({ error: 'upstream_failed' }, 502, origin);
+    }
+    return jsonResponse({ clientSecret: res.data.client_secret, sessionId: res.data.id }, 200, origin);
+  } catch (err) {
+    return jsonResponse({ error: 'upstream_failed' }, 502, origin);
+  }
 }
 
 async function handleGenerateRecipe(request, env, origin, ip) {
@@ -1174,6 +1342,10 @@ export default {
 
     if (url.pathname === '/api/generate-plan' && request.method === 'POST') {
       return handleGeneratePlan(request, env, origin, ip);
+    }
+
+    if (url.pathname === '/api/create-checkout-session' && request.method === 'POST') {
+      return handleCreateCheckoutSession(request, env, origin, ip);
     }
 
     if (url.pathname === '/api/generate-recipe' && request.method === 'POST') {

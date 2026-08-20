@@ -6,5 +6,6 @@ node_modules/
 Thumbs.db
 worker/node_modules/
 worker/.wrangler/
+worker/.dev.vars
 .claude/
 player.gd

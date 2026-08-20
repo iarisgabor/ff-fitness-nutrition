@@ -1,6 +1,6 @@
 # Arhitectură — FF Fitness
 
-Aplicație web statică (RO/EN) cu trei funcționalități: calculator TDEE/BMR, generator de plan alimentar AI (7 zile) cu rețete și export PDF, și un catalog de exerciții cu hartă corporală interactivă + generator de plan de antrenament AI. Fără framework sau build step — HTML/CSS/JS vanilla, susținut de **două** backend-uri serverless separate.
+Aplicație web statică (RO/EN) cu trei funcționalități: calculator TDEE/BMR, generator de plan alimentar AI (7 zile, **taxat $5/plan** prin Stripe) cu rețete și export PDF, și un catalog de exerciții cu hartă corporală interactivă + generator de plan de antrenament AI (gratuit). Fără framework sau build step — HTML/CSS/JS vanilla, susținut de **două** backend-uri serverless separate.
 
 ## Cuprins
 
@@ -32,6 +32,7 @@ flowchart TB
     end
 
     ANTH[[Anthropic API]]
+    STRIPE[[Stripe API]]
 
     IH --> SJ
     SJ --> ED
@@ -39,9 +40,14 @@ flowchart TB
     API --> LIB --> ANTH
     SJ -- "generate-plan / translate-plan" --> WI
     SJ -- "generate-workout-plan / translate-workout-plan" --> WI
+    SJ -- "create-checkout-session" --> WI
+    SJ -- "încarcă js.stripe.com, montează Embedded Checkout" --> STRIPE
+    WI -- "creează / verifică sesiune de plată" --> STRIPE
     WI --> KV
     WI --> ANTH
 ```
+
+Redirect-ul de finalizare a plății (Stripe → `return_url` pe propriul domeniu, cu `?session_id=...`) e o navigare de browser, nu un apel API — nereprezentată ca muchie separată în diagramă.
 
 ---
 
@@ -55,8 +61,8 @@ Site static, fără framework și fără build step: HTML/CSS/JS vanilla, servit
   - calculator BMR/TDEE/macro-uri (100% client-side)
   - navigare (`showView`, hamburger, accordion FAQ)
   - harta corporală + listă exerciții, citește din `exercises-data.js`
-  - plan alimentar AI → apelează [Cloudflare Worker](#3-backend-cloudflare-worker--plan-alimentar--antrenament)
-  - rețete AI + export PDF (jsPDF vendorizat în `assets/vendor/`) → apelează [Backend Vercel](#2-backend-vercel--generare-rețete)
+  - plan alimentar AI, **taxat $5/plan** → gate de plată Stripe Embedded Checkout, apoi apelează [Cloudflare Worker](#3-backend-cloudflare-worker--plan-alimentar--antrenament) (vezi flux #2 mai jos)
+  - rețete AI + export PDF (jsPDF vendorizat în `assets/vendor/`) → apelează [Backend Vercel](#2-backend-vercel--generare-rețete) — accesibile doar dintr-un plan deja generat (deci deja plătit), fără gate separat
   - plan de antrenament AI → apelează [Cloudflare Worker](#3-backend-cloudflare-worker--plan-alimentar--antrenament)
   - **fallback local**: dacă fetch-ul eșuează (ex. rulare pe `file://`), generează plan/rețetă fără AI, din date hardcodate
 - **`exercises-data.js`** — catalogul static de exerciții: `MUSCLE_GROUPS` (12 grupe) + `EXERCISES` (~48 obiecte `{id, muscleGroup, name, description, sets, reps, equipment, difficulty, videoId}`). Este **duplicat manual** ca `EXERCISE_CATALOG` în Worker, ca AI-ul să nu inventeze exerciții inexistente pe site.
@@ -76,7 +82,8 @@ Worker unic (`worker/index.js`, ~950 linii) care găzduiește tot ce durează pr
 
 | Rută | Scop |
 |---|---|
-| `POST /api/generate-plan` | plan alimentar 7 zile, streamed NDJSON |
+| `POST /api/generate-plan` | plan alimentar 7 zile, streamed NDJSON — **taxat**, cere `paymentSessionId` valid |
+| `POST /api/create-checkout-session` | creează o sesiune Stripe Checkout embedded ($5, USD) pentru planul alimentar |
 | `POST /api/generate-recipe` | duplicat al backend-ului Vercel, neapelat de frontend |
 | `POST /api/translate-plan` | traduce planul alimentar generat |
 | `POST /api/generate-workout-plan` | plan de antrenament AI, streamed NDJSON, cu cache + rate limit |
@@ -89,13 +96,14 @@ Worker unic (`worker/index.js`, ~950 linii) care găzduiește tot ce durează pr
 - **Cache pool plan alimentar** — până la 12 variante per combinație `lang:goal:kcal±100:protein±10:carbs±10:fat±7.5:alergii:magazine` (bucket-uri late, deliberat, ca să crească rata de cache-hit), TTL 30 zile. Ocolit doar dacă userul a completat câmpul liber de preferințe (`dislikeText`) — apăsarea „Regenerează" NU mai forțează un apel AI nou: clientul trimite semnătura planului curent (`excludeSignature`, nume de mese) și serverul întoarce o altă variantă din pool dacă există una diferită, altfel generează live și o adaugă în pool.
 - **Streaming** — răspunsul SSE de la Anthropic e parsat live (`makeDayExtractor`) și fiecare zi din plan e trimisă către client imediat ce e completă, ca NDJSON.
 - **`EXERCISE_CATALOG`** — copie manuală, hardcodată, a datelor din `exercises-data.js`, folosită ca `enum` în schema JSON ca AI-ul să aleagă doar exerciții care există efectiv pe site (cu video demo).
-- **`worker/wrangler.toml`** — leagă namespace-ul KV `RATE_LIMIT_KV`; `ANTHROPIC_API_KEY` e secret Wrangler (`wrangler secret put`), nu apare în fișier.
-- **Dependențe** — `wrangler` e singura dependență directă (dev); restul din `worker/node_modules` sunt uneltele lui interne de build/deploy (esbuild, workerd, miniflare etc.), nu cod folosit de `worker/index.js`.
+- **Gate de plată planul alimentar** (`verifyPaidEntitlement`) — la fiecare `POST /api/generate-plan`, se verifică *live* la Stripe (`GET /v1/checkout/sessions/{id}`) că `paymentSessionId`-ul trimis de client are `payment_status: 'paid'` — niciodată încredere într-un flag trimis de client. Sesiunea plătită se leagă apoi, în `RATE_LIMIT_KV` (cheie `paid_session:{sessionId}`, TTL = același `PLAN_CACHE_TTL_SECONDS`, 30 zile), de `buildPlanCacheKey(body)` — aceeași semnătură de bucket folosită de cache pool-ul de mai sus, refolosită direct ca identificator de "configurație plătită". Prima utilizare a unei sesiuni plătite leagă semnătura; utilizările ulterioare (ex. „Regenerează") trec gratuit doar dacă cererea are aceeași semnătură — o configurație diferită (alte ținte de calorii/macro) cere o plată nouă. Verificarea rulează **înainte** de citirea din cache pool — altfel un vizitator neplătitor ar putea primi gratis planul altcuiva dintr-un bucket popular. Spre deosebire de `checkRateLimit()`, acest gate e **fail-closed**: dacă `RATE_LIMIT_KV` sau `STRIPE_SECRET_KEY` lipsesc, cererea e respinsă (503), niciodată lăsată să treacă gratis.
+- **`worker/wrangler.toml`** — leagă namespace-ul KV `RATE_LIMIT_KV`; `ANTHROPIC_API_KEY` și `STRIPE_SECRET_KEY` sunt secrete Wrangler (`wrangler secret put`), nu apar în fișier.
+- **Dependențe** — `wrangler` e singura dependență directă (dev); restul din `worker/node_modules` sunt uneltele lui interne de build/deploy (esbuild, workerd, miniflare etc.), nu cod folosit de `worker/index.js`. Stripe e apelat la fel ca Anthropic — direct prin `fetch()`, fără SDK (`stripeRequest()`).
 
 ## 4. Fluxuri cheie
 
 1. **Calculator TDEE/BMR** — 100% client-side, fără backend.
-2. **Plan alimentar AI** → `script.js` (`fetchPlanFromApi`) → Worker `/api/generate-plan` (streaming) → Anthropic API. Traducerea ulterioară RO⇄EN → `/api/translate-plan`.
+2. **Plan alimentar AI, taxat $5** → dacă browserul n-are o sesiune plătită cunoscută, `handlePlanGenerate` deschide modalul de plată (`openPaymentModal`) în loc să cheme API-ul: `script.js` cere Worker-ului `/api/create-checkout-session`, montează Stripe Embedded Checkout în modal, și salvează în `sessionStorage` (rezultatele calculatorului + preferințele din `#plan-form`) chiar înainte ca userul să plătească — Embedded Checkout navighează întreaga pagină către `return_url` la finalul plății, ceea ce șterge tot state-ul JS din memorie. La revenire (`?session_id=...` în URL), `resumeAfterPaymentReturn()` restaurează starea din `sessionStorage`, curăță URL-ul și reia automat generarea. De aici încolo, fluxul e cel de dinainte: `script.js` (`fetchPlanFromApi`) → Worker `/api/generate-plan` (streaming), verificat server-side prin `verifyPaidEntitlement` → Anthropic API. Traducerea ulterioară RO⇄EN → `/api/translate-plan` (nu e taxată separat — operează pe un plan deja plătit).
 3. **Rețetă AI** (dintr-un meal din plan) → `script.js` (`fetchRecipeFromApi`) → Vercel `/api/generate-recipe` → Anthropic API. Poate fi exportată ca PDF client-side.
 4. **Plan de antrenament AI** → `script.js` (`fetchWorkoutPlanFromApi`) → Worker `/api/generate-workout-plan` (verifică `RATE_LIMIT_KV`, încearcă cache pool, altfel generează + salvează în pool) → Anthropic API.
 5. **Eșec rețea** (orice fetch) → cad pe generatoare locale în `script.js`, fără AI.
@@ -107,6 +115,7 @@ Worker unic (`worker/index.js`, ~950 linii) care găzduiește tot ce durează pr
 - Cele două backend-uri sunt **complet independente** — fără proxy comun. CORS pe Worker (`corsHeaders`, reflectă `Origin`) permite paginii de pe Vercel să-l apeleze cross-origin.
 - **Cod duplicat, nu partajat**, între `api/_lib/nutrition.js` și `worker/index.js` — aceleași scheme JSON și prompt-uri, întreținute manual în două locuri. De reținut la orice modificare a formatului de plan/rețetă.
 - Secrete: `ANTHROPIC_API_KEY` setat separat ca variabilă de mediu Vercel și ca secret Wrangler pe Cloudflare.
+- **Stripe** — a treia dependență externă, alături de Anthropic. Apelat doar din Worker (creare/verificare sesiune de checkout, prin `fetch()` brut) și direct din client (`js.stripe.com`, iframe-ul Embedded Checkout). `STRIPE_SECRET_KEY` e secret Wrangler (`wrangler secret put`, doar pe Cloudflare — funcționalitatea de plată n-are nimic pe partea Vercel). `STRIPE_PUBLISHABLE_KEY` e intenționat inline în `script.js` — nu e secret, deci absența lui din lista de secrete Wrangler e normală, nu o omisiune. Nu există niciun endpoint de webhook Stripe în acest design — verificarea plății e sincronă, la fiecare cerere către `/api/generate-plan`.
 
 ## 6. Unelte Claude Code din acest repo
 

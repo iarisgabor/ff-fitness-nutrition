@@ -11,6 +11,12 @@ const KCAL_PER_G_FAT = 9;
 const LOW_CALORIE_FLOOR = 1200;
 const ALLERGEN_TAGS = ['dairy', 'egg', 'fish', 'shellfish', 'treenut', 'peanut', 'gluten', 'soy', 'sesame'];
 const NUTRITION_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/generate-plan';
+const CREATE_CHECKOUT_SESSION_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/create-checkout-session';
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_51U6TNTHpxrmSgd21A66pxhqEKFqXUnouZuNt5DOpiSeJYFhhgK4cmL1adUgQLIvCxiks2V1GYpLfloBpVVlk3xdH00cltzbARA'; // cheie publică — sigur de commis, nu e secret
+const STRIPE_JS_URL = 'https://js.stripe.com/v3/';
+const CHECKOUT_FETCH_TIMEOUT_MS = 15000;
+const PAID_SESSION_STORAGE_KEY = 'ffFitnessPaidSessionId';
+const PENDING_PLAN_STATE_STORAGE_KEY = 'ffFitnessPendingPlanState';
 const RECIPE_API_URL = '/api/generate-recipe';
 const TRANSLATE_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/translate-plan';
 const WORKOUT_API_URL = 'https://ff-fitness-nutrition.iarisgabor.workers.dev/api/generate-workout-plan';
@@ -141,6 +147,23 @@ const CONTENT = {
     aiPlan: {
       title: 'Plan de nutriție cu AI',
       intro: 'Generează un plan de mese pe 7 zile, calculat să se încadreze în targetul tău caloric și de macronutrienți.',
+      paywall: {
+        title: 'Deblochează planul tău personalizat',
+        subtitle: 'O plată unică — acces complet la planul tău alimentar AI.',
+        benefit1: 'Plan de mese personalizat pe 7 zile, calculat pe targetul tău caloric și de macronutrienți',
+        benefit2: 'Rețete AI detaliate pentru fiecare masă din plan',
+        benefit3: 'Export PDF pentru orice rețetă',
+        benefit4: 'Adaptat la alergiile și magazinele tale preferate',
+        priceNote: 'plată unică — regenerările sunt incluse',
+        ctaButton: 'Deblochează planul — $5',
+        fineprint: 'Plată securizată, procesată de Stripe. Fără abonament.',
+        modalTitle: 'Finalizează plata',
+        modalCloseLabel: 'Închide',
+        modalLoadingText: 'Se pregătește plata…',
+        checkoutLoadError: 'Nu am putut încărca formularul de plată. Încearcă din nou.',
+        paymentMismatchError: 'Ai schimbat datele calculatorului — planul acesta e o configurație nouă și necesită o nouă plată.',
+        paymentConfirmedNoStateNotice: 'Plata a fost confirmată. Completează din nou preferințele de mai jos și generează planul.',
+      },
       allergensLabel: 'Alergii sau intoleranțe',
       allergensHint: 'Bifează alergiile sau intoleranțele tale — excludem complet din generator orice rețetă care conține aceste ingrediente.',
       allergens: {
@@ -326,6 +349,23 @@ const CONTENT = {
     aiPlan: {
       title: 'AI Nutrition Plan',
       intro: 'Generate a 7-day meal plan, calculated to fit your calorie and macronutrient target.',
+      paywall: {
+        title: 'Unlock your personalized plan',
+        subtitle: 'A one-time payment — full access to your AI nutrition plan.',
+        benefit1: 'Personalized 7-day meal plan, calculated to your calorie and macro targets',
+        benefit2: 'Detailed AI recipes for every meal in the plan',
+        benefit3: 'PDF export for any recipe',
+        benefit4: 'Adapted to your allergies and preferred stores',
+        priceNote: 'one-time payment — regenerations included',
+        ctaButton: 'Unlock plan — $5',
+        fineprint: 'Secure payment, processed by Stripe. No subscription.',
+        modalTitle: 'Complete your payment',
+        modalCloseLabel: 'Close',
+        modalLoadingText: 'Preparing payment…',
+        checkoutLoadError: 'We couldn’t load the payment form. Please try again.',
+        paymentMismatchError: 'You changed the calculator inputs — this is a new plan configuration and needs a new payment.',
+        paymentConfirmedNoStateNotice: 'Payment confirmed. Fill in your preferences below again and generate the plan.',
+      },
       allergensLabel: 'Allergies or intolerances',
       allergensHint: 'Check any allergies or intolerances — we completely exclude any recipe containing these ingredients from the generator.',
       allergens: {
@@ -925,6 +965,12 @@ let highlightedExerciseId = null; // id-ul exercițiului evidențiat curent pe #
 let lastWorkoutPlanData = null; // { days, lang, translatedLangs }
 let workoutPlanRenderToken = 0;
 let inFlightWorkoutTranslation = null;
+let currentPaidSessionId = (() => {
+  try { return localStorage.getItem(PAID_SESSION_STORAGE_KEY); } catch (err) { return null; }
+})();
+let stripeJsPromise = null;
+let stripeClientInstance = null;
+let embeddedCheckoutInstance = null;
 
 /* ---------- Utilitare ---------- */
 function getByPath(obj, path) {
@@ -1508,6 +1554,13 @@ async function fetchPlanFromApi(payload, onDay) {
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
+    if (res.status === 402 || res.status === 403) {
+      // Plată necesară/nepotrivită — distinct de o eroare reală de rețea, ca să nu cadă pe
+      // generateWeekPlanLocal() mai jos (ar însemna un ocol gratuit al paywall-ului).
+      let reason = 'payment_required';
+      try { reason = (await res.json()).error || reason; } catch (err) { /* ignore */ }
+      return { paymentRequired: true, reason };
+    }
     if (!res.ok || !res.body) return null;
 
     const reader = res.body.getReader();
@@ -1555,7 +1608,7 @@ function computePlanSignature(planData) {
   return planData.days.map((d) => d.meals.map((m) => (m.name && m.name.en) || '').join(',')).join('|');
 }
 
-async function generatePlan(targets, goal, allergens, dislikes, stores, wantsDifferentPlan, onDay) {
+async function generatePlan(targets, goal, allergens, dislikes, stores, wantsDifferentPlan, onDay, paymentSessionId) {
   const payload = {
     targetKcal: targets.kcal,
     targetProtein: targets.protein,
@@ -1566,16 +1619,193 @@ async function generatePlan(targets, goal, allergens, dislikes, stores, wantsDif
     dislikeText: dislikes,
     stores,
     lang: currentLang,
+    paymentSessionId,
   };
   if (wantsDifferentPlan) {
     const signature = computePlanSignature(lastPlanData);
     if (signature) payload.excludeSignature = signature;
   }
 
+  // apiResult truthy acoperă și { paymentRequired: true, ... } — se propagă direct, fără să
+  // cadă pe fallback-ul local (vezi comentariul din fetchPlanFromApi).
   const apiResult = await fetchPlanFromApi(payload, onDay);
   if (apiResult) return apiResult;
 
   return generateWeekPlanLocal(targets, allergens, dislikes, currentLang);
+}
+
+/* ---------- Plată Stripe pentru planul alimentar AI ---------- */
+function setStoredPaidSessionId(id) {
+  currentPaidSessionId = id;
+  try { localStorage.setItem(PAID_SESSION_STORAGE_KEY, id); } catch (err) { /* ignore */ }
+}
+
+function clearStoredPaidSessionId() {
+  currentPaidSessionId = null;
+  try { localStorage.removeItem(PAID_SESSION_STORAGE_KEY); } catch (err) { /* ignore */ }
+}
+
+function updatePaywallCardVisibility() {
+  const card = document.getElementById('plan-paywall-card');
+  if (card) card.hidden = Boolean(currentPaidSessionId);
+}
+
+// Aproximare cosmetică ("a plătit browserul ăsta vreodată"), nu autoritativă — gate-ul real e
+// server-side (verifyPaidEntitlement în worker/index.js). O aproximare greșită aici înseamnă
+// cel mult un modal de plată redundant, niciodată un ocol al plății.
+function savePendingPlanState(bypassCache, pendingSessionId) {
+  const form = document.getElementById('plan-form');
+  const state = {
+    lastResults,
+    allergens: getSelectedAllergens(form),
+    stores: getSelectedStores(form),
+    dislikes: form.dislikes.value.trim(),
+    bypassCache,
+    pendingSessionId,
+  };
+  try {
+    sessionStorage.setItem(PENDING_PLAN_STATE_STORAGE_KEY, JSON.stringify(state));
+  } catch (err) { /* ignore — cel mai rău caz, nu se restaurează automat la revenire */ }
+}
+
+function loadPendingPlanState() {
+  try {
+    const raw = sessionStorage.getItem(PENDING_PLAN_STATE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function clearPendingPlanState() {
+  try { sessionStorage.removeItem(PENDING_PLAN_STATE_STORAGE_KEY); } catch (err) { /* ignore */ }
+}
+
+function loadStripeJs() {
+  if (window.Stripe) return Promise.resolve();
+  if (stripeJsPromise) return stripeJsPromise;
+  stripeJsPromise = loadScriptOnce(STRIPE_JS_URL).catch((err) => {
+    stripeJsPromise = null;
+    throw err;
+  });
+  return stripeJsPromise;
+}
+
+async function createCheckoutSession() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CHECKOUT_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(CREATE_CHECKOUT_SESSION_API_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ lang: currentLang }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.clientSecret || !data.sessionId) return null;
+    return data;
+  } catch (err) {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function openPaymentModal(bypassCache) {
+  const dialog = document.getElementById('payment-modal');
+  const loadingEl = document.getElementById('payment-modal-loading');
+  const errorEl = document.getElementById('payment-modal-error');
+  const mountEl = document.getElementById('payment-modal-mount');
+  const t = CONTENT[currentLang].aiPlan.paywall;
+
+  errorEl.textContent = '';
+  mountEl.innerHTML = '';
+  loadingEl.hidden = false;
+  if (!dialog.open) dialog.showModal();
+
+  try {
+    await loadStripeJs();
+    const session = await createCheckoutSession();
+    if (!session) {
+      loadingEl.hidden = true;
+      errorEl.textContent = t.checkoutLoadError;
+      return;
+    }
+
+    // Salvat ÎNAINTE de montare — Embedded Checkout poate naviga toată pagina departe de aici
+    // în orice moment după ce userul completează plata (vezi return_url din Worker).
+    savePendingPlanState(bypassCache, session.sessionId);
+
+    if (!stripeClientInstance) stripeClientInstance = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+    embeddedCheckoutInstance = await stripeClientInstance.createEmbeddedCheckoutPage({
+      fetchClientSecret: () => Promise.resolve(session.clientSecret),
+    });
+    embeddedCheckoutInstance.mount('#payment-modal-mount');
+    loadingEl.hidden = true;
+  } catch (err) {
+    loadingEl.hidden = true;
+    errorEl.textContent = t.checkoutLoadError;
+  }
+}
+
+function closePaymentModal() {
+  if (embeddedCheckoutInstance) {
+    embeddedCheckoutInstance.destroy();
+    embeddedCheckoutInstance = null;
+  }
+  const dialog = document.getElementById('payment-modal');
+  if (dialog.open) dialog.close();
+}
+
+function initPaymentModal() {
+  const dialog = document.getElementById('payment-modal');
+  document.getElementById('payment-modal-close').addEventListener('click', closePaymentModal);
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) closePaymentModal();
+  });
+  dialog.addEventListener('close', () => {
+    if (embeddedCheckoutInstance) {
+      embeddedCheckoutInstance.destroy();
+      embeddedCheckoutInstance = null;
+    }
+  });
+}
+
+// Apelat o singură dată, la boot: dacă userul tocmai s-a întors de la Stripe (Embedded
+// Checkout navighează întreaga pagină către return_url la finalul plății), restaurează
+// starea salvată în sessionStorage și reia automat generarea planului, fără ca userul să
+// completeze nimic a doua oară.
+function resumeAfterPaymentReturn() {
+  const sessionId = new URLSearchParams(location.search).get('session_id');
+  if (!sessionId) return;
+
+  history.replaceState(null, '', location.pathname);
+
+  const pending = loadPendingPlanState();
+  clearPendingPlanState();
+  setStoredPaidSessionId(sessionId);
+  updatePaywallCardVisibility();
+
+  if (!pending || pending.pendingSessionId !== sessionId || !pending.lastResults) {
+    const errorEl = document.getElementById('plan-error');
+    if (errorEl) errorEl.textContent = CONTENT[currentLang].aiPlan.paywall.paymentConfirmedNoStateNotice;
+    return;
+  }
+
+  showView('calculator');
+  renderResults(pending.lastResults, false);
+
+  const form = document.getElementById('plan-form');
+  form.querySelectorAll('input[name="allergen"]').forEach((el) => {
+    el.checked = pending.allergens.includes(el.value);
+  });
+  form.querySelectorAll('input[name="store"]').forEach((el) => {
+    el.checked = pending.stores.includes(el.value);
+  });
+  form.dislikes.value = pending.dislikes || '';
+
+  handlePlanGenerate(pending.bypassCache);
 }
 
 async function translatePlanMeals(planData, targetLang) {
@@ -2277,6 +2507,11 @@ async function handlePlanGenerate(bypassCache = false) {
     return;
   }
 
+  if (!currentPaidSessionId) {
+    await openPaymentModal(bypassCache);
+    return;
+  }
+
   generateBtn.disabled = true;
   regenerateBtn.disabled = true;
   errorEl.textContent = '';
@@ -2311,10 +2546,19 @@ async function handlePlanGenerate(bypassCache = false) {
     loadingAnnounceEl.textContent = progressText;
   };
 
-  const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes, stores, bypassCache, onDay);
+  const plan = await generatePlan(targets, lastResults.goal, allergens, dislikes, stores, bypassCache, onDay, currentPaidSessionId);
   clearInterval(stepInterval);
   loadingEl.hidden = true;
   generateBtn.disabled = false;
+
+  if (plan && plan.paymentRequired) {
+    outputEl.hidden = true;
+    clearStoredPaidSessionId();
+    updatePaywallCardVisibility();
+    errorEl.textContent = plan.reason === 'payment_mismatch' ? t.paywall.paymentMismatchError : '';
+    await openPaymentModal(bypassCache);
+    return;
+  }
 
   if (!plan) {
     outputEl.hidden = true;
@@ -2335,12 +2579,14 @@ async function handlePlanGenerate(bypassCache = false) {
 function initAiPlanSection() {
   const form = document.getElementById('plan-form');
   applySavedAllergyPrefs(form);
+  updatePaywallCardVisibility();
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     handlePlanGenerate(false);
   });
 
+  document.getElementById('plan-unlock-btn').addEventListener('click', () => handlePlanGenerate(false));
   document.getElementById('plan-regenerate-btn').addEventListener('click', () => handlePlanGenerate(true));
   initPlanAccordion();
 }
@@ -2709,9 +2955,11 @@ function init() {
   initForm();
   initAiPlanSection();
   initRecipeDialog();
+  initPaymentModal();
   initBodyMap();
   initAiWorkoutPlanSection();
   applyLanguage(currentLang);
+  resumeAfterPaymentReturn();
 }
 
 document.addEventListener('DOMContentLoaded', init);
