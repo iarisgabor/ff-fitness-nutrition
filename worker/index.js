@@ -111,6 +111,7 @@ const STORE_PRODUCT_CATALOG = [
   { store: 'lidl', name: 'Somon la cuptor (Lidl)', kcal: 206, protein: 22.1, carbs: 0, fat: 12.35 },
   { store: 'lidl', name: 'Ouă clasa M (Lidl)', kcal: 143, protein: 12.6, carbs: 0.72, fat: 9.51 },
   { store: 'lidl', name: 'Carne tocată de vită, slabă (Lidl)', kcal: 155, protein: 21.7, carbs: 0, fat: 6.8 },
+  { store: 'lidl', name: 'Carne tocată de vită 10% grăsime (Lidl)', kcal: 157, protein: 17.3, carbs: 1.2, fat: 9.2 },
   { store: 'lidl', name: 'Iaurt natural stil grecesc 2% (Milbona)', kcal: 75, protein: 9, carbs: 4, fat: 2 },
   { store: 'lidl', name: 'Brânză cottage (Milbona)', kcal: 81, protein: 10.45, carbs: 4.76, fat: 2.3 },
   { store: 'lidl', name: 'Lapte 1.5% (Milbona)', kcal: 47, protein: 3.4, carbs: 4.9, fat: 1.5 },
@@ -260,6 +261,46 @@ const SAMPLE_MEALS = [
   {
     ro: 'Iaurt cu migdale — 150g iaurt grecesc, 10g migdale (149 kcal, 17g proteine, 8g carbo, 6g grăsimi)',
     en: 'Yogurt with almonds — 150g Greek yogurt, 10g almonds (149 kcal, 17g protein, 8g carbs, 6g fat)',
+  },
+  {
+    ro: 'Omletă cu legume și pâine integrală — 3 ouă, 100g ardei gras și roșii, 40g pâine integrală, ulei de măsline (380 kcal, 25g proteine, 22g carbo, 21g grăsimi)',
+    en: 'Vegetable omelette with whole wheat bread — 3 eggs, 100g bell pepper and tomato, 40g whole wheat bread, olive oil (380 kcal, 25g protein, 22g carbs, 21g fat)',
+  },
+  {
+    ro: 'Somon la cuptor cu cartofi dulci și broccoli — 150g somon, 200g cartofi dulci, 100g broccoli, ulei de măsline (568 kcal, 40g proteine, 49g carbo, 24g grăsimi)',
+    en: 'Baked salmon with sweet potatoes and broccoli — 150g salmon, 200g sweet potatoes, 100g broccoli, olive oil (568 kcal, 40g protein, 49g carbs, 24g fat)',
+  },
+  {
+    ro: 'Bol cu quinoa, năut și legume — 150g quinoa fiartă, 150g năut fiert, 100g mix de legume, ulei de măsline (579 kcal, 23g proteine, 86g carbo, 17g grăsimi)',
+    en: 'Quinoa and chickpea bowl — 150g cooked quinoa, 150g cooked chickpeas, 100g mixed vegetables, olive oil (579 kcal, 23g protein, 86g carbs, 17g fat)',
+  },
+  {
+    ro: 'Iaurt grecesc cu fructe de pădure și migdale — 200g iaurt grecesc, 100g fructe de pădure, 15g migdale (294 kcal, 22g proteine, 25g carbo, 12g grăsimi)',
+    en: 'Greek yogurt with berries and almonds — 200g Greek yogurt, 100g mixed berries, 15g almonds (294 kcal, 22g protein, 25g carbs, 12g fat)',
+  },
+  {
+    ro: 'Piept de curcan cu paste integrale și broccoli — 150g piept de curcan, 200g paste integrale fierte, 100g broccoli, ulei de măsline (530 kcal, 57g proteine, 57g carbo, 9g grăsimi)',
+    en: 'Turkey breast with whole wheat pasta and broccoli — 150g turkey breast, 200g cooked whole wheat pasta, 100g broccoli, olive oil (530 kcal, 57g protein, 57g carbs, 9g fat)',
+  },
+  {
+    ro: 'Chiftele din carne tocată de vită 10% grăsime cu orez și salată — 200g carne tocată de vită 10% grăsime, 150g orez alb fiert, 150g salată de castraveți și roșii, ulei de măsline (578 kcal, 40g proteine, 50g carbo, 24g grăsimi)',
+    en: 'Meatballs from 10% fat ground beef with rice and salad — 200g 10% fat ground beef, 150g cooked white rice, 150g cucumber and tomato salad, olive oil (578 kcal, 40g protein, 50g carbs, 24g fat)',
+  },
+  {
+    ro: 'Brânză cottage cu pâine integrală și roșii — 200g brânză cottage, 60g pâine integrală, 100g roșii (331 kcal, 29g proteine, 39g carbo, 7g grăsimi)',
+    en: 'Cottage cheese with whole wheat bread and tomatoes — 200g cottage cheese, 60g whole wheat bread, 100g tomatoes (331 kcal, 29g protein, 39g carbs, 7g fat)',
+  },
+  {
+    ro: 'Mușchiuleț de porc la grătar cu cartofi și legume — 150g mușchiuleț de porc, 200g cartofi, 100g mix de legume, ulei de măsline (510 kcal, 47g proteine, 55g carbo, 11g grăsimi)',
+    en: 'Grilled pork tenderloin with potatoes and vegetables — 150g pork tenderloin, 200g potatoes, 100g mixed vegetables, olive oil (510 kcal, 47g protein, 55g carbs, 11g fat)',
+  },
+  {
+    ro: 'File de cod la cuptor cu orez brun și legume — 180g file de cod, 200g orez brun fiert, 100g mix de legume, ulei de măsline (544 kcal, 50g proteine, 64g carbo, 9g grăsimi)',
+    en: 'Baked cod fillet with brown rice and vegetables — 180g cod fillet, 200g cooked brown rice, 100g mixed vegetables, olive oil (544 kcal, 50g protein, 64g carbs, 9g fat)',
+  },
+  {
+    ro: 'Shake proteic cu iaurt, lapte și banană — 200g iaurt grecesc, 200g lapte 1.5%, banană, 20g fulgi de ovăz (427 kcal, 29g proteine, 59g carbo, 9g grăsimi)',
+    en: 'Protein shake with yogurt, milk and banana — 200g Greek yogurt, 200g 1.5% milk, banana, 20g rolled oats (427 kcal, 29g protein, 59g carbs, 9g fat)',
   },
 ];
 
@@ -1179,33 +1220,36 @@ function buildGmailMimeMessage({ fromEmail, fromName, to, subject, text, pdfBase
 // justifică complexitatea unui cache. Refresh token-ul (permanent, obținut o singură dată prin
 // autorizare manuală) e singurul secret pe termen lung.
 async function getGmailAccessToken(env) {
+  // .trim() defensiv — secretele setate prin `echo valoare | wrangler secret put` pot ajunge
+  // cu un newline final dacă echo îl adaugă și wrangler nu-l curăță; Google compară exact,
+  // deci un caracter în plus la client_secret/refresh_token strică schimbul de token.
   const res = await fetch(GMAIL_TOKEN_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: env.GMAIL_CLIENT_ID,
-      client_secret: env.GMAIL_CLIENT_SECRET,
-      refresh_token: env.GMAIL_REFRESH_TOKEN,
+      client_id: (env.GMAIL_CLIENT_ID || '').trim(),
+      client_secret: (env.GMAIL_CLIENT_SECRET || '').trim(),
+      refresh_token: (env.GMAIL_REFRESH_TOKEN || '').trim(),
       grant_type: 'refresh_token',
     }).toString(),
   });
-  if (!res.ok) return null;
-  let data;
+  let data = null;
   try {
     data = await res.json();
   } catch (err) {
-    return null;
+    data = null;
   }
-  return (data && data.access_token) || null;
+  if (!res.ok || !data || !data.access_token) {
+    const err = new Error('Gmail token exchange failed');
+    err.code = 'GMAIL_AUTH_FAILED';
+    err.detail = data || `HTTP ${res.status}`;
+    throw err;
+  }
+  return data.access_token;
 }
 
 async function sendGmailEmail(env, { to, subject, text, pdfBase64, pdfFileName }) {
-  const accessToken = await getGmailAccessToken(env);
-  if (!accessToken) {
-    const err = new Error('Failed to obtain Gmail access token');
-    err.code = 'GMAIL_AUTH_FAILED';
-    throw err;
-  }
+  const accessToken = await getGmailAccessToken(env); // aruncă (cod GMAIL_AUTH_FAILED) dacă eșuează
 
   const rawMessage = buildGmailMimeMessage({
     fromEmail: env.GMAIL_FROM_ADDRESS,
@@ -1449,7 +1493,8 @@ async function handleSendPlanEmail(request, env, origin, ip) {
     });
   } catch (err) {
     if (err && err.code === 'GMAIL_AUTH_FAILED') {
-      return jsonResponse({ error: 'not_configured' }, 503, origin);
+      // debug temporar — detaliul exact de la Google, ca să diagnosticăm eșecul de autorizare
+      return jsonResponse({ error: 'not_configured', debug: err.detail }, 503, origin);
     }
     return jsonResponse({ error: 'email_send_failed', message: String(err) }, 502, origin);
   }
