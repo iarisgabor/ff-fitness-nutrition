@@ -239,6 +239,11 @@ section{padding:56px 0;}
 .rbadge{display:inline-flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono'; font-weight:700; color:#fff; border-radius:8px;}
 .rbadge.empty{background:var(--surface-2); color:var(--text-3); border:1px solid var(--border);}
 
+/* delta (creștere/scădere față de o perioadă de referință) */
+.delta{font-size:12px; margin-top:2px;}
+.delta.up{color:var(--r5);}
+.delta.down{color:var(--r1);}
+
 /* butoane */
 .btn{
   font-family:'Manrope'; font-weight:700; font-size:13px; padding:9px 16px; border-radius:10px;

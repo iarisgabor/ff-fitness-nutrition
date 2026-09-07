@@ -302,18 +302,67 @@ export function categoryWeeklySeries(responses) {
   return series;
 }
 
+// Sub acest număr de duminici cu date în AMBELE categorii, o corelație e prea
+// zgomotoasă ca să fie de încredere — raportăm "date insuficiente" în loc de un r fals.
+const MIN_CORRELATION_PAIRS = 6;
+
+// Coeficient Pearson între mediile săptămânale a două categorii, calculat doar pe
+// duminicile unde ambele au n>0 (altfel o zi cu 0 răspunsuri la una ar contamina media
+// cu 0, nu cu "lipsă date"). Sub pragul minim de perechi -> null (date insuficiente).
+function pearsonCorrelation(seriesA, seriesB) {
+  const byDateB = new Map(seriesB.map((w) => [w.date, w]));
+  const pairs = [];
+  for (const wa of seriesA) {
+    if (wa.n <= 0) continue;
+    const wb = byDateB.get(wa.date);
+    if (!wb || wb.n <= 0) continue;
+    pairs.push([wa.avg, wb.avg]);
+  }
+  if (pairs.length < MIN_CORRELATION_PAIRS) return null;
+
+  const n = pairs.length;
+  const meanX = pairs.reduce((s, [x]) => s + x, 0) / n;
+  const meanY = pairs.reduce((s, [, y]) => s + y, 0) / n;
+  let num = 0, dx2 = 0, dy2 = 0;
+  for (const [x, y] of pairs) {
+    const dx = x - meanX, dy = y - meanY;
+    num += dx * dy;
+    dx2 += dx * dx;
+    dy2 += dy * dy;
+  }
+  const denom = Math.sqrt(dx2 * dy2);
+  return { r: denom ? num / denom : 0, n };
+}
+
+// Toate perechile unice de categorii (21 pentru 7 dimensiuni, fără diagonală), cu
+// coeficientul lor de corelație — folosit de heatmap-ul de pe /categorii.
+export function categoryCorrelationMatrix(categorySeries) {
+  const keys = DIMENSIONS.map((d) => d.key);
+  const pairs = [];
+  for (let i = 0; i < keys.length; i++) {
+    for (let j = i + 1; j < keys.length; j++) {
+      const a = keys[i], b = keys[j];
+      const result = pearsonCorrelation(categorySeries[a], categorySeries[b]);
+      pairs.push({ a, b, r: result ? result.r : null, n: result ? result.n : 0 });
+    }
+  }
+  return pairs;
+}
+
 export function buildData(responses) {
   const dims = dimensionStats(responses);
   const answeredDims = dims.filter((d) => d.n > 0);
   const overallAvg = answeredDims.length
     ? answeredDims.reduce((sum, d) => sum + d.avg, 0) / answeredDims.length
     : 0;
+  const categorySeries = categoryWeeklySeries(responses);
   return {
     overallAvg,
     dims,
     months: monthlyTrend(responses),
     ages: ageBucketsFrom(responses),
     quotes: pickQuotes(responses),
-    categorySeries: categoryWeeklySeries(responses),
+    categorySeries,
+    categoryCorrelations: categoryCorrelationMatrix(categorySeries),
   };
 }

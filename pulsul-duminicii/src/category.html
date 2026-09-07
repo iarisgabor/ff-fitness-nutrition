@@ -23,6 +23,7 @@ __SHARED_CSS__
 
 .range-bar{margin:8px 0 28px;}
 .custom-range{display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap;}
+.custom-range[hidden]{display:none;} /* altfel .custom-range{display:flex} anulează atributul hidden */
 .custom-range label{font-size:12.5px; color:var(--text-2);}
 .custom-range input[type="date"]{
   font-family:'IBM Plex Mono'; font-size:12.5px; padding:7px 10px; border-radius:8px;
@@ -33,6 +34,14 @@ __SHARED_CSS__
 .section-block h3{font-size:14px; font-weight:700; margin-bottom:2px;}
 .section-sub{font-size:12px; color:var(--text-3); margin-bottom:14px;}
 .empty-state{padding:60px 0; text-align:center; color:var(--text-3);}
+
+.yoy-row{display:flex; align-items:center; gap:22px; flex-wrap:wrap;}
+.yoy-block{text-align:center;}
+.yoy-label{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); font-weight:700;}
+.yoy-val{font-family:'Manrope'; font-weight:800; font-size:26px; margin-top:6px;}
+.yoy-sub{font-size:12px; color:var(--text-2); margin-top:2px;}
+.yoy-arrow{font-size:22px; color:var(--text-3);}
+.yoy-delta{margin-left:auto; font-size:17px; font-weight:700;}
 </style>
 </head>
 <body>
@@ -64,11 +73,17 @@ __SHARED_CSS__
 
   <div id="trend-wrap" class="section-block" hidden>
     <h3>Evoluție în timp</h3>
-    <p class="section-sub">Medie compozită pe duminică, în intervalul selectat. Punctele evidențiate marchează cel mai bun și cel mai slab moment.</p>
+    <p class="section-sub">Medie compozită pe duminică, în intervalul selectat. Punctele evidențiate marchează cel mai bun și cel mai slab moment; zona din jurul liniei arată &plusmn;1 deviație standard &mdash; cât de împrăștiate au fost notele în acea duminică, nu doar media lor.</p>
     <div class="card trend-card">
       <svg id="trend-svg" viewBox="0 0 680 220" style="width:100%; height:220px;"></svg>
       <div class="empty-state" id="trend-empty" hidden style="padding:30px 0;">Prea puține date în acest interval pentru un grafic.</div>
     </div>
+  </div>
+
+  <div id="yoy-wrap" class="section-block" hidden>
+    <h3>Comparație an-pe-an</h3>
+    <p class="section-sub">Ultima lună calendaristică completă din interval, comparată cu aceeași lună din anul anterior — util pentru sezonalitate. Apare doar când există cel puțin un an de istoric.</p>
+    <div class="card pad" id="yoy-content"></div>
   </div>
 
   <div id="dist-wrap" class="section-block" hidden>
@@ -184,8 +199,62 @@ __SHARED_JS__
     return { n, avg: n ? sum/n : 0, dist };
   }
 
+  // Media pe TOT istoricul categoriei (necondiționată de interval) — pragul stabil față
+  // de care se măsoară "peste/sub medie" pentru streak-uri, indiferent ce interval e ales.
+  const ALL_WEEKS_WITH_DATA = SERIES.filter(w => w.n > 0);
+  const GLOBAL_AGG = aggregate(ALL_WEEKS_WITH_DATA);
+
+  // Deviația standard a notelor dintr-o duminică, calculată direct din dist (5 bucket-uri
+  // discrete) — nu avem nevoie de notele individuale, doar de câte au fost la fiecare valoare.
+  function weekStdDev(dist, avg){
+    const n = dist.reduce((a,b) => a+b, 0);
+    if (!n) return 0;
+    const variance = dist.reduce((s,c,i) => s + c*Math.pow((i+1)-avg, 2), 0) / n;
+    return Math.sqrt(variance);
+  }
+
+  // Cel mai lung șir de duminici consecutive (din `weeks`, deja ordonate cronologic) care
+  // îndeplinesc `predicate` — folosit pentru streak-urile "peste/sub media generală".
+  function longestStreak(weeks, predicate){
+    let bestLen = 0, bestStart = -1, bestEnd = -1;
+    let curLen = 0, curStart = -1;
+    weeks.forEach((w, i) => {
+      if (predicate(w)) {
+        if (curLen === 0) curStart = i;
+        curLen++;
+        if (curLen > bestLen) { bestLen = curLen; bestStart = curStart; bestEnd = i; }
+      } else {
+        curLen = 0;
+      }
+    });
+    return bestLen ? { len: bestLen, from: weeks[bestStart], to: weeks[bestEnd] } : null;
+  }
+
+  // ---- comparație an-pe-an ----
+  function isMonthLikelyComplete(d){
+    const daysInMonth = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+    return d.getDate() + 7 > daysInMonth; // nu mai încape încă o duminică în luna asta după d
+  }
+  function lastCompleteMonth(weeks){
+    if (!weeks.length) return null;
+    let idx = weeks.length - 1;
+    if (!isMonthLikelyComplete(weeks[idx]._d)) idx--;
+    if (idx < 0) return null;
+    const d = weeks[idx]._d;
+    return { year: d.getFullYear(), month: d.getMonth() };
+  }
+  function weeksInMonth(allWeeks, year, month){
+    return allWeeks.filter(w => w.n > 0 && w._d.getFullYear() === year && w._d.getMonth() === month);
+  }
+  function monthsCovered(weeks){
+    if (weeks.length < 2) return 0;
+    const first = weeks[0]._d, last = weeks[weeks.length-1]._d;
+    return (last.getFullYear()-first.getFullYear())*12 + (last.getMonth()-first.getMonth());
+  }
+  const YOY_ELIGIBLE = monthsCovered(ALL_WEEKS_WITH_DATA) >= 12;
+
   // ---- KPI-uri ----
-  function renderKpis(agg, prevAgg, best, worst){
+  function renderKpis(agg, prevAgg, best, worst, goodStreak, badStreak){
     const wrap = document.getElementById('cat-kpis');
     const delta = prevAgg ? agg.avg - prevAgg.avg : null;
     const cards = [
@@ -199,6 +268,18 @@ __SHARED_JS__
       { tag: 'Cel mai bun moment', val: fullDateLabel(best.date), sub: `medie ${best.avg.toFixed(2)}` },
     ];
     if (worst) cards.push({ tag: 'Cel mai slab moment', val: fullDateLabel(worst.date), sub: `medie ${worst.avg.toFixed(2)}` });
+    if (goodStreak && goodStreak.len >= 2) {
+      cards.push({
+        tag: 'Cea mai lungă perioadă bună', val: `${goodStreak.len} duminici`,
+        sub: `${fullDateLabel(goodStreak.from.date)} &ndash; ${fullDateLabel(goodStreak.to.date)}, peste media generală (${GLOBAL_AGG.avg.toFixed(2)})`,
+      });
+    }
+    if (badStreak && badStreak.len >= 2) {
+      cards.push({
+        tag: 'Cea mai lungă perioadă de urmărit', val: `${badStreak.len} duminici`,
+        sub: `${fullDateLabel(badStreak.from.date)} &ndash; ${fullDateLabel(badStreak.to.date)}, sub media generală`,
+      });
+    }
     wrap.innerHTML = cards.map(c => `
       <div class="card kpi">
         <div class="tag">${esc(c.tag)}</div>
@@ -206,6 +287,41 @@ __SHARED_JS__
         <div class="sub">${c.sub}</div>
       </div>
     `).join('');
+  }
+
+  // ---- comparație an-pe-an ----
+  function renderYoy(weeksWithData){
+    const wrap = document.getElementById('yoy-wrap');
+    if (!YOY_ELIGIBLE) { wrap.hidden = true; return; }
+    const target = lastCompleteMonth(weeksWithData);
+    if (!target) { wrap.hidden = true; return; }
+    const curWeeks = weeksInMonth(SERIES, target.year, target.month);
+    const prevWeeks = weeksInMonth(SERIES, target.year-1, target.month);
+    if (!curWeeks.length || !prevWeeks.length) { wrap.hidden = true; return; }
+
+    const curAgg = aggregate(curWeeks);
+    const prevAgg = aggregate(prevWeeks);
+    const delta = curAgg.avg - prevAgg.avg;
+    const curLabel = `${MONTHS_RO_FULL[target.month]} ${target.year}`;
+    const prevLabel = `${MONTHS_RO_FULL[target.month]} ${target.year-1}`;
+
+    wrap.hidden = false;
+    document.getElementById('yoy-content').innerHTML = `
+      <div class="yoy-row">
+        <div class="yoy-block">
+          <div class="yoy-label">${esc(prevLabel)}</div>
+          <div class="yoy-val">${prevAgg.avg.toFixed(2)}</div>
+          <div class="yoy-sub">${prevAgg.n} răspunsuri</div>
+        </div>
+        <div class="yoy-arrow">&rarr;</div>
+        <div class="yoy-block">
+          <div class="yoy-label">${esc(curLabel)}</div>
+          <div class="yoy-val">${curAgg.avg.toFixed(2)}</div>
+          <div class="yoy-sub">${curAgg.n} răspunsuri</div>
+        </div>
+        <div class="yoy-delta"><span class="delta ${delta>=0?'up':'down'}">${delta>=0?'+':''}${delta.toFixed(2)}</span></div>
+      </div>
+    `;
   }
 
   // ---- grafic evoluție ----
@@ -232,7 +348,22 @@ __SHARED_JS__
     });
     const avgY = padT + (1 - (overallAvg-yMin)/(yMax-yMin)) * plotH;
     const pathD = pts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
-    const areaD = pathD + ` L ${pts[pts.length-1].x.toFixed(1)} ${padT+plotH} L ${pts[0].x.toFixed(1)} ${padT+plotH} Z`;
+
+    // banda de volatilitate: ±1 deviație standard în jurul mediei fiecărei săptămâni,
+    // calculată direct din dist (5 bucket-uri discrete) — nu doar decor, arată cât de
+    // împrăștiate au fost notele, nu doar unde a fost media.
+    const bandPts = weeks.map((w,i) => {
+      const std = weekStdDev(w.dist, w.avg);
+      const upperVal = Math.min(yMax, w.avg + std);
+      const lowerVal = Math.max(yMin, w.avg - std);
+      return {
+        x: pts[i].x,
+        upperY: padT + (1 - (upperVal-yMin)/(yMax-yMin)) * plotH,
+        lowerY: padT + (1 - (lowerVal-yMin)/(yMax-yMin)) * plotH,
+      };
+    });
+    const bandD = bandPts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1) + ' ' + p.upperY.toFixed(1)).join(' ')
+      + ' ' + bandPts.slice().reverse().map(p => 'L ' + p.x.toFixed(1) + ' ' + p.lowerY.toFixed(1)).join(' ') + ' Z';
 
     const tickCount = Math.min(6, weeks.length);
     const tickIdxs = [...new Set(tickCount<=1 ? [0] : Array.from({length:tickCount}, (_,i) => Math.round(i*(weeks.length-1)/(tickCount-1))))];
@@ -243,15 +374,11 @@ __SHARED_JS__
           <feGaussianBlur stdDeviation="2.4" result="b"/>
           <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        <linearGradient id="catAreaFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="var(--accent2-mark)" stop-opacity="0.16"/>
-          <stop offset="100%" stop-color="var(--accent2-mark)" stop-opacity="0"/>
-        </linearGradient>
       </defs>
       <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${W-padR}" y2="${avgY.toFixed(1)}" stroke="var(--text-3)" stroke-width="1" opacity="0.35"/>
       <text x="${W-padR}" y="${(avgY-6).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--text-3)" font-family="IBM Plex Mono">medie ${overallAvg.toFixed(2)}</text>
       <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
-      <path d="${areaD}" fill="url(#catAreaFill)"/>
+      <path d="${bandD}" fill="var(--accent-mark)" fill-opacity="0.14" stroke="none"/>
       <path d="${pathD}" fill="none" stroke="var(--accent2-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#catLineGlow)"/>
     `;
     pts.forEach((p,i) => {
@@ -319,12 +446,14 @@ __SHARED_JS__
     const trendWrap = document.getElementById('trend-wrap');
     const distWrap = document.getElementById('dist-wrap');
     const tableWrap = document.getElementById('table-wrap');
+    const yoyWrap = document.getElementById('yoy-wrap');
 
     if (!weeksWithData.length) {
       kpiWrap.innerHTML = '<div class="empty-state">Niciun răspuns pentru această categorie în intervalul selectat.</div>';
       trendWrap.hidden = true;
       distWrap.hidden = true;
       tableWrap.hidden = true;
+      yoyWrap.hidden = true;
       return;
     }
     trendWrap.hidden = false;
@@ -351,10 +480,14 @@ __SHARED_JS__
       if (prevWeeks.length) prevAgg = aggregate(prevWeeks);
     }
 
-    renderKpis(agg, prevAgg, best, worst);
+    const goodStreak = longestStreak(weeksWithData, w => w.avg >= GLOBAL_AGG.avg);
+    const badStreak = longestStreak(weeksWithData, w => w.avg < GLOBAL_AGG.avg);
+
+    renderKpis(agg, prevAgg, best, worst, goodStreak, badStreak);
     renderTrend(weeksWithData, agg.avg, best.slug, worst ? worst.slug : null);
     renderDist(agg.dist);
     renderTable(weeksWithData.slice().reverse());
+    renderYoy(weeksWithData);
   }
 
   document.getElementById('range-toggle').addEventListener('click', (e) => {

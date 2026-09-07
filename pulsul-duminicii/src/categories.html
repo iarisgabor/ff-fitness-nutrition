@@ -29,6 +29,22 @@ __SHARED_CSS__
 .cat-card:hover{border-left-color:var(--accent-mark); box-shadow:var(--shadow), 0 0 0 1px var(--accent-mark) inset;}
 
 .empty-state{padding:60px 0; text-align:center; color:var(--text-3);}
+
+.section-block{margin:16px 0 60px;}
+.section-block h3{font-size:16px; font-weight:700; margin-bottom:2px;}
+.section-sub{font-size:12.5px; color:var(--text-3); max-width:64ch; margin-bottom:18px;}
+
+.heatmap-scroll{overflow-x:auto;}
+.heatmap-grid{display:grid; grid-template-columns: 122px repeat(7, minmax(66px,1fr)); gap:4px; min-width:640px;}
+.heatmap-cell{
+  aspect-ratio:1; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  font-family:'IBM Plex Mono'; font-weight:700; font-size:12px; cursor:default;
+}
+.heatmap-cell.diag, .heatmap-cell.empty{background:var(--surface-2); color:var(--text-3); font-weight:500;}
+.heatmap-label{display:flex; align-items:center; font-size:11.5px; font-weight:600; color:var(--text-2); padding-right:8px; line-height:1.25;}
+.heatmap-label.col{justify-content:center; text-align:center; padding-right:0;}
+.heatmap-legend{display:flex; align-items:center; gap:10px; margin-top:18px; font-size:12px; color:var(--text-2); flex-wrap:wrap;}
+.heatmap-legend .bar{width:150px; height:10px; border-radius:5px; background:linear-gradient(90deg, var(--accent2-mark), var(--surface-2), var(--accent-mark)); flex:none;}
 </style>
 </head>
 <body>
@@ -43,6 +59,17 @@ __SHARED_CSS__
     <p>Alege o categorie ca să vezi cum a evoluat în timp — interval selectabil, cel mai bun și cel mai slab moment, distribuția notelor.</p>
   </div>
   <div class="cats-grid" id="cats-grid"></div>
+
+  <div class="section-block" id="heatmap-section">
+    <h3>Cum se leagă categoriile între ele</h3>
+    <p class="section-sub">Corelație între mediile săptămânale a două categorii, calculată pe tot istoricul. Valori spre +1 înseamnă că cresc și scad împreună în aceeași duminică; spre &minus;1 că merg în direcții opuse; aproape de 0 că sunt independente.</p>
+    <div class="card pad" id="heatmap-wrap"></div>
+    <div class="heatmap-legend">
+      <span>&minus;1 (opuse)</span>
+      <span class="bar"></span>
+      <span>+1 (împreună)</span>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -52,6 +79,8 @@ __SHARED_JS__
 (function(){
   const PAYLOAD = __PULS_DATA_JSON__;
   const DIMS = PAYLOAD.dims || [];
+  const CORR = PAYLOAD.correlations || [];
+  const ALLKEYS = PAYLOAD.allKeys || [];
   const META = PAYLOAD.meta || {};
 
   initNav('categories', `${META.totalResponses||0} răspunsuri · ${META.dateRangeLabel||''}`);
@@ -63,8 +92,10 @@ __SHARED_JS__
   }
 
   const grid = document.getElementById('cats-grid');
+  const heatmapSection = document.getElementById('heatmap-section');
   if (!DIMS.length) {
     grid.outerHTML = '<div class="empty-state">Niciun răspuns găsit încă.</div>';
+    heatmapSection.hidden = true;
     return;
   }
 
@@ -86,6 +117,60 @@ __SHARED_JS__
     `;
     grid.appendChild(a);
   });
+
+  // ---- heatmap de corelații între categorii ----
+  function findCorr(k1, k2){
+    return CORR.find(c => (c.a===k1 && c.b===k2) || (c.a===k2 && c.b===k1));
+  }
+  function interpretR(r){
+    const a = Math.abs(r);
+    const strength = a >= 0.6 ? 'puternică' : a >= 0.3 ? 'moderată' : 'slabă';
+    if (a < 0.05) return 'fără corelație vizibilă';
+    return `corelație ${strength} ${r > 0 ? 'pozitivă' : 'negativă'}`;
+  }
+  const shortLabel = (label) => label.split(' ')[0];
+
+  if (ALLKEYS.length < 2) {
+    heatmapSection.hidden = true;
+  } else {
+    let html = '<div class="heatmap-scroll"><div class="heatmap-grid">';
+    html += '<div></div>';
+    ALLKEYS.forEach(k => { html += `<div class="heatmap-label col">${esc(shortLabel(k.label))}</div>`; });
+    ALLKEYS.forEach(rowK => {
+      html += `<div class="heatmap-label">${esc(shortLabel(rowK.label))}</div>`;
+      ALLKEYS.forEach(colK => {
+        if (rowK.key === colK.key) {
+          html += `<div class="heatmap-cell diag">&mdash;</div>`;
+          return;
+        }
+        const entry = findCorr(rowK.key, colK.key);
+        if (!entry || entry.r === null) {
+          html += `<div class="heatmap-cell empty" data-row="${rowK.key}" data-col="${colK.key}">&ndash;</div>`;
+        } else {
+          const pct = Math.round(Math.abs(entry.r) * 85) + 12;
+          const color = entry.r >= 0
+            ? `color-mix(in srgb, var(--accent-mark) ${pct}%, var(--surface))`
+            : `color-mix(in srgb, var(--accent2-mark) ${pct}%, var(--surface))`;
+          const textColor = Math.abs(entry.r) >= 0.35 ? '#fff' : 'var(--text)';
+          html += `<div class="heatmap-cell" data-row="${rowK.key}" data-col="${colK.key}" style="background:${color}; color:${textColor};">${entry.r.toFixed(2)}</div>`;
+        }
+      });
+    });
+    html += '</div></div>';
+    document.getElementById('heatmap-wrap').innerHTML = html;
+
+    document.querySelectorAll('.heatmap-cell[data-row]').forEach(cell => {
+      const rowK = ALLKEYS.find(k => k.key === cell.dataset.row);
+      const colK = ALLKEYS.find(k => k.key === cell.dataset.col);
+      const entry = findCorr(rowK.key, colK.key);
+      bindTip(cell, () => {
+        if (!entry || entry.r === null) {
+          return `<b>${esc(rowK.label)} &times; ${esc(colK.label)}</b>date insuficiente pentru o corelație de încredere (prea puține duminici cu răspunsuri la ambele)`;
+        }
+        return `<b>${esc(rowK.label)} &times; ${esc(colK.label)}</b>r = ${entry.r.toFixed(2)} &middot; ${interpretR(entry.r)}<div class="tt-sub" style="margin-top:4px;">${entry.n} duminici cu răspunsuri la ambele</div>`;
+      });
+    });
+  }
 })();
 </script>
 </body>

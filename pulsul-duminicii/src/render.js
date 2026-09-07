@@ -196,7 +196,8 @@ export async function renderCategoriesIndex(env, ctx) {
   const { responses, data, stale } = await getComputedPayload(env, ctx);
   const meta = baseMeta(responses, stale);
   delete meta._dates;
-  const payload = { dims: data.dims, meta };
+  const allKeys = DIMENSIONS.map((d) => ({ key: d.key, label: d.label }));
+  const payload = { dims: data.dims, correlations: data.categoryCorrelations, allKeys, meta };
   return injectShared(CATEGORIES_TEMPLATE).replace('__PULS_DATA_JSON__', safeJsonForScript(payload));
 }
 
