@@ -93,6 +93,7 @@ Fișiere:
 - `src/config.js` — maparea coloană-Sheet → categorie (singurul loc de ajustat dacă se schimbă formularul)
 - `src/transform.js` — rânduri brute → `DATA`/`RESPONSES` + toate agregatele, inclusiv `categoryWeeklySeries` (serie săptămânală per categorie, pentru pagina de analiză)
 - `src/aiSummary.js` — rezumat opțional per duminică (Claude Haiku 4.5), cache KV pe hash de conținut
+- `src/aiTrendSummary.js` — analiză AI opțională a tendinței per categorie (Claude Haiku 4.5), doar pentru presetup-urile de interval de pe `/categorii/:cheie` (1/3/6/12 luni, Tot), cache KV
 - `src/render.js` — orchestrează fetch→transform→randare, cu fallback din cache la eroare
 - `src/shared.css`, `src/shared.txt` — stiluri și JS comune tuturor paginilor (temă, meniu, tooltip)
 - `src/home.html` — pagina Acasă (statistici generale)

@@ -8,6 +8,7 @@ import SHARED_JS from './shared.txt';
 import { getAccessToken, fetchSheetValues } from './sheets.js';
 import { buildColumnMap, rowsToResponses, buildData, summarizeByDate, dateToSlug, slugToDate } from './transform.js';
 import { getCachedAiSummary, generateAndCacheAiSummary } from './aiSummary.js';
+import { RANGE_PRESETS, weeksForPreset, getCachedTrendSummary, generateAndCacheTrendSummary } from './aiTrendSummary.js';
 import { DIMENSIONS } from './config.js';
 
 const PAYLOAD_KEY = 'sheet_payload';
@@ -210,10 +211,24 @@ export async function renderCategoryDetail(env, ctx, key) {
   const { responses, data, stale } = await getComputedPayload(env, ctx);
   const series = data.categorySeries[key] || [];
   const allKeys = DIMENSIONS.map((d) => ({ key: d.key, label: d.label }));
+  const globalAvg = data.dims.find((d) => d.key === key)?.avg || 0;
+
+  // Analiză AI de tendință, doar pentru presetup-urile de interval (nu "Personalizat" —
+  // ar fi imposibil de cache-uit). Rapid: doar KV.get; generarea lipsă pornește în fundal.
+  const trendSummaries = {};
+  for (const preset of RANGE_PRESETS) {
+    const weeks = weeksForPreset(series, preset.months);
+    if (weeks.length < 2) { trendSummaries[preset.key] = null; continue; }
+    const cached = await getCachedTrendSummary(env, key, preset.key, weeks);
+    trendSummaries[preset.key] = cached;
+    if (cached === null && env.ANTHROPIC_API_KEY) {
+      ctx.waitUntil(generateAndCacheTrendSummary(env, dim, preset, weeks, series, globalAvg));
+    }
+  }
 
   const meta = baseMeta(responses, stale);
   delete meta._dates;
 
-  const payload = { key, label: dim.label, full: dim.full, series, allKeys, meta };
+  const payload = { key, label: dim.label, full: dim.full, series, allKeys, trendSummaries, meta };
   return injectShared(CATEGORY_TEMPLATE).replace('__PULS_DATA_JSON__', safeJsonForScript(payload));
 }

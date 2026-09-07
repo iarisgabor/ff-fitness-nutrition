@@ -20,7 +20,7 @@ npm install
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | fișierul JSON al service account-ului (vezi mai jos) — câmpul `client_email` |
 | `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | același JSON — câmpul `private_key` (cu tot cu `-----BEGIN/END PRIVATE KEY-----`) |
 | `SITE_PASSWORD` | doar dacă schimbi `AUTH_MODE` în `"password"` (implicit e `"none"`) |
-| `ANTHROPIC_API_KEY` | consola Anthropic — opțional, activează rezumatul AI per duminică |
+| `ANTHROPIC_API_KEY` | consola Anthropic — opțional, activează rezumatul AI per duminică și analiza AI de tendință de pe `/categorii/:cheie` |
 
 `AUTH_MODE` și `GOOGLE_SHEET_ID` sunt în `wrangler.toml` (`[vars]`), nu secrete.
 

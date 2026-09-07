@@ -42,6 +42,10 @@ __SHARED_CSS__
 .yoy-sub{font-size:12px; color:var(--text-2); margin-top:2px;}
 .yoy-arrow{font-size:22px; color:var(--text-3);}
 .yoy-delta{margin-left:auto; font-size:17px; font-weight:700;}
+
+#ai-trend-wrap{margin-top:16px;}
+#ai-trend-wrap .ai-summary{margin-bottom:0;}
+.ai-summary p{margin:0; font-size:14px; line-height:1.55; color:var(--text);}
 </style>
 </head>
 <body>
@@ -78,6 +82,7 @@ __SHARED_CSS__
       <svg id="trend-svg" viewBox="0 0 680 220" style="width:100%; height:220px;"></svg>
       <div class="empty-state" id="trend-empty" hidden style="padding:30px 0;">Prea puține date în acest interval pentru un grafic.</div>
     </div>
+    <div id="ai-trend-wrap" hidden></div>
   </div>
 
   <div id="yoy-wrap" class="section-block" hidden>
@@ -110,7 +115,8 @@ __SHARED_JS__
 <script>
 (function(){
   const PAYLOAD = __PULS_DATA_JSON__;
-  const { key, label, full, series, allKeys } = PAYLOAD;
+  const { key, label, full, series, allKeys, trendSummaries } = PAYLOAD;
+  const TREND_SUMMARIES = trendSummaries || {};
   const META = PAYLOAD.meta || {};
 
   initNav('category', `${META.totalResponses||0} răspunsuri · ${META.dateRangeLabel||''}`);
@@ -404,6 +410,20 @@ __SHARED_JS__
     });
   }
 
+  // ---- analiză AI de tendință (doar pentru presetup-uri, nu "Personalizat") ----
+  function renderAiTrendSummary(){
+    const wrap = document.getElementById('ai-trend-wrap');
+    const text = TREND_SUMMARIES[currentRangeKey];
+    if (!text) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    wrap.innerHTML = `
+      <div class="ai-summary">
+        <div class="ai-tag">✦ Analiză AI &middot; tendința pe acest interval</div>
+        <p>${esc(text)}</p>
+      </div>
+    `;
+  }
+
   // ---- distribuție ----
   function renderDist(distTotal){
     const wrap = document.getElementById('cat-dist');
@@ -447,6 +467,7 @@ __SHARED_JS__
     const distWrap = document.getElementById('dist-wrap');
     const tableWrap = document.getElementById('table-wrap');
     const yoyWrap = document.getElementById('yoy-wrap');
+    const aiTrendWrap = document.getElementById('ai-trend-wrap');
 
     if (!weeksWithData.length) {
       kpiWrap.innerHTML = '<div class="empty-state">Niciun răspuns pentru această categorie în intervalul selectat.</div>';
@@ -454,6 +475,7 @@ __SHARED_JS__
       distWrap.hidden = true;
       tableWrap.hidden = true;
       yoyWrap.hidden = true;
+      aiTrendWrap.hidden = true;
       return;
     }
     trendWrap.hidden = false;
@@ -485,6 +507,7 @@ __SHARED_JS__
 
     renderKpis(agg, prevAgg, best, worst, goodStreak, badStreak);
     renderTrend(weeksWithData, agg.avg, best.slug, worst ? worst.slug : null);
+    renderAiTrendSummary();
     renderDist(agg.dist);
     renderTable(weeksWithData.slice().reverse());
     renderYoy(weeksWithData);
