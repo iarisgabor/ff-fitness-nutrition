@@ -1,0 +1,4 @@
+GOOGLE_SERVICE_ACCOUNT_EMAIL=nume@proiect.iam.gserviceaccount.com
+GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+SITE_PASSWORD=doar-daca-AUTH_MODE-e-password
+ANTHROPIC_API_KEY=sk-ant-...opțional, activează rezumatul AI

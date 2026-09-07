@@ -1,0 +1,30 @@
+name = "pulsul-duminicii"
+main = "src/index.js"
+compatibility_date = "2026-08-21"
+
+# Șabloanele (.html), stilurile comune (.css) și scriptul comun (.txt) sunt
+# importate ca text brut, nu servite static — vezi src/render.js
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.css", "**/*.txt"]
+fallthrough = true
+
+[vars]
+# "none" = link neafișat public, fără parolă (alegerea actuală, explicită).
+# "password" = Basic Auth cu SITE_PASSWORD. "access" = Cloudflare Access (nimic
+# de configurat aici, doar în dashboard Zero Trust).
+AUTH_MODE = "none"
+GOOGLE_SHEET_ID = "1NIRVF-Dfxbu3BweApf9eWhMW80ZLeXw6RGPAVAQieic"
+
+# Rulează întâi:
+#   wrangler kv namespace create PULSUL_KV
+# și pune id-ul rezultat mai jos.
+[[kv_namespaces]]
+binding = "PULSUL_KV"
+id = "f6570857beb34a71a17142234f3b7e7a"
+
+# Secrete — NICIODATĂ aici, doar prin:
+#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL
+#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+#   wrangler secret put SITE_PASSWORD          (doar dacă AUTH_MODE = "password")
+#   wrangler secret put ANTHROPIC_API_KEY       (opțional — activează rezumatul AI)

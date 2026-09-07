@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pulsul Duminicii — Răspunsuri pe zile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+__SHARED_CSS__
+
+.page-head{padding:48px 0 8px;}
+.page-head h1{font-size:clamp(26px,3.2vw,36px); font-weight:700;}
+.page-head p{margin-top:10px; font-size:14.5px; color:var(--text-2); max-width:60ch;}
+
+.days-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px; padding:40px 0 80px;}
+.day-card{
+  display:flex; flex-direction:column; gap:14px; padding:22px 22px 20px;
+  text-decoration:none; color:inherit; position:relative; overflow:hidden;
+  border-left:4px solid var(--r3);
+}
+.day-card .d-date{font-family:'Sora'; font-weight:700; font-size:18px;}
+.day-card .d-sub{font-size:12px; color:var(--text-3);}
+.day-card .d-row{display:flex; align-items:center; justify-content:space-between; margin-top:auto;}
+.day-card .d-count{font-size:12.5px; color:var(--text-2);}
+.day-card .d-avg{font-family:'IBM Plex Mono'; font-weight:700; font-size:18px;}
+.day-card:hover{border-left-color:var(--accent-mark); box-shadow:var(--shadow), 0 0 0 1px var(--accent-mark) inset;}
+
+.empty-state{padding:60px 0; text-align:center; color:var(--text-3);}
+</style>
+</head>
+<body>
+
+<div id="tooltip"></div>
+<div class="topbar" id="topbar-root"></div>
+<div id="stale-banner" class="stale-banner" hidden></div>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>Răspunsuri pe zile</h1>
+    <p>Alege o duminică ca să vezi feedback-ul acelei zile — pe categorii, unul câte unul (bun pentru întâlnirea de luni), sau toate deodată, într-un dashboard.</p>
+  </div>
+  <div class="days-grid" id="days-grid"></div>
+</div>
+
+<script>
+__SHARED_JS__
+</script>
+<script>
+(function(){
+  const PAYLOAD = __PULS_DATA_JSON__;
+  const DAYS = PAYLOAD.days || [];
+  const META = PAYLOAD.meta || {};
+
+  initNav('days', `${META.totalResponses||0} răspunsuri · ${META.dateRangeLabel||''}`);
+
+  if (META.stale) {
+    const banner = document.getElementById('stale-banner');
+    banner.hidden = false;
+    banner.textContent = 'Date posibil neactualizate — nu am reușit să citim Sheet-ul live la ultima încercare; se arată ultima versiune bună cunoscută.';
+  }
+
+  const grid = document.getElementById('days-grid');
+  if (!DAYS.length) {
+    grid.outerHTML = '<div class="empty-state">Niciun răspuns găsit încă.</div>';
+    return;
+  }
+
+  DAYS.forEach(d => {
+    const {dd,mm,yyyy} = parseDMY(d.date);
+    const avgColor = d.avg ? `var(--r${Math.max(1,Math.min(5,Math.round(d.avg)))})` : 'var(--r3)';
+    const a = document.createElement('a');
+    a.className = 'card day-card';
+    a.href = `/zile/${d.slug}`;
+    a.style.borderLeftColor = avgColor;
+    a.innerHTML = `
+      <div>
+        <div class="d-date">${dd} ${MONTHS_RO_FULL[mm-1]}</div>
+        <div class="d-sub">${yyyy}</div>
+      </div>
+      <div class="d-row">
+        <div class="d-count">${d.count} ${d.count===1?'răspuns':'răspunsuri'}</div>
+        <div class="d-avg" style="color:${avgColor}">${d.avg ? d.avg.toFixed(2) : '–'}</div>
+      </div>
+    `;
+    grid.appendChild(a);
+  });
+})();
+</script>
+</body>
+</html>

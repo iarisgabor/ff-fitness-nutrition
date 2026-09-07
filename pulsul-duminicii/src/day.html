@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pulsul Duminicii — o duminică</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+__SHARED_CSS__
+
+.day-head{padding:40px 0 0; display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap;}
+.day-nav{display:flex; align-items:center; gap:10px;}
+.day-nav a{
+  width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2);
+  display:flex; align-items:center; justify-content:center; text-decoration:none; color:var(--text);
+  font-size:16px;
+}
+.day-nav a.disabled{opacity:.3; pointer-events:none;}
+.day-title h1{font-size:clamp(24px,3vw,32px); font-weight:700;}
+.day-title .sub{margin-top:4px; font-size:13px; color:var(--text-3);}
+.back-link{font-size:12.5px; color:var(--text-3); text-decoration:none; display:inline-flex; align-items:center; gap:5px; margin-bottom:14px;}
+.back-link:hover{color:var(--text);}
+
+.day-stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:28px 0 8px;}
+.day-stats .kpi .delta{font-size:12px; margin-top:2px;}
+.day-stats .delta.up{color:var(--r5);}
+.day-stats .delta.down{color:var(--r1);}
+
+.view-bar{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin:36px 0 18px;}
+
+/* categorii */
+.cat-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;}
+.cat-tab{
+  font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:999px;
+  border:1px solid var(--border); background:var(--surface-2); color:var(--text-2); cursor:pointer;
+}
+.cat-tab:hover{border-color:color-mix(in srgb, var(--accent-mark) 45%, var(--border));}
+.cat-tab.active{background:color-mix(in srgb, var(--accent-mark) 16%, var(--surface-2)); border-color:var(--accent-mark); color:var(--text);}
+.cat-tab .cat-n{font-family:'IBM Plex Mono'; opacity:.7; margin-left:5px;}
+
+/* slideshow */
+.slide-card{border:1px solid var(--border); border-radius:18px; padding:32px 36px; background:var(--surface); box-shadow:var(--shadow); min-height:220px;}
+.slide-top{display:flex; align-items:center; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
+.slide-meta{display:flex; flex-direction:column; gap:2px;}
+.slide-cat-label{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--text-3);}
+.slide-when{font-size:12px; color:var(--text-3); font-family:'IBM Plex Mono';}
+.slide-question{font-size:14.5px; color:var(--text-2); font-style:italic; line-height:1.45; margin-bottom:16px; padding-bottom:16px; border-bottom:1px dashed var(--border);}
+.slide-text{font-size:19px; line-height:1.55; color:var(--text); font-weight:500;}
+.slide-text.empty{color:var(--text-3); font-style:italic; font-weight:400;}
+.slide-nav{display:flex; align-items:center; justify-content:space-between; margin-top:26px;}
+.slide-counter{font-family:'IBM Plex Mono'; font-size:13px; color:var(--text-3);}
+.slide-empty{padding:40px 0; text-align:center; color:var(--text-3); font-size:14px;}
+
+/* dashboard — toate deodată */
+.dash-grid{columns:2; column-gap:18px;}
+@media (max-width:820px){.dash-grid{columns:1;}}
+.dash-card{break-inside:avoid; margin-bottom:18px; padding:20px 22px;}
+.dash-card .dh{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+.dash-card .dh b{font-size:14.5px; font-weight:700;}
+.dash-card .dh .n{font-size:11.5px; color:var(--text-3); font-family:'IBM Plex Mono';}
+.dash-question{font-size:12.5px; color:var(--text-3); font-style:italic; line-height:1.45; margin-bottom:14px; padding-bottom:14px; border-bottom:1px dashed var(--border);}
+.dash-item{display:flex; gap:11px; padding:11px 0; border-top:1px solid var(--border);}
+.dash-item:first-child{border-top:none; padding-top:0;}
+.dash-text{font-size:13.5px; line-height:1.55; color:var(--text);}
+.dash-text.empty{color:var(--text-3); font-style:italic;}
+.dash-chips{margin-top:4px; display:flex; gap:6px; flex-wrap:wrap;}
+
+.rbadge.sm{width:26px; height:26px; font-size:12px; flex:none;}
+.rbadge.lg{width:44px; height:44px; font-size:20px; flex:none;}
+</style>
+</head>
+<body>
+
+<div id="tooltip"></div>
+<div class="topbar" id="topbar-root"></div>
+<div id="stale-banner" class="stale-banner" hidden></div>
+
+<div class="wrap">
+  <div class="day-head">
+    <div>
+      <a href="/zile" class="back-link">&larr; toate duminicile</a>
+      <div class="day-title">
+        <h1 id="day-title"></h1>
+        <div class="sub" id="day-sub"></div>
+      </div>
+    </div>
+    <div class="day-nav" id="day-nav"></div>
+  </div>
+
+  <div class="day-stats" id="day-stats"></div>
+
+  <div id="ai-summary-wrap"></div>
+
+  <div class="view-bar">
+    <div class="toggle-group" id="view-toggle">
+      <div class="toggle-opt active" data-view="slideshow">Slideshow</div>
+      <div class="toggle-opt" data-view="dashboard">Toate deodată</div>
+    </div>
+  </div>
+
+  <div id="view-slideshow">
+    <div class="cat-tabs" id="cat-tabs"></div>
+    <div id="slide-panel"></div>
+  </div>
+
+  <div id="view-dashboard" hidden>
+    <div class="dash-grid" id="dash-grid"></div>
+  </div>
+
+  <div style="height:70px;"></div>
+</div>
+
+<script>
+__SHARED_JS__
+</script>
+<script>
+(function(){
+  const PAYLOAD = __PULS_DATA_JSON__;
+  const { date, items, dimLabels, aiSummary } = PAYLOAD;
+  const META = PAYLOAD.meta || {};
+
+  initNav('day', `${META.totalResponses||0} răspunsuri · ${META.dateRangeLabel||''}`);
+
+  if (META.stale) {
+    const banner = document.getElementById('stale-banner');
+    banner.hidden = false;
+    banner.textContent = 'Date posibil neactualizate — nu am reușit să citim Sheet-ul live la ultima încercare; se arată ultima versiune bună cunoscută.';
+  }
+
+  const {dd,mm,yyyy} = parseDMY(date);
+  document.title = `Pulsul Duminicii — ${dd} ${MONTHS_RO_FULL[mm-1]} ${yyyy}`;
+  document.getElementById('day-title').textContent = `${dd} ${MONTHS_RO_FULL[mm-1]} ${yyyy}`;
+  document.getElementById('day-sub').textContent = `${items.length} ${items.length===1?'răspuns':'răspunsuri'}`;
+
+  const nav = document.getElementById('day-nav');
+  nav.innerHTML = `
+    <a href="${META.prevSlug?`/zile/${META.prevSlug}`:'#'}" class="${META.prevSlug?'':'disabled'}" title="Duminica anterioară">&larr;</a>
+    <a href="${META.nextSlug?`/zile/${META.nextSlug}`:'#'}" class="${META.nextSlug?'':'disabled'}" title="Duminica următoare">&rarr;</a>
+  `;
+
+  // ---- mini dashboard de sus: medie zi, comparație cu media generală, top/slab ----
+  const ratings = items.flatMap(r => dimLabels.map(d => Number(r[d.key]?.r)).filter(v => v >= 1 && v <= 5));
+  const dayAvg = ratings.length ? ratings.reduce((a,b)=>a+b,0)/ratings.length : null;
+  const perDim = dimLabels.map(d => {
+    const vals = items.map(r => Number(r[d.key]?.r)).filter(v => v >= 1 && v <= 5);
+    return { ...d, avg: vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null, n: vals.length };
+  }).filter(d => d.n > 0);
+  const best = perDim.slice().sort((a,b)=>b.avg-a.avg)[0];
+  const worst = perDim.slice().sort((a,b)=>a.avg-b.avg)[0];
+  const delta = (dayAvg != null && META.overallAvg) ? dayAvg - META.overallAvg : null;
+
+  const statsWrap = document.getElementById('day-stats');
+  const stats = [
+    { tag: 'Medie ziua asta', val: dayAvg != null ? dayAvg.toFixed(2) : '–',
+      sub: delta != null ? `<span class="delta ${delta>=0?'up':'down'}">${delta>=0?'+':''}${delta.toFixed(2)} față de medie</span>` : '' },
+    { tag: 'Răspunsuri', val: String(items.length), sub: `pe ${dimLabels.length} categorii` },
+  ];
+  if (best) stats.push({ tag: 'Cel mai bine', val: best.label, sub: `medie ${best.avg.toFixed(2)}` });
+  if (worst && worst.key !== best?.key) stats.push({ tag: 'De urmărit', val: worst.label, sub: `medie ${worst.avg.toFixed(2)}` });
+  statsWrap.innerHTML = stats.map(s => `
+    <div class="card kpi">
+      <div class="tag">${esc(s.tag)}</div>
+      <div class="val">${esc(s.val)}</div>
+      <div class="sub">${s.sub}</div>
+    </div>
+  `).join('');
+
+  if (aiSummary && aiSummary.length) {
+    document.getElementById('ai-summary-wrap').innerHTML = `
+      <div class="ai-summary">
+        <div class="ai-tag">✦ Rezumat AI &middot; temele zilei</div>
+        <ul>${aiSummary.map(p => `<li>${esc(p)}</li>`).join('')}</ul>
+      </div>
+    `;
+  }
+
+  // ---- toggle slideshow / dashboard ----
+  const toggleEl = document.getElementById('view-toggle');
+  const viewSlideshow = document.getElementById('view-slideshow');
+  const viewDashboard = document.getElementById('view-dashboard');
+  toggleEl.addEventListener('click', (e) => {
+    const opt = e.target.closest('.toggle-opt');
+    if (!opt) return;
+    toggleEl.querySelectorAll('.toggle-opt').forEach(o => o.classList.toggle('active', o === opt));
+    const isSlideshow = opt.dataset.view === 'slideshow';
+    viewSlideshow.hidden = !isSlideshow;
+    viewDashboard.hidden = isSlideshow;
+  });
+
+  // ---- slideshow ----
+  const catsWithData = dimLabels.filter(d => items.some(r => r[d.key] && (r[d.key].r || (r[d.key].t||'').trim())));
+  const catTabsWrap = document.getElementById('cat-tabs');
+  const slidePanel = document.getElementById('slide-panel');
+  let currentCatKey = catsWithData.length ? catsWithData[0].key : null;
+  let currentSlideIdx = 0;
+
+  function slidesForCurrentCategory(){
+    if (!currentCatKey) return [];
+    return items
+      .filter(r => r[currentCatKey] && (r[currentCatKey].r || (r[currentCatKey].t||'').trim()))
+      .map(r => ({ ...r[currentCatKey], name: r.name, age: r.age, time: r.time }));
+  }
+
+  function renderCatTabs(){
+    catTabsWrap.innerHTML = '';
+    catsWithData.forEach(d => {
+      const n = items.filter(r => r[d.key] && (r[d.key].r || (r[d.key].t||'').trim())).length;
+      const tab = document.createElement('div');
+      tab.className = 'cat-tab' + (d.key === currentCatKey ? ' active' : '');
+      tab.innerHTML = `${esc(d.label)}<span class="cat-n">${n}</span>`;
+      tab.addEventListener('click', () => {
+        currentCatKey = d.key;
+        currentSlideIdx = 0;
+        renderCatTabs();
+        renderSlide();
+      });
+      catTabsWrap.appendChild(tab);
+    });
+  }
+
+  function renderSlide(){
+    const slides = slidesForCurrentCategory();
+    if (!slides.length) {
+      slidePanel.innerHTML = '<div class="slide-empty">Nimeni nu a răspuns la această categorie în această duminică.</div>';
+      return;
+    }
+    if (currentSlideIdx >= slides.length) currentSlideIdx = 0;
+    const s = slides[currentSlideIdx];
+    const color = ratingColor(s.r);
+    const badge = s.r
+      ? `<div class="rbadge lg" style="background:${color}">${s.r}</div>`
+      : `<div class="rbadge lg empty">&ndash;</div>`;
+    const dim = dimLabels.find(d => d.key === currentCatKey) || {};
+    const chips = (s.age ? `<span class="chip">${esc(s.age)}</span>` : '') + (s.name ? `<span class="chip name">${esc(s.name)}</span>` : '');
+    slidePanel.innerHTML = `
+      <div class="slide-card">
+        <div class="slide-top">
+          ${badge}
+          <div class="slide-meta">
+            <div class="slide-cat-label">${esc(dim.label||'')}</div>
+            <div class="slide-when mono">${esc(s.time||'')} ${chips}</div>
+          </div>
+        </div>
+        ${dim.full ? `<div class="slide-question">${esc(dim.full)}</div>` : ''}
+        <div class="slide-text ${s.t?'':'empty'}">${s.t ? esc(s.t) : 'fără text, doar notă'}</div>
+        <div class="slide-nav">
+          <button class="btn" id="slide-prev" ${currentSlideIdx===0?'disabled':''}>&larr; Anterior</button>
+          <div class="slide-counter">${currentSlideIdx+1} din ${slides.length}</div>
+          <button class="btn" id="slide-next" ${currentSlideIdx===slides.length-1?'disabled':''}>Următor &rarr;</button>
+        </div>
+      </div>
+    `;
+    const prevBtn = document.getElementById('slide-prev');
+    const nextBtn = document.getElementById('slide-next');
+    if (prevBtn) prevBtn.addEventListener('click', () => { currentSlideIdx--; renderSlide(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { currentSlideIdx++; renderSlide(); });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (viewSlideshow.hidden || !currentCatKey) return;
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const slides = slidesForCurrentCategory();
+    if (e.key === 'ArrowLeft' && currentSlideIdx > 0) { currentSlideIdx--; renderSlide(); }
+    if (e.key === 'ArrowRight' && currentSlideIdx < slides.length-1) { currentSlideIdx++; renderSlide(); }
+  });
+
+  if (catsWithData.length) { renderCatTabs(); renderSlide(); }
+  else slidePanel.innerHTML = '<div class="slide-empty">Niciun răspuns înregistrat pentru această duminică.</div>';
+
+  // ---- dashboard: toate categoriile, toate răspunsurile, deodată ----
+  const dashGrid = document.getElementById('dash-grid');
+  catsWithData.forEach(d => {
+    const rows = items.filter(r => r[d.key] && (r[d.key].r || (r[d.key].t||'').trim()));
+    const card = document.createElement('div');
+    card.className = 'card dash-card';
+    card.innerHTML = `
+      <div class="dh"><b>${esc(d.label)}</b><span class="n">${rows.length}</span></div>
+      ${d.full ? `<div class="dash-question">${esc(d.full)}</div>` : ''}
+      ${rows.map(r => {
+        const item = r[d.key];
+        const color = ratingColor(item.r);
+        const badge = item.r ? `<div class="rbadge sm" style="background:${color}">${item.r}</div>` : `<div class="rbadge sm empty">&ndash;</div>`;
+        const chips = (r.age ? `<span class="chip">${esc(r.age)}</span>` : '') + (r.name ? `<span class="chip name">${esc(r.name)}</span>` : '');
+        return `<div class="dash-item">${badge}<div><div class="dash-text ${item.t?'':'empty'}">${item.t ? esc(item.t) : 'fără text'}</div>${chips?`<div class="dash-chips">${chips}</div>`:''}</div></div>`;
+      }).join('')}
+    `;
+    dashGrid.appendChild(card);
+  });
+  if (!catsWithData.length) dashGrid.innerHTML = '<div class="slide-empty">Niciun răspuns înregistrat pentru această duminică.</div>';
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pulsul Duminicii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+__SHARED_CSS__
+
+.hero{position:relative; padding:64px 0 40px; overflow:hidden;}
+.hero-grid{display:grid; grid-template-columns: 1.1fr .9fr; gap:48px; align-items:center;}
+.eyebrow{
+  font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2-mark);
+  font-weight:700; display:flex; align-items:center; gap:8px;
+}
+.eyebrow::before{content:""; width:16px; height:1px; background:var(--accent2-mark); display:inline-block;}
+.hero h1{font-size:clamp(32px,4.4vw,50px); line-height:1.06; margin-top:14px; font-weight:700; letter-spacing:-.01em;}
+.hero-desc{margin-top:16px; font-size:16px; line-height:1.6; color:var(--text-2); max-width:46ch;}
+.hero-kpis{display:flex; gap:28px; margin-top:32px; flex-wrap:wrap;}
+.hero-kpi .num{font-family:'Manrope'; font-weight:800; font-size:26px;}
+.hero-kpi .lbl{font-size:12.5px; color:var(--text-3); margin-top:2px;}
+.hero-dial{
+  position:relative; justify-self:center; width:100%; max-width:360px; aspect-ratio:1;
+  display:flex; align-items:center; justify-content:center;
+}
+.hero-dial svg{position:absolute; inset:0; width:100%; height:100%;}
+.hero-dial-core{
+  position:relative; z-index:2; text-align:center;
+  background:var(--surface); border:1px solid var(--border); border-radius:50%;
+  width:64%; aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  box-shadow:var(--shadow), var(--glow-accent);
+}
+.hero-dial-core .score{font-family:'Manrope'; font-weight:800; font-size:44px; color:var(--accent);}
+.hero-dial-core .outof{font-size:12px; color:var(--text-3); margin-top:2px;}
+.hero-dial-core .cap{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-top:8px;}
+
+.days-cta{
+  display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;
+  padding:24px 28px; text-decoration:none; color:inherit;
+}
+.days-cta h3{font-size:17px; font-weight:700;}
+.days-cta p{font-size:13px; color:var(--text-2); margin-top:4px;}
+.days-cta .go{font-family:'IBM Plex Mono'; font-weight:700; font-size:13px; color:var(--accent-mark); white-space:nowrap;}
+
+@media (max-width:860px){
+  .hero-grid{grid-template-columns:1fr;}
+  .hero-dial{order:-1; max-width:220px; margin:0 auto;}
+}
+</style>
+</head>
+<body>
+
+<div id="tooltip"></div>
+<div class="topbar" id="topbar-root"></div>
+<div id="stale-banner" class="stale-banner" hidden></div>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Feedback &middot; biserica Logos</div>
+        <h1>Vocea comunității, citită dintr-un formular și transformată în semnal clar.</h1>
+        <p class="hero-desc" id="hero-desc"></p>
+        <div class="hero-kpis" id="hero-kpis"></div>
+      </div>
+      <div class="hero-dial">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3.2" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <circle cx="100" cy="100" r="92" fill="none" stroke="var(--border)" stroke-width="1"/>
+          <circle id="dial-arc" cx="100" cy="100" r="92" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" filter="url(#glow)" transform="rotate(-90 100 100)"/>
+          <g id="pulse-line" stroke="var(--accent2)" stroke-width="1.6" fill="none" opacity=".55" filter="url(#glow)"></g>
+        </svg>
+        <div class="hero-dial-core">
+          <div class="score mono" id="hero-score">&ndash;</div>
+          <div class="outof">din 5.00</div>
+          <div class="cap">Scor mediu general</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section id="overview">
+    <div class="section-head">
+      <h2>Pe scurt</h2>
+      <p class="section-note">Un instantaneu al tuturor răspunsurilor, înainte de a intra în detalii.</p>
+    </div>
+    <div class="kpi-grid" id="kpi-grid"></div>
+  </section>
+
+  <section id="dimensions">
+    <div class="section-head">
+      <h2>Dimensiunile întâlnirii</h2>
+      <p class="section-note">Medie pe o scală de 1&ndash;5, ordonate descrescător. Treci cu mouse-ul peste o bară pentru întrebarea completă.</p>
+    </div>
+    <div class="card pad">
+      <div class="dim-list" id="dim-list"></div>
+    </div>
+  </section>
+
+  <section id="distribution">
+    <div class="section-head">
+      <h2>Distribuția notelor</h2>
+      <p class="section-note">Fiecare bară arată ponderea notelor 1&ndash;5 pentru acea dimensiune, din totalul răspunsurilor primite.</p>
+    </div>
+    <div class="card pad">
+      <div class="dist-legend" id="dist-legend"></div>
+      <div class="dist-grid" id="dist-grid"></div>
+      <details class="table-toggle">
+        <summary>Vezi toate cifrele ca tabel</summary>
+        <div class="data-table-wrap">
+          <table class="data-table" id="data-table"></table>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section id="trend">
+    <div class="section-head">
+      <h2>Evoluție în timp</h2>
+      <p class="section-note">Medie compozită (toate dimensiunile) și volum de răspunsuri, lună de lună.</p>
+    </div>
+    <div class="trend-grid">
+      <div class="card trend-card">
+        <h3>Medie compozită lunară</h3>
+        <div class="trend-sub" id="trend-sub"></div>
+        <svg id="trend-svg" viewBox="0 0 560 190" style="width:100%; height:190px;"></svg>
+      </div>
+      <div class="card trend-card">
+        <h3>Volum de răspunsuri</h3>
+        <div class="trend-sub">Numărul de formulare completate în fiecare lună</div>
+        <div class="vol-bars" id="vol-bars"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ages">
+    <div class="section-head">
+      <h2>Cine ne-a scris</h2>
+      <p class="section-note">Distribuția pe grupe de vârstă (câmp opțional, adăugat ulterior în formular).</p>
+    </div>
+    <div class="card pad">
+      <div class="age-list" id="age-list"></div>
+    </div>
+  </section>
+
+  <section id="days-teaser">
+    <a href="/zile" class="card days-cta">
+      <div>
+        <h3>Vrei să vezi feedback-ul unei anumite duminici?</h3>
+        <p>Deschide fiecare duminică pe rând — slideshow pe categorie sau toate răspunsurile deodată.</p>
+      </div>
+      <div class="go">Răspunsuri pe zile &rarr;</div>
+    </a>
+  </section>
+
+  <section id="quotes">
+    <div class="section-head">
+      <h2>Voci din comunitate</h2>
+      <p class="section-note">Citate reale, anonimizate &mdash; selectate automat dintre răspunsurile cele mai ample, câte 2&ndash;3 pentru fiecare dimensiune.</p>
+    </div>
+    <div class="quote-grid" id="quote-grid"></div>
+  </section>
+
+  <footer>
+    <p>
+      Date citite live din formularul „Evaluare întâlnire duminică" (Google Forms), actualizate la fiecare
+      vizită a acestei pagini &mdash; nu e nevoie de niciun pas manual de refresh. Citatele sunt selectate
+      fără nume, pentru a păstra confidențialitatea celor care au răspuns. Notele de 1&ndash;5 lipsă dintr-o
+      dimensiune (respondent care nu a completat acel câmp) nu sunt incluse în mediile de mai sus.
+      Generat la <span id="footer-generated" class="mono"></span>.
+    </p>
+  </footer>
+</div>
+
+<script>
+__SHARED_JS__
+</script>
+<script>
+(function(){
+  const PAYLOAD = __PULS_DATA_JSON__;
+  const DATA = PAYLOAD.DATA;
+  const META = PAYLOAD.meta || {};
+
+  initNav('home', `${META.totalResponses||0} răspunsuri · ${META.dateRangeLabel||''}`);
+
+  if (META.stale) {
+    const banner = document.getElementById('stale-banner');
+    banner.hidden = false;
+    banner.textContent = 'Date posibil neactualizate — nu am reușit să citim Sheet-ul live la ultima încercare; se arată ultima versiune bună cunoscută.';
+  }
+  document.getElementById('hero-desc').textContent = META.heroDesc || `${META.totalResponses||0} de răspunsuri anonime la evaluarea întâlnirilor de duminică, distilate în ${DATA.dims.length} dimensiuni, o evoluție lunară și o hartă a vârstelor.`;
+  document.getElementById('footer-generated').textContent = META.generatedAtLabel || '';
+
+  const kpiWrap = document.getElementById('hero-kpis');
+  (META.heroKpis || []).forEach(k => {
+    const el = document.createElement('div');
+    el.className = 'hero-kpi';
+    el.innerHTML = `<div class="num mono" style="color:${k.color||'var(--accent)'}">${k.value}</div><div class="lbl">${esc(k.label)}</div>`;
+    kpiWrap.appendChild(el);
+  });
+  document.getElementById('hero-score').textContent = DATA.overallAvg.toFixed(2);
+
+  const kpiGrid = document.getElementById('kpi-grid');
+  (META.overviewCards || []).forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'card kpi';
+    el.innerHTML = `
+      <div class="tag">${c.dot?`<span class="dot" style="background:${c.dot}"></span>`:''}${esc(c.tag)}</div>
+      <div class="val" ${c.big?'style="font-size:20px;"':''}>${esc(c.val)}</div>
+      <div class="sub">${esc(c.sub)}</div>
+    `;
+    kpiGrid.appendChild(el);
+  });
+
+  const dimSorted = DATA.dims.slice().sort((a,b)=> b.avg - a.avg);
+  const dimList = document.getElementById('dim-list');
+  dimSorted.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'dim-row';
+    row.innerHTML = `
+      <div>
+        <div class="dim-name">${esc(d.label)}</div>
+        <div class="dim-n">${d.n} răspunsuri</div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(d.avg/5*100).toFixed(1)}%"></div></div>
+      <div class="dim-val">${d.avg.toFixed(2)}</div>
+    `;
+    bindTip(row, () => `<b>${esc(d.label)}</b>${esc(d.full)}<div class="tt-sub" style="margin-top:6px;">medie ${d.avg.toFixed(2)} / 5 &middot; ${d.n} răspunsuri</div>`);
+    dimList.appendChild(row);
+  });
+
+  const distColors = ['var(--r1)','var(--r2)','var(--r3)','var(--r4)','var(--r5)'];
+  const distLabels = ['1 · foarte slab','2 · slab','3 · neutru','4 · bine','5 · excelent'];
+  const legend = document.getElementById('dist-legend');
+  distLabels.forEach((l,i)=>{
+    const span = document.createElement('span');
+    span.innerHTML = `<i style="background:${distColors[i]}"></i>${l}`;
+    legend.appendChild(span);
+  });
+
+  const distGrid = document.getElementById('dist-grid');
+  DATA.dims.forEach(d => {
+    const item = document.createElement('div');
+    item.className = 'dist-item';
+    const total = d.dist.reduce((a,b)=>a+b,0);
+    const stack = document.createElement('div');
+    stack.className = 'stack';
+    d.dist.forEach((count, i) => {
+      if(count <= 0) return;
+      const seg = document.createElement('div');
+      seg.className = 'seg';
+      const pct = total ? (count/total*100) : 0;
+      seg.style.width = pct + '%';
+      seg.style.background = distColors[i];
+      bindTip(seg, () => `<b>${esc(d.label)} &middot; nota ${i+1}</b>${count} din ${total} răspunsuri (${pct.toFixed(0)}%)`);
+      stack.appendChild(seg);
+    });
+    item.innerHTML = `<div class="head"><b>${esc(d.label)}</b><span class="avg mono">${d.avg.toFixed(2)}</span></div>`;
+    item.appendChild(stack);
+    distGrid.appendChild(item);
+  });
+
+  const table = document.getElementById('data-table');
+  let thead = '<thead><tr><th>Dimensiune</th><th>N</th><th>Medie</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>';
+  let tbody = '<tbody>' + DATA.dims.map(d => `<tr><td>${esc(d.label)}</td><td>${d.n}</td><td>${d.avg.toFixed(2)}</td>${d.dist.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('') + '</tbody>';
+  table.innerHTML = thead + tbody;
+
+  document.getElementById('trend-sub').textContent = `Linia punctată subțire marchează media generală (${DATA.overallAvg.toFixed(2)})`;
+  const svg = document.getElementById('trend-svg');
+  if (DATA.months.length >= 2) {
+    const W = 560, H = 190, padL = 34, padR = 20, padT = 24, padB = 30;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const avgs = DATA.months.map(m=>m.avg);
+    const yMin = Math.max(1, Math.floor(Math.min(...avgs, DATA.overallAvg) * 2) / 2 - 0.4);
+    const yMax = Math.min(5, Math.ceil(Math.max(...avgs, DATA.overallAvg) * 2) / 2 + 0.2);
+    const pts = DATA.months.map((m,i) => {
+      const x = padL + (i/(DATA.months.length-1)) * plotW;
+      const y = padT + (1 - (m.avg - yMin)/(yMax - yMin)) * plotH;
+      return {x,y,...m};
+    });
+    const avgY = padT + (1 - (DATA.overallAvg - yMin)/(yMax - yMin)) * plotH;
+    const pathD = pts.map((p,i)=> (i===0?'M':'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
+    const areaD = pathD + ` L ${pts[pts.length-1].x.toFixed(1)} ${padT+plotH} L ${pts[0].x.toFixed(1)} ${padT+plotH} Z`;
+    let svgHTML = `
+      <defs>
+        <filter id="lineGlow" x="-30%" y="-60%" width="160%" height="220%">
+          <feGaussianBlur stdDeviation="2.4" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent2-mark)" stop-opacity="0.16"/>
+          <stop offset="100%" stop-color="var(--accent2-mark)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${W-padR}" y2="${avgY.toFixed(1)}" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="1 0" opacity="0.35"/>
+      <text x="${W-padR}" y="${(avgY-6).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--text-3)" font-family="IBM Plex Mono">medie ${DATA.overallAvg.toFixed(2)}</text>
+      <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
+      <path d="${areaD}" fill="url(#areaFill)"/>
+      <path d="${pathD}" fill="none" stroke="var(--accent2-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#lineGlow)"/>
+    `;
+    pts.forEach((p,i)=>{
+      const isLast = i === pts.length-1;
+      svgHTML += `<circle class="pt" data-i="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isLast?6:4.5}" fill="var(--accent2-mark)" stroke="var(--surface)" stroke-width="2" style="cursor:default"/>`;
+      svgHTML += `<text x="${p.x.toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text-3)" font-family="Manrope">${p.short}</text>`;
+      if(isLast){
+        svgHTML += `<text x="${p.x.toFixed(1)}" y="${(p.y-14).toFixed(1)}" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="IBM Plex Mono">${p.avg.toFixed(2)}</text>`;
+      }
+    });
+    svg.innerHTML = svgHTML;
+    svg.querySelectorAll('.pt').forEach(circle => {
+      const p = pts[+circle.dataset.i];
+      bindTip(circle, () => `<b>${esc(p.label)}</b>medie compozită ${p.avg.toFixed(2)} / 5<div class="tt-sub" style="margin-top:4px;">${p.n} răspunsuri</div>`);
+    });
+  }
+
+  const volWrap = document.getElementById('vol-bars');
+  const maxN = Math.max(1, ...DATA.months.map(m=>m.n));
+  DATA.months.forEach(m => {
+    const col = document.createElement('div');
+    col.className = 'vol-col';
+    const h = Math.max(6, (m.n/maxN) * 108);
+    col.innerHTML = `
+      <div class="vol-cap">${m.n}</div>
+      <div class="vol-bar" style="height:${h}px"></div>
+      <div class="vol-month">${m.short}</div>
+    `;
+    bindTip(col, () => `<b>${esc(m.label)}</b>${m.n} răspunsuri completate`);
+    volWrap.appendChild(col);
+  });
+
+  const ageList = document.getElementById('age-list');
+  const totalAge = DATA.ages.reduce((a,b)=>a+b.n,0) || 1;
+  const maxAge = Math.max(1, ...DATA.ages.map(a=>a.n));
+  DATA.ages.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'age-row';
+    const pct = (a.n/totalAge*100);
+    row.innerHTML = `
+      <div class="age-name">${esc(a.label)}</div>
+      <div class="bar-track"><div class="bar-fill age-fill" style="width:${(a.n/maxAge*100).toFixed(1)}%"></div></div>
+      <div class="age-val">${a.n} &middot; ${pct.toFixed(0)}%</div>
+    `;
+    bindTip(row, () => `<b>${esc(a.label)}</b>${a.n} din ${totalAge} răspunsuri (${pct.toFixed(0)}%)`);
+    ageList.appendChild(row);
+  });
+
+  const quoteGrid = document.getElementById('quote-grid');
+  DATA.dims.forEach(d => {
+    (DATA.quotes[d.key] || []).forEach(text => {
+      const card = document.createElement('div');
+      card.className = 'card quote';
+      card.innerHTML = `<div class="quote-tag"><i></i>${esc(d.label)}</div><p>${esc(text)}</p>`;
+      quoteGrid.appendChild(card);
+    });
+  });
+
+  const dialArc = document.getElementById('dial-arc');
+  const circumference = 2 * Math.PI * 92;
+  const frac = DATA.overallAvg / 5;
+  dialArc.setAttribute('stroke-dasharray', `${circumference*frac} ${circumference}`);
+
+  if (DATA.months.length) {
+    const pulseG = document.getElementById('pulse-line');
+    const seq = DATA.months.map(m => m.avg);
+    const minA = Math.min(...seq), maxA = Math.max(...seq);
+    const pw = 150, ph = 40, ox = 25, oy = 150;
+    const ppts = seq.map((v,i) => {
+      const x = ox + (i/((seq.length-1)||1))*pw;
+      const y = oy - ((v-minA)/((maxA-minA)||1))*ph;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const poly = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    poly.setAttribute('points', ppts.join(' '));
+    poly.setAttribute('stroke-linecap','round');
+    poly.setAttribute('stroke-linejoin','round');
+    pulseG.appendChild(poly);
+  }
+})();
+</script>
+</body>
+</html>
