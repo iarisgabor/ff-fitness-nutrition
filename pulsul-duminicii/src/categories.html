@@ -43,8 +43,28 @@ __SHARED_CSS__
 .heatmap-cell.diag, .heatmap-cell.empty{background:var(--surface-2); color:var(--text-3); font-weight:500;}
 .heatmap-label{display:flex; align-items:center; font-size:11.5px; font-weight:600; color:var(--text-2); padding-right:8px; line-height:1.25;}
 .heatmap-label.col{justify-content:center; text-align:center; padding-right:0;}
+.heatmap-label[data-key]{cursor:pointer; border-radius:6px; padding:4px 6px;}
+.heatmap-label[data-key]:hover{color:var(--text); background:var(--surface-2);}
+.heatmap-label.hl{color:var(--accent-mark); background:color-mix(in srgb, var(--accent-mark) 14%, transparent);}
+.heatmap-grid.has-focus .heatmap-cell:not(.hl):not(.diag){opacity:.32;}
+.heatmap-cell.hl{box-shadow:0 0 0 2px var(--accent-mark) inset;}
+.heatmap-hint{font-size:11.5px; color:var(--text-3); margin-top:12px;}
 .heatmap-legend{display:flex; align-items:center; gap:10px; margin-top:18px; font-size:12px; color:var(--text-2); flex-wrap:wrap;}
 .heatmap-legend .bar{width:150px; height:10px; border-radius:5px; background:linear-gradient(90deg, var(--accent2-mark), var(--surface-2), var(--accent-mark)); flex:none;}
+
+.corr-detail-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:22px 0 12px; padding-top:18px; border-top:1px solid var(--border);}
+.corr-detail-head h4{font-size:14px; font-weight:700;}
+.corr-close{width:26px; height:26px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); cursor:pointer; font-size:15px; color:var(--text-2); line-height:1; flex:none;}
+.corr-close:hover{border-color:var(--accent-mark); color:var(--text);}
+.corr-rank{display:flex; flex-direction:column; gap:3px;}
+.corr-row{display:grid; grid-template-columns:150px 1fr 56px; align-items:center; gap:14px; padding:8px 4px; border-radius:8px; cursor:default;}
+.corr-row:hover{background:var(--surface-2);}
+.corr-label{font-size:13px; font-weight:600;}
+.corr-track{position:relative; height:20px; background:var(--surface-2); border-radius:6px; overflow:hidden;}
+.corr-track::before{content:""; position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--border); z-index:1;}
+.corr-fill{position:absolute; top:2px; bottom:2px; border-radius:4px;}
+.corr-val{font-family:'IBM Plex Mono'; font-weight:600; font-size:13px; text-align:right;}
+@media (max-width:600px){.corr-row{grid-template-columns:100px 1fr 48px; gap:8px;}}
 </style>
 </head>
 <body>
@@ -63,7 +83,11 @@ __SHARED_CSS__
   <div class="section-block" id="heatmap-section">
     <h3>Cum se leagă categoriile între ele</h3>
     <p class="section-sub">Corelație între mediile săptămânale a două categorii, calculată pe tot istoricul. Valori spre +1 înseamnă că cresc și scad împreună în aceeași duminică; spre &minus;1 că merg în direcții opuse; aproape de 0 că sunt independente.</p>
-    <div class="card pad" id="heatmap-wrap"></div>
+    <div class="card pad">
+      <div id="heatmap-wrap"></div>
+      <div class="heatmap-hint">Apasă pe numele unei categorii pentru un clasament detaliat al corelațiilor ei cu celelalte.</div>
+      <div id="corr-detail" hidden></div>
+    </div>
     <div class="heatmap-legend">
       <span>&minus;1 (opuse)</span>
       <span class="bar"></span>
@@ -135,9 +159,9 @@ __SHARED_JS__
   } else {
     let html = '<div class="heatmap-scroll"><div class="heatmap-grid">';
     html += '<div></div>';
-    ALLKEYS.forEach(k => { html += `<div class="heatmap-label col">${esc(shortLabel(k.label))}</div>`; });
+    ALLKEYS.forEach(k => { html += `<div class="heatmap-label col" data-key="${k.key}">${esc(shortLabel(k.label))}</div>`; });
     ALLKEYS.forEach(rowK => {
-      html += `<div class="heatmap-label">${esc(shortLabel(rowK.label))}</div>`;
+      html += `<div class="heatmap-label" data-key="${rowK.key}">${esc(shortLabel(rowK.label))}</div>`;
       ALLKEYS.forEach(colK => {
         if (rowK.key === colK.key) {
           html += `<div class="heatmap-cell diag">&mdash;</div>`;
@@ -169,6 +193,85 @@ __SHARED_JS__
         }
         return `<b>${esc(rowK.label)} &times; ${esc(colK.label)}</b>r = ${entry.r.toFixed(2)} &middot; ${interpretR(entry.r)}<div class="tt-sub" style="margin-top:4px;">${entry.n} duminici cu răspunsuri la ambele</div>`;
       });
+    });
+
+    // ---- clic pe o categorie -> clasament detaliat al corelațiilor ei cu celelalte ----
+    let focusedKey = null;
+    const hintEl = document.querySelector('.heatmap-hint');
+    const corrDetailEl = document.getElementById('corr-detail');
+    const gridEl = document.querySelector('.heatmap-grid');
+
+    function updateHeatmapHighlight(){
+      gridEl.classList.toggle('has-focus', !!focusedKey);
+      gridEl.querySelectorAll('.hl').forEach(el => el.classList.remove('hl'));
+      if (!focusedKey) return;
+      gridEl.querySelectorAll(`[data-row="${focusedKey}"], [data-col="${focusedKey}"]`).forEach(el => el.classList.add('hl'));
+      gridEl.querySelectorAll('.heatmap-label[data-key]').forEach(el => {
+        if (el.dataset.key === focusedKey) el.classList.add('hl');
+      });
+    }
+
+    function renderCorrDetail(){
+      if (!focusedKey) { corrDetailEl.hidden = true; hintEl.hidden = false; return; }
+      hintEl.hidden = true;
+      const focusLabel = ALLKEYS.find(k => k.key === focusedKey).label;
+      const ranked = ALLKEYS
+        .filter(k => k.key !== focusedKey)
+        .map(k => ({ key: k.key, label: k.label, entry: findCorr(focusedKey, k.key) }))
+        .sort((a, b) => {
+          const ra = (a.entry && a.entry.r !== null) ? Math.abs(a.entry.r) : -1;
+          const rb = (b.entry && b.entry.r !== null) ? Math.abs(b.entry.r) : -1;
+          return rb - ra;
+        });
+
+      const rows = ranked.map(item => {
+        if (!item.entry || item.entry.r === null) {
+          return `
+            <div class="corr-row">
+              <div class="corr-label">${esc(item.label)}</div>
+              <div class="corr-track"></div>
+              <div class="corr-val" style="color:var(--text-3)">&ndash;</div>
+            </div>`;
+        }
+        const r = item.entry.r;
+        const pct = Math.abs(r) * 50;
+        const left = r >= 0 ? 50 : 50 - pct;
+        const color = r >= 0 ? 'var(--accent-mark)' : 'var(--accent2-mark)';
+        return `
+          <div class="corr-row" data-key="${item.key}">
+            <div class="corr-label">${esc(item.label)}</div>
+            <div class="corr-track"><div class="corr-fill" style="left:${left}%; width:${pct}%; background:${color};"></div></div>
+            <div class="corr-val">${r.toFixed(2)}</div>
+          </div>`;
+      }).join('');
+
+      corrDetailEl.hidden = false;
+      corrDetailEl.innerHTML = `
+        <div class="corr-detail-head">
+          <h4>Cu ce se leagă mai mult ${esc(focusLabel)}</h4>
+          <button class="corr-close" id="corr-close" aria-label="Închide">&times;</button>
+        </div>
+        <div class="corr-rank">${rows}</div>
+      `;
+      document.getElementById('corr-close').addEventListener('click', () => setFocus(null));
+      corrDetailEl.querySelectorAll('.corr-row[data-key]').forEach(row => {
+        const k = row.dataset.key;
+        const entry = findCorr(focusedKey, k);
+        const otherLabel = ALLKEYS.find(x => x.key === k).label;
+        bindTip(row, () => `<b>${esc(focusLabel)} &times; ${esc(otherLabel)}</b>r = ${entry.r.toFixed(2)} &middot; ${interpretR(entry.r)}<div class="tt-sub" style="margin-top:4px;">${entry.n} duminici cu răspunsuri la ambele</div>`);
+      });
+    }
+
+    function setFocus(newKey){
+      focusedKey = (focusedKey === newKey) ? null : newKey;
+      updateHeatmapHighlight();
+      renderCorrDetail();
+    }
+
+    gridEl.addEventListener('click', (e) => {
+      const label = e.target.closest('.heatmap-label[data-key]');
+      if (!label) return;
+      setFocus(label.dataset.key);
     });
   }
 })();
