@@ -1,0 +1,5 @@
+# Migrarile contin emailul de admin si structura bazei — nu au ce cauta public.
+supabase/
+README.md
+.env
+.env.example

@@ -3,7 +3,7 @@
 > Încărcat automat la fiecare sesiune Claude Code pornită în acest folder. Scopul lui:
 > să știi instant unde să te duci, fără să recitești tot repo-ul.
 
-Acest folder conține **trei proiecte reale, fără nicio legătură între ele**, plus
+Acest folder conține **patru proiecte reale, fără nicio legătură între ele**, plus
 tooling Claude Code și un vault personal de notițe Obsidian suprapus peste tot.
 Arhitectura completă a fiecărui proiect e în documente separate (linkate mai jos) —
 acest fișier e doar harta.
@@ -22,10 +22,15 @@ acest fișier e doar harta.
 | API, backend, Stripe, plăți, Gmail, rate limiting, cache | `worker/index.js` → §1 + `architecture.md` §2 |
 | bot de Telegram, Google Calendar, Planning Center, agendă zilnică | **telegram-assistant/** → §2 + `telegram-assistant/README.md` |
 | feedback biserică, Pulsul Duminicii, statistici duminică, slideshow pe categorie, rezumat AI feedback | **pulsul-duminicii/** → §3 + `pulsul-duminicii/README.md` |
-| skill-uri Claude Code, afaceri locale RO, eMag, prețuri cărți, generare site-uri | `.claude/skills/` → §4 |
+| ii cusute de bunica, magazin de ii, scroll-film, broderie | **Ia bunicii mele** → §4 + `ia-bunicii-mele/README.md` |
+| ia desenată punct cu punct, silueta cămășii, altiță/încreț/râuri/poale | `ia-bunicii-mele/js/pattern.js` |
+| filmul de la scroll, canvas, camera care urmărește acul | `ia-bunicii-mele/js/film.js` |
+| coș, plată Stripe în pagină, marcat ia ca vândută | `ia-bunicii-mele/js/cos.js` + `ia-bunicii-mele/supabase/functions/` |
+| adăugat/schimbat ii, încărcat poze, cont de admin | `ia-bunicii-mele/admin.html` + `js/admin.js` |
+| skill-uri Claude Code, afaceri locale RO, eMag, prețuri cărți, generare site-uri, scroll-film | `.claude/skills/` → §5 |
 | agentul de scor FC Barcelona | `.claude/agents/Show-score.md` |
-| notițe personale, vault | e Obsidian, nu cod → §5 |
-| fișier gol/orfan/necunoscut găsit prin repo | probabil în §5 — verifică acolo înainte să presupui că e activ |
+| notițe personale, vault | e Obsidian, nu cod → §6 |
+| fișier gol/orfan/necunoscut găsit prin repo | probabil în §6 — verifică acolo înainte să presupui că e activ |
 
 ## 1. FF Fitness — aplicația principală (rădăcina repo + `worker/`)
 
@@ -104,7 +109,44 @@ Live la fiecare vizită, fără cron — „automatizarea" cerută (update lunea
 Link neafișat public, fără parolă (`AUTH_MODE = "none"`) — conținutul include uneori
 nume și reflecții personale ale membrilor, deci linkul nu se distribuie public.
 
-## 4. `.claude/` — tooling Claude Code (agent + skill-uri), separat de toate aplicațiile
+## 4. `ia-bunicii-mele/` — magazin online de ii cusute de mână
+
+Site static (fără framework, fără build step) cu backend pe Supabase. Pagina principală
+e un **film derulat la scroll**: un singur cadru continuu în care camera stă pe pânză și
+urmărește acul cum coase o ie, registru cu registru, până se vede cămașa întreagă.
+Nu există nicio imagine în film — silueta și fiecare punct de cruce sunt generate din cod.
+
+**Live: https://ia-bunicii-mele.vercel.app** · admin: `/admin.html`
+**Setup complet (Supabase, Stripe, ce mai e de completat): `ia-bunicii-mele/README.md`.**
+
+Fișiere:
+- `index.html` — filmul + povestea + cum se face + iile + întrebări
+- `magazin.html` — toate iile; `admin.html` — login + adăugat/schimbat ii (noindex)
+- `js/pattern.js` — **generatorul iei**: silueta cămășii și toate punctele, în ordinea
+  în care s-ar coase (altița → încrețul → râurile → pieptul → poalele → tivul)
+- `js/film.js` — canvas-ul filmului: camera care urmărește acul, țesătura, acul și firul
+- `js/site.js` — antet, titlul literă cu literă, apariții la scroll, cifre
+- `js/shop.js` — citește iile din Supabase; fără poză, generează un motiv cusut din nume
+- `js/cos.js` — coșul (localStorage) + fereastra Stripe montată în panou
+- `js/admin.js` — CRUD ii, încărcat poze (micșorate în browser înainte de urcare)
+- `css/site.css` (lumea vizuală, toate paginile) · `css/film.css` (scena filmului)
+- `supabase/migrations/` — schema; **fiecare tabel are RLS pornit și politicile scrise
+  în aceeași migrare cu el**
+- `supabase/functions/checkout` — deschide plata; **prețurile se citesc din bază, nu din
+  ce trimite browserul** (clientul trimite doar id-uri)
+- `supabase/functions/stripe-webhook` — singurul loc care marchează o ie ca vândută,
+  după ce verifică semnătura Stripe
+
+Deploy: frontend pe **Vercel** (`vercel deploy --prod` din folder; `supabase/` e exclus
+prin `.vercelignore`, fiindcă migrările conțin emailul de admin). Backend pe **Supabase**
+(proiect `ggeyhtaggxggjuifpumh`, eu-central-1). Nu există tabel de comenzi — evidența,
+adresele și bonurile stau în Stripe.
+
+**Filmul nu folosește Lenis, intenționat:** scrub-ul e legat direct de scroll, un singur
+strat de netezire. Verificare: `?jump=<pixeli>` + `window.__ready`, cu
+`.claude/skills/scroll-film-studio/scripts/verify.js` (capturi + test de fluiditate).
+
+## 5. `.claude/` — tooling Claude Code (agent + skill-uri), separat de toate aplicațiile
 
 - Agent `Show-score` — scor FC Barcelona (Haiku 4.5 + WebSearch)
 - Skill `afaceri-locale-ro` — director de afaceri RO din OpenStreetMap → CSV
@@ -112,10 +154,11 @@ nume și reflecții personale ale membrilor, deci linkul nu se distribuie public
 - Skill `emag-cauta` — compară produse pe eMag.ro după preț/recenzii
 - Skill `pret-carte-ro` — caută prețul unei cărți în librăriile RO
 - Skill `skill-builder` — construiește/verifică alte skill-uri Claude Code
+- Skill `scroll-film-studio` — site-uri cu film derulat la scroll (a construit §4)
 
 Flux tipic: `afaceri-locale-ro` → CSV → `website-afaceri-ro` → HTML în `rezultate/`.
 
-## 5. Nu sunt proiecte active — ignoră dacă nu ești rugat explicit de ele
+## 6. Nu sunt proiecte active — ignoră dacă nu ești rugat explicit de ele
 
 - `api/` — folder gol, rămășiță de dinainte de migrarea backend-ului la Cloudflare Worker.
 - `player.gd` — script Godot orfan (gitignored), fără legătură cu nimic din acest repo.
@@ -130,3 +173,6 @@ Flux tipic: `afaceri-locale-ro` → CSV → `website-afaceri-ro` → HTML în `r
 - Fiecare proiect cu Worker (`worker/`, `telegram-assistant/`, `pulsul-duminicii/`) ține
   secretele în `.dev.vars` local (gitignored) + Wrangler secrets pe Cloudflare —
   niciodată în fișiere commise.
+- `ia-bunicii-mele/` ține secretele ca Supabase secrets (Stripe) — în repo stă doar
+  `config.js`, cu adresa proiectului și cheia publishable, publice prin design.
+  Zidul e RLS, nu secretul cheii.

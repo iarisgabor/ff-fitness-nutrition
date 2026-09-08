@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Iile — administrare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Karla:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M6 6l12 12M18 6L6 18' stroke='%23A81E12' stroke-width='2.6' stroke-linecap='round' fill='none'/></svg>">
+<style>
+  .admin { max-width: 66rem; margin: 0 auto; padding: clamp(2.5rem, 7vh, 5rem) var(--mx); }
+  .panou { background: var(--in-cald); border: 1px solid rgba(42,32,24,0.14); padding: clamp(1.4rem, 3.5vw, 2.4rem); margin-bottom: 2rem; }
+  .randuri { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 0 1.2rem; }
+  .lista-ii { display: flex; flex-direction: column; gap: 0.7rem; }
+  .rand-ie {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.7rem;
+    background: var(--in-cald);
+    border: 1px solid rgba(42,32,24,0.12);
+  }
+  .rand-ie__poza { width: 56px; height: 70px; background: var(--in-umbra); display: grid; place-items: center; overflow: hidden; }
+  .rand-ie__poza img { width: 100%; height: 100%; object-fit: cover; }
+  .rand-ie__poza svg { width: 90%; height: 90%; }
+  .rand-ie b { font-family: var(--serif); font-size: 1.05rem; display: block; }
+  .rand-ie small { color: var(--cerneala-moale); }
+  .rand-actiuni { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .mic { padding: 0.45rem 0.9rem; font-size: 0.82rem; }
+  .ascuns { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="antet antet--fixat">
+  <a class="marca" href="index.html">
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-linecap="round">
+      <g stroke="#A81E12" stroke-width="1.7">
+        <path d="M10 2.5l4 4M14 2.5l-4 4"/><path d="M2.5 10l4 4M6.5 10l-4 4"/>
+        <path d="M17.5 10l4 4M21.5 10l-4 4"/><path d="M10 17.5l4 4M14 17.5l-4 4"/>
+      </g>
+      <g stroke="#2A2018" stroke-width="1.7"><path d="M10 10l4 4M14 10l-4 4"/></g>
+    </svg>
+    Ia bunicii mele
+  </a>
+  <nav class="nav">
+    <a href="magazin.html">Vezi magazinul</a>
+    <a href="#" data-iesire class="ascuns">Ieși din cont</a>
+  </nav>
+</header>
+
+<main class="admin">
+
+  <section data-poarta>
+    <p class="eticheta">Administrare</p>
+    <h1 class="titlu-sectiune" style="margin-bottom:1.6rem">Intră în cont.</h1>
+    <div class="panou" style="max-width:26rem">
+      <form data-login>
+        <div class="camp">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" required>
+        </div>
+        <div class="camp">
+          <label for="parola">Parolă</label>
+          <input id="parola" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="buton" type="submit" data-btn-login>Intră</button>
+      </form>
+      <div data-login-mesaj></div>
+    </div>
+  </section>
+
+  <section data-consola class="ascuns">
+    <p class="eticheta">Administrare</p>
+    <h1 class="titlu-sectiune" style="margin-bottom:0.6rem">Iile din magazin.</h1>
+    <p class="intro" style="margin-bottom:2rem">Ce salvezi aici apare imediat pe site. Linkul de plată îl iei din Stripe, de la fiecare produs.</p>
+
+    <div class="panou">
+      <h2 class="serif" style="font-size:1.5rem;margin-bottom:1.2rem" data-titlu-form>Adaugă o ie</h2>
+      <form data-form>
+        <input type="hidden" data-id>
+        <div class="randuri">
+          <div class="camp">
+            <label for="nume">Numele iei</label>
+            <input id="nume" data-nume required placeholder="Ie cu altiță neagră">
+          </div>
+          <div class="camp">
+            <label for="pret">Preț (lei)</label>
+            <input id="pret" data-pret type="number" min="0" step="1" required placeholder="890">
+          </div>
+          <div class="camp">
+            <label for="marime">Mărimea</label>
+            <input id="marime" data-marime placeholder="M">
+          </div>
+          <div class="camp">
+            <label for="stare">Starea</label>
+            <select id="stare" data-stare>
+              <option value="disponibila">E liberă</option>
+              <option value="vanduta">S-a dus</option>
+            </select>
+          </div>
+        </div>
+        <div class="camp">
+          <label for="descriere">Descrierea</label>
+          <textarea id="descriere" data-descriere rows="3" placeholder="Bumbac alb, altiță bătută des în negru și roșu."></textarea>
+        </div>
+        <div class="camp" style="max-width:16rem">
+          <label for="ordine">Ordinea în listă</label>
+          <input id="ordine" data-ordine type="number" step="1" value="0">
+        </div>
+        <div class="camp">
+          <label for="poza">Poza iei</label>
+          <input id="poza" data-poza type="file" accept="image/*">
+          <small style="color:var(--cerneala-moale)">Se micșorează automat înainte de încărcare. Dacă nu pui poză, apare un model cusut, generat din numele iei.</small>
+        </div>
+        <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-top:1rem">
+          <button class="buton" type="submit" data-btn-salveaza>Salvează</button>
+          <button class="buton buton--gol ascuns" type="button" data-btn-renunta>Renunță</button>
+        </div>
+      </form>
+      <div data-form-mesaj></div>
+    </div>
+
+    <h2 class="serif" style="font-size:1.5rem;margin:2.5rem 0 1rem">Toate iile</h2>
+    <div class="lista-ii" data-lista></div>
+  </section>
+
+  <section data-neconfigurat class="ascuns">
+    <p class="eticheta">Administrare</p>
+    <h1 class="titlu-sectiune">Baza de date nu-i legată încă.</h1>
+    <p class="intro">Completează <code>config.js</code> cu adresa proiectului Supabase și cheia publishable, apoi reîncarcă pagina.</p>
+  </section>
+
+</main>
+
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="js/site.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

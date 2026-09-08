@@ -1,0 +1,186 @@
+/* Filmul: un singur cadru continuu, legat de scroll. */
+
+#film {
+  position: relative;
+  height: 880vh;
+  background: var(--masa);
+}
+
+.scena {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#panza {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.beat {
+  position: absolute;
+  z-index: 3;
+  will-change: opacity, transform;
+  max-width: min(30rem, 74vw);
+  pointer-events: none;
+  transform: translateY(var(--beat-y, 0px));
+}
+
+.beat--erou {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, calc(-50% + var(--beat-y, 0px)));
+  text-align: center;
+  max-width: min(46rem, 88vw);
+}
+
+.beat--stanga { left: var(--mx); bottom: clamp(6rem, 18vh, 11rem); }
+.beat--dreapta { right: var(--mx); bottom: clamp(6rem, 18vh, 11rem); text-align: right; }
+.beat--final { left: var(--mx); top: 50%; transform: translateY(calc(-50% + var(--beat-y, 0px))); pointer-events: auto; }
+
+@media (max-width: 720px) {
+  .beat--dreapta { text-align: left; left: var(--mx); right: auto; }
+  .beat--final { top: auto; bottom: clamp(5rem, 16vh, 9rem); transform: translateY(var(--beat-y, 0px)); }
+  .erou-supra { font-size: 0.66rem; letter-spacing: 0.16em; }
+  .erou-sub { font-size: 0.95rem; max-width: 28ch; }
+}
+
+.beat p {
+  font-family: var(--serif);
+  font-size: clamp(1.35rem, 3.1vw, 2.3rem);
+  font-weight: 500;
+  font-variation-settings: "SOFT" 40, "WONK" 1;
+  line-height: 1.14;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--cerneala);
+  text-shadow: 0 1px 0 rgba(255, 246, 226, 0.55);
+}
+
+/* eroul */
+.erou-supra {
+  font-size: 0.76rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--rosu);
+  margin-bottom: 1.1rem;
+}
+
+.erou-titlu {
+  font-family: var(--serif);
+  font-size: clamp(2.7rem, 9vw, 7.4rem);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 60, "WONK" 1;
+  line-height: 0.94;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: var(--cerneala);
+}
+
+.erou-titlu .cuv {
+  display: inline-block;
+  overflow: hidden;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+
+.erou-titlu .glif { display: inline-block; will-change: transform; }
+
+.erou-sub {
+  margin: 1.4rem auto 0;
+  max-width: 34ch;
+  font-size: clamp(0.98rem, 1.6vw, 1.16rem);
+  color: var(--cerneala-moale);
+  line-height: 1.55;
+}
+
+.erou-fir {
+  display: block;
+  width: min(280px, 52vw);
+  height: 12px;
+  margin: 1.6rem auto 0;
+}
+
+.jos-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  z-index: 4;
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--cerneala-moale);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  opacity: calc(1 - min(1, max(0, var(--film-p, 0)) * 30));
+}
+
+.jos-hint::after {
+  content: "";
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(var(--rosu), transparent);
+  animation: coase 2.2s ease-in-out infinite;
+}
+
+@keyframes coase {
+  0%, 100% { transform: scaleY(0.3); transform-origin: top; opacity: 0.4; }
+  50% { transform: scaleY(1); transform-origin: top; opacity: 1; }
+}
+
+/* registrul curent — ce se coase acum */
+.registru {
+  position: absolute;
+  left: var(--mx);
+  bottom: clamp(1.4rem, 4vh, 2.2rem);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.42rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(243, 233, 214, 0.82);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--cerneala-moale);
+  opacity: calc(min(1, max(0, (var(--film-p, 0) - 0.04) * 14)) * min(1, max(0, (0.94 - var(--film-p, 0)) * 12)));
+}
+
+.registru__bara {
+  width: clamp(60px, 12vw, 140px);
+  height: 2px;
+  background: rgba(42, 32, 24, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+
+.registru__bara i {
+  position: absolute;
+  inset: 0;
+  background: var(--rosu);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+@media (max-width: 720px) {
+  .jos-hint { display: none; }
+}
+
+/* aterizarea: pagina începe exact în culoarea mesei pe care se termină filmul
+   și se topește în pânză — așa nu se vede nicio linie la trecere */
+.aterizare {
+  background: linear-gradient(var(--masa) 0, var(--in) 24vh);
+  padding-top: clamp(7rem, 20vh, 12rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jos-hint::after { animation: none; }
+}

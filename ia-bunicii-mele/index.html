@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ia bunicii mele — ii cusute de mână</title>
+<meta name="description" content="Ii tradiționale românești cusute la mână de bunica mea, punct cu punct. Un exemplar din fiecare model.">
+<meta property="og:title" content="Ia bunicii mele">
+<meta property="og:description" content="Ii tradiționale românești cusute la mână, punct cu punct. Un exemplar din fiecare model.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Karla:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/film.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M6 6l12 12M18 6L6 18' stroke='%23A81E12' stroke-width='2.6' stroke-linecap='round' fill='none'/></svg>">
+</head>
+<body>
+
+<header class="antet" data-antet>
+  <a class="marca" href="index.html">
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-linecap="round">
+      <g stroke="#A81E12" stroke-width="1.7">
+        <path d="M10 2.5l4 4M14 2.5l-4 4"/><path d="M2.5 10l4 4M6.5 10l-4 4"/>
+        <path d="M17.5 10l4 4M21.5 10l-4 4"/><path d="M10 17.5l4 4M14 17.5l-4 4"/>
+      </g>
+      <g stroke="#2A2018" stroke-width="1.7"><path d="M10 10l4 4M14 10l-4 4"/></g>
+    </svg>
+    Ia bunicii mele
+  </a>
+  <nav class="nav">
+    <a href="#povestea" data-secundar>Povestea</a>
+    <a href="#cum" data-secundar>Cum se face</a>
+    <a href="magazin.html">Iile</a>
+    <a href="#contact">Contact</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ===================== filmul: un singur cadru ===================== -->
+  <section id="film" aria-label="Ia se coase, punct cu punct">
+    <div class="scena">
+      <canvas id="panza"></canvas>
+
+      <div class="beat beat--erou" data-in="-0.1" data-peak="0" data-out="0.075">
+        <p class="erou-supra">Cusute în casă, la mână</p>
+        <h1 class="erou-titlu" data-split>Ia bunicii mele</h1>
+        <p class="erou-sub">Bunica mea coase ii de când era fată. Fiecare e făcută punct cu punct, iar din fiecare model iese un singur exemplar.</p>
+        <span class="erou-fir cusatura" aria-hidden="true"></span>
+      </div>
+
+      <div class="beat beat--stanga" data-in="0.10" data-peak="0.155" data-out="0.235">
+        <p>Un punct. Apoi încă unul.<br>De zeci de mii de ori.</p>
+      </div>
+
+      <div class="beat beat--dreapta" data-in="0.27" data-peak="0.34" data-out="0.43">
+        <p>Modelul nu-i desenat nicăieri.<br>Îl știe din mâini.</p>
+      </div>
+
+      <div class="beat beat--stanga" data-in="0.46" data-peak="0.535" data-out="0.62">
+        <p>Altița, încrețul, râurile.<br>Fiecare are locul ei.</p>
+      </div>
+
+      <div class="beat beat--dreapta" data-in="0.65" data-peak="0.72" data-out="0.80">
+        <p>Nu iese de două ori la fel.<br>De-aia are rost.</p>
+      </div>
+
+      <div class="beat beat--final" data-in="0.88" data-peak="0.945" data-out="2">
+        <p>O ie.<br>Luni de lucru.<br>Una singură.</p>
+        <a class="buton" href="magazin.html" style="margin-top:1.6rem">Vezi iile</a>
+      </div>
+
+      <div class="registru" aria-hidden="true">
+        <span data-readout-label>altița stângă</span>
+        <span class="registru__bara"><i data-readout-bar></i></span>
+      </div>
+
+      <div class="jos-hint" data-hint aria-hidden="true">Derulează</div>
+    </div>
+  </section>
+
+  <!-- ===================== povestea ===================== -->
+  <section class="sectiune aterizare" id="povestea">
+    <div style="max-width:78rem;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:clamp(2rem,6vw,5rem);align-items:start">
+      <div class="reveal">
+        <p class="eticheta">Povestea</p>
+        <h2 class="titlu-sectiune">Coase de mai mult timp<br>decât am eu ani.</h2>
+      </div>
+      <div class="reveal">
+        <p>A învățat de la mama ei, pe vremea când o ie nu se cumpăra — se făcea. Iarna, când nu mai era treabă afară, se scotea pânza și se cosea la lumina de la geam.</p>
+        <p>Acum coase pentru că nu poate altfel. Zice că o mănâncă mâinile dacă stă degeaba. Eu am făcut pagina asta ca iile ei să ajungă la cineva care le poartă, nu să stea în ladă.</p>
+        <p>Nimic la mașină. Nimic în serie. Când o ie e gata, e gata — și pleacă.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== cum se face ===================== -->
+  <section class="sectiune" id="cum" style="background:var(--in-cald)">
+    <div style="max-width:78rem;margin:0 auto">
+      <p class="eticheta reveal">Cum se face</p>
+      <h2 class="titlu-sectiune reveal" style="max-width:20ch">Patru lucruri care nu se sar niciodată.</h2>
+
+      <ol class="pasi">
+        <li class="pas reveal">
+          <span class="pas__nr">01</span>
+          <h3>Pânza</h3>
+          <p>Bumbac sau borangic, spălat înainte să intre acul în el. Dacă pânza intră la apă după, s-a dus toată munca.</p>
+        </li>
+        <li class="pas reveal">
+          <span class="pas__nr">02</span>
+          <h3>Modelul</h3>
+          <p>Se numără firele. Nu se desenează pe pânză, nu se calchiază după nimic — se ține minte și se numără.</p>
+        </li>
+        <li class="pas reveal">
+          <span class="pas__nr">03</span>
+          <h3>Punctul</h3>
+          <p>Punct de cruce pe registre, punct înaintea acului la tiv. La altiță se bate des, că acolo se vede tot.</p>
+        </li>
+        <li class="pas reveal">
+          <span class="pas__nr">04</span>
+          <h3>Spălatul</h3>
+          <p>Apă rece, cu mâna, fără înălbitor. Se calcă pe dos, cu un prosop peste broderie, ca punctele să stea ridicate.</p>
+        </li>
+      </ol>
+
+      <div class="cifre">
+        <div class="cifra reveal"><b data-numar="180">0</b><span>de ore de lucru la o ie întreagă</span></div>
+        <div class="cifra reveal"><b data-numar="3">0</b><span>registre pe fiecare mânecă: altița, încrețul, râurile</span></div>
+        <div class="cifra reveal"><b data-numar="1">0</b><span>exemplar din fiecare model — nu se repetă</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== iile ===================== -->
+  <section class="sectiune" id="iile">
+    <div style="max-width:78rem;margin:0 auto">
+      <div style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:end;justify-content:space-between;margin-bottom:2.6rem">
+        <div class="reveal">
+          <p class="eticheta">Iile</p>
+          <h2 class="titlu-sectiune">Ce e gata acum.</h2>
+        </div>
+        <a class="buton buton--gol reveal" href="magazin.html">Vezi toate iile</a>
+      </div>
+      <div class="grila-ii" data-ii-teaser data-limita="3"></div>
+    </div>
+  </section>
+
+  <!-- ===================== întrebări ===================== -->
+  <section class="sectiune" id="intrebari" style="background:var(--in-cald)">
+    <div style="max-width:52rem;margin:0 auto">
+      <p class="eticheta reveal">Întrebări</p>
+      <h2 class="titlu-sectiune reveal" style="margin-bottom:2.4rem">Ce mă întreabă lumea.</h2>
+
+      <details class="intrebare reveal">
+        <summary>Cum aleg mărimea?</summary>
+        <p>Iile se poartă lejer, nu pe corp. Scrie-mi ce mărime porți de obicei și îți spun care ți se potrivește. Pentru comenzi pe măsură luăm măsurile împreună, pe mesaje.</p>
+      </details>
+      <details class="intrebare reveal">
+        <summary>Pot cere un model anume?</summary>
+        <p>Da. Bunica coase și pe comandă, dar durează — de obicei câteva săptămâni, în funcție de cât de încărcat e modelul. Scrie-mi înainte să comanzi, ca să știi termenul.</p>
+      </details>
+      <details class="intrebare reveal">
+        <summary>Cum o spăl?</summary>
+        <p>În apă rece, cu mâna, fără înălbitor și fără stors tare. Se calcă pe dos, cu un prosop peste broderie. Așa ține zeci de ani.</p>
+      </details>
+      <details class="intrebare reveal">
+        <summary>Cum ajunge la mine?</summary>
+        <p>Prin curier, oriunde în țară. Se trimite în două-trei zile de la plată, împachetată în hârtie și cutie.</p>
+      </details>
+    </div>
+  </section>
+
+</main>
+
+<footer class="subsol" id="contact">
+  <div style="max-width:78rem;margin:0 auto">
+    <div class="subsol-grid">
+      <div>
+        <h3 class="serif">Ia bunicii mele</h3>
+        <p style="max-width:34ch;color:rgba(240,228,206,0.72)">Ii tradiționale cusute la mână, una câte una. Dacă ai o întrebare, scrie-mi — răspund eu, nu un robot.</p>
+      </div>
+      <div>
+        <h3 class="serif">Scrie-mi</h3>
+        <p><a href="mailto:salut@iabuniciimele.ro">salut@iabuniciimele.ro</a></p>
+        <p style="color:rgba(240,228,206,0.72)">Răspund în aceeași zi, de obicei.</p>
+      </div>
+      <div>
+        <h3 class="serif">Pagini</h3>
+        <p style="line-height:2">
+          <a href="magazin.html">Iile</a><br>
+          <a href="index.html#povestea">Povestea</a><br>
+          <a href="index.html#cum">Cum se face</a><br>
+          <a href="index.html#intrebari">Întrebări</a>
+        </p>
+      </div>
+    </div>
+    <div class="subsol-jos">
+      <span>© <span data-an>2026</span> Ia bunicii mele. Cusut de mână, în România.</span>
+      <span>Plata se face prin Stripe. Nu ținem datele cardului.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="js/pattern.js"></script>
+<script src="js/site.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/cos.js"></script>
+<script src="js/film.js"></script>
+</body>
+</html>

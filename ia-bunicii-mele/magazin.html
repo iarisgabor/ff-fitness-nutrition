@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iile — Ia bunicii mele</title>
+<meta name="description" content="Iile cusute de mână care sunt gata acum. Câte una din fiecare model.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Karla:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M6 6l12 12M18 6L6 18' stroke='%23A81E12' stroke-width='2.6' stroke-linecap='round' fill='none'/></svg>">
+<style>
+  .pagina-sus { padding: calc(clamp(5rem, 12vh, 8rem) + 3rem) var(--mx) clamp(2.5rem, 6vh, 4rem); }
+  .pagina-sus .titlu-sectiune { font-size: clamp(2.6rem, 7vw, 5rem); }
+  .cum-cumperi {
+    margin-top: clamp(3.5rem, 8vh, 6rem);
+    padding: clamp(1.6rem, 4vw, 2.6rem);
+    background: var(--in-cald);
+    border: 1px solid rgba(42, 32, 24, 0.12);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: clamp(1.4rem, 3vw, 2.5rem);
+  }
+  .cum-cumperi h3 { font-size: 1.15rem; margin-bottom: 0.4rem; }
+  .cum-cumperi p { font-size: 0.92rem; color: var(--cerneala-moale); margin: 0; }
+</style>
+</head>
+<body>
+
+<header class="antet antet--fixat" data-antet>
+  <a class="marca" href="index.html">
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-linecap="round">
+      <g stroke="#A81E12" stroke-width="1.7">
+        <path d="M10 2.5l4 4M14 2.5l-4 4"/><path d="M2.5 10l4 4M6.5 10l-4 4"/>
+        <path d="M17.5 10l4 4M21.5 10l-4 4"/><path d="M10 17.5l4 4M14 17.5l-4 4"/>
+      </g>
+      <g stroke="#2A2018" stroke-width="1.7"><path d="M10 10l4 4M14 10l-4 4"/></g>
+    </svg>
+    Ia bunicii mele
+  </a>
+  <nav class="nav">
+    <a href="index.html#povestea" data-secundar>Povestea</a>
+    <a href="index.html#cum" data-secundar>Cum se face</a>
+    <a href="magazin.html">Iile</a>
+    <a href="index.html#contact">Contact</a>
+  </nav>
+</header>
+
+<main>
+  <section class="pagina-sus">
+    <div style="max-width:78rem;margin:0 auto">
+      <p class="eticheta">Iile</p>
+      <h1 class="titlu-sectiune">Ce e gata acum.</h1>
+      <p class="intro">Fiecare ie de aici e cusută de mână, de la primul punct la ultimul. Când una pleacă, nu mai vine alta la fel — poate un model asemănător, dar nu aceeași ie.</p>
+      <span class="cusatura" style="display:block;max-width:220px;margin-top:1.6rem" aria-hidden="true"></span>
+    </div>
+  </section>
+
+  <section class="sectiune" style="padding-top:0">
+    <div style="max-width:78rem;margin:0 auto">
+      <div class="grila-ii" data-ii-toate></div>
+
+      <div class="cum-cumperi">
+        <div>
+          <h3 class="serif">Cum se cumpără</h3>
+          <p>Apeși pe ie și mergi direct la plată, cu cardul, prin Stripe. Datele cardului nu trec pe la noi niciodată.</p>
+        </div>
+        <div>
+          <h3 class="serif">Cât durează</h3>
+          <p>Iile de aici sunt gata cusute. Se împachetează și pleacă prin curier în două-trei zile.</p>
+        </div>
+        <div>
+          <h3 class="serif">Vrei alt model?</h3>
+          <p>Bunica coase și pe comandă. Scrie-mi la <a href="mailto:salut@iabuniciimele.ro">salut@iabuniciimele.ro</a> și vorbim despre model și măsuri.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="subsol" id="contact">
+  <div style="max-width:78rem;margin:0 auto">
+    <div class="subsol-grid">
+      <div>
+        <h3 class="serif">Ia bunicii mele</h3>
+        <p style="max-width:34ch;color:rgba(240,228,206,0.72)">Ii tradiționale cusute la mână, una câte una. Dacă ai o întrebare, scrie-mi — răspund eu, nu un robot.</p>
+      </div>
+      <div>
+        <h3 class="serif">Scrie-mi</h3>
+        <p><a href="mailto:salut@iabuniciimele.ro">salut@iabuniciimele.ro</a></p>
+      </div>
+      <div>
+        <h3 class="serif">Pagini</h3>
+        <p style="line-height:2">
+          <a href="index.html">Acasă</a><br>
+          <a href="index.html#povestea">Povestea</a><br>
+          <a href="index.html#intrebari">Întrebări</a>
+        </p>
+      </div>
+    </div>
+    <div class="subsol-jos">
+      <span>© <span data-an>2026</span> Ia bunicii mele. Cusut de mână, în România.</span>
+      <span>Plata se face prin Stripe. Nu ținem datele cardului.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="js/site.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/cos.js"></script>
+<script>window.__ready = true;</script>
+</body>
+</html>
