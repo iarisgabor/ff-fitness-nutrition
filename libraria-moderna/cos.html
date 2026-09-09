@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Coșul meu — PRAG Librărie</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<header class="site-header" data-site-header>
+  <div class="wrap">
+    <a href="index.html" class="brand">PRAG<span>.</span></a>
+    <nav class="nav-menu" data-nav-menu>
+      <div class="nav-links">
+        <a href="index.html">Acasă</a>
+        <a href="magazin.html">Magazin</a>
+        <a href="autori.html">Autori</a>
+        <a href="despre.html">Despre</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="nav-actions">
+        <a href="cos.html" class="cart-link">
+          Coș <span class="cart-badge" data-cart-count>0</span>
+        </a>
+      </div>
+    </nav>
+    <button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-label="Meniu">☰</button>
+  </div>
+</header>
+
+<section class="page-header">
+  <div class="wrap">
+    <span class="eyebrow">Coș</span>
+    <h1>Coșul tău</h1>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="cart-layout" data-cart-layout>
+    <div>
+      <div data-cart-items></div>
+    </div>
+    <div class="cart-summary" data-cart-summary>
+      <div class="summary-row"><span>Subtotal</span><span data-summary-subtotal></span></div>
+      <div class="summary-row"><span>Livrare</span><span data-summary-shipping></span></div>
+      <div class="summary-row total"><span>Total</span><span data-summary-total></span></div>
+
+      <form data-checkout-form style="margin-top:24px;">
+        <div class="form-field">
+          <label for="c-name">Nume complet</label>
+          <input id="c-name" type="text" required />
+        </div>
+        <div class="form-field">
+          <label for="c-email">Email</label>
+          <input id="c-email" type="email" required />
+        </div>
+        <div class="form-field">
+          <label for="c-address">Adresă livrare</label>
+          <input id="c-address" type="text" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Trimite comanda</button>
+        <p class="form-note">Demo — nu se procesează nicio plată reală.</p>
+      </form>
+
+      <div class="confirm-box" data-confirm-box>
+        <strong>Comandă confirmată (demo)</strong>
+        <p style="margin-top:8px;">Mulțumim! Aceasta e o comandă simulată, fără procesare reală de plată.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cart-empty" data-cart-empty style="display:none;">
+    <p>Coșul tău e gol momentan.</p>
+    <a href="magazin.html" class="btn btn-primary" style="margin-top:20px;">Vezi magazinul</a>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom" style="border-top:none; padding-top:0;">
+      <span>© <span data-year></span> PRAG Librărie — proiect demo, conținut fictiv.</span>
+      <a href="index.html">Înapoi acasă</a>
+    </div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function cartItemHTML(item) {
+    const author = getAuthor(item.book.authorId);
+    return `
+      <div class="cart-item">
+        <div class="cart-item-cover ${coverTone(item.book.id)}">${item.book.title}</div>
+        <div>
+          <h4><a href="carte.html?slug=${item.book.slug}">${item.book.title}</a></h4>
+          <div class="cart-item-author">${author ? author.name : ""}</div>
+          <div class="cart-item-remove" data-remove="${item.book.slug}" style="cursor:pointer;">Elimină</div>
+        </div>
+        <div class="qty-control cart-item-qty">
+          <button type="button" data-qty-dec="${item.book.slug}">−</button>
+          <input type="text" readonly value="${item.qty}" />
+          <button type="button" data-qty-inc="${item.book.slug}">+</button>
+        </div>
+        <div class="book-price">${formatPrice(item.subtotal)}</div>
+      </div>
+    `;
+  }
+
+  function renderCart() {
+    const items = getCartItems();
+    const layout = document.querySelector("[data-cart-layout]");
+    const emptyState = document.querySelector("[data-cart-empty]");
+
+    if (!items.length) {
+      layout.style.display = "none";
+      emptyState.style.display = "block";
+      return;
+    }
+    layout.style.display = "grid";
+    emptyState.style.display = "none";
+
+    document.querySelector("[data-cart-items]").innerHTML = items.map(cartItemHTML).join("");
+
+    const subtotal = getCartTotal();
+    const shipping = subtotal >= 200 || subtotal === 0 ? 0 : 15;
+    document.querySelector("[data-summary-subtotal]").textContent = formatPrice(subtotal);
+    document.querySelector("[data-summary-shipping]").textContent = shipping === 0 ? "Gratuită" : formatPrice(shipping);
+    document.querySelector("[data-summary-total]").textContent = formatPrice(subtotal + shipping);
+  }
+
+  document.querySelector("[data-cart-items]")?.addEventListener("click", (e) => {
+    const inc = e.target.closest("[data-qty-inc]");
+    const dec = e.target.closest("[data-qty-dec]");
+    const remove = e.target.closest("[data-remove]");
+    if (inc) {
+      const slug = inc.getAttribute("data-qty-inc");
+      setQty(slug, (getCart()[slug] || 0) + 1);
+      renderCart();
+    } else if (dec) {
+      const slug = dec.getAttribute("data-qty-dec");
+      setQty(slug, (getCart()[slug] || 0) - 1);
+      renderCart();
+    } else if (remove) {
+      removeFromCart(remove.getAttribute("data-remove"));
+      renderCart();
+    }
+  });
+
+  document.querySelector("[data-checkout-form]").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const total = formatPrice(getCartTotal());
+    document.querySelector("[data-checkout-form]").style.display = "none";
+    document.querySelector("[data-cart-items]").innerHTML = "";
+    const confirmBox = document.querySelector("[data-confirm-box]");
+    confirmBox.querySelector("p").textContent =
+      `Mulțumim! Comanda simulată în valoare de ${total} a fost înregistrată (demo, fără plată reală).`;
+    confirmBox.classList.add("is-visible");
+    clearCart();
+  });
+
+  document.addEventListener("DOMContentLoaded", renderCart);
+</script>
+</body>
+</html>

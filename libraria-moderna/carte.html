@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title data-page-title>Carte — PRAG Librărie</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<header class="site-header" data-site-header>
+  <div class="wrap">
+    <a href="index.html" class="brand">PRAG<span>.</span></a>
+    <nav class="nav-menu" data-nav-menu>
+      <div class="nav-links">
+        <a href="index.html">Acasă</a>
+        <a href="magazin.html">Magazin</a>
+        <a href="autori.html">Autori</a>
+        <a href="despre.html">Despre</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="nav-actions">
+        <a href="cos.html" class="cart-link">
+          Coș <span class="cart-badge" data-cart-count>0</span>
+        </a>
+      </div>
+    </nav>
+    <button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-label="Meniu">☰</button>
+  </div>
+</header>
+
+<div class="wrap" style="padding-top:32px;">
+  <div class="breadcrumb"><a href="magazin.html">Magazin</a> / <span data-crumb-category></span></div>
+</div>
+
+<div class="wrap">
+  <div class="product-layout">
+    <div class="product-cover-wrap">
+      <div class="product-cover" data-product-cover>
+        <span class="book-cover-category" data-product-category-label></span>
+        <span class="book-cover-title" style="font-size:1.8rem;" data-product-cover-title></span>
+      </div>
+    </div>
+    <div class="product-meta">
+      <span class="category-tag" data-product-category></span>
+      <h1 data-product-title></h1>
+      <p class="product-author">de <a data-product-author-link href="#"></a></p>
+      <div class="product-price" data-product-price></div>
+      <p class="product-desc" data-product-desc></p>
+      <div class="product-purchase">
+        <div class="qty-control">
+          <button type="button" data-qty-minus aria-label="Scade cantitatea">−</button>
+          <input type="text" value="1" readonly data-qty-value />
+          <button type="button" data-qty-plus aria-label="Crește cantitatea">+</button>
+        </div>
+        <button class="btn btn-primary" data-product-add>Adaugă în coș</button>
+      </div>
+      <p style="font-size:0.85rem; color:#6b6558;">Livrare gratuită peste 200 lei · Retur în 14 zile</p>
+    </div>
+  </div>
+
+  <h3 class="related-heading">Cărți din aceeași colecție</h3>
+  <div class="book-grid" data-related-grid></div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom" style="border-top:none; padding-top:0;">
+      <span>© <span data-year></span> PRAG Librărie — proiect demo, conținut fictiv.</span>
+      <a href="index.html">Înapoi acasă</a>
+    </div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script>
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get("slug");
+    const book = getBookBySlug(slug);
+
+    if (!book) {
+      document.querySelector(".product-layout").innerHTML =
+        '<p style="padding:60px 0;">Cartea căutată nu a fost găsită. <a href="magazin.html">Înapoi la magazin.</a></p>';
+    } else {
+      const author = getAuthor(book.authorId);
+      document.title = book.title + " — PRAG Librărie";
+      document.querySelector("[data-crumb-category]").innerHTML =
+        `<a href="magazin.html?categorie=${book.category}">${getCategoryName(book.category)}</a>`;
+
+      const cover = document.querySelector("[data-product-cover]");
+      cover.classList.add(coverTone(book.id));
+      document.querySelector("[data-product-category-label]").textContent = getCategoryName(book.category);
+      document.querySelector("[data-product-cover-title]").textContent = book.title;
+
+      document.querySelector("[data-product-category]").textContent = getCategoryName(book.category);
+      document.querySelector("[data-product-title]").textContent = book.title;
+      const authorLink = document.querySelector("[data-product-author-link]");
+      authorLink.textContent = author ? author.name : "";
+      authorLink.href = `autori.html#${book.authorId}`;
+      document.querySelector("[data-product-price]").textContent = formatPrice(book.price);
+      document.querySelector("[data-product-desc]").textContent = book.description;
+
+      const qtyInput = document.querySelector("[data-qty-value]");
+      document.querySelector("[data-qty-minus]").addEventListener("click", () => {
+        qtyInput.value = Math.max(1, Number(qtyInput.value) - 1);
+      });
+      document.querySelector("[data-qty-plus]").addEventListener("click", () => {
+        qtyInput.value = Number(qtyInput.value) + 1;
+      });
+      document.querySelector("[data-product-add]").addEventListener("click", (e) => {
+        addToCart(book.slug, Number(qtyInput.value));
+        e.target.textContent = "Adăugat ✓";
+        setTimeout(() => (e.target.textContent = "Adaugă în coș"), 1200);
+      });
+
+      const related = BOOKS.filter((b) => b.category === book.category && b.id !== book.id).slice(0, 4);
+      renderBookGrid(document.querySelector("[data-related-grid]"), related);
+      initReveal();
+    }
+  })();
+</script>
+</body>
+</html>

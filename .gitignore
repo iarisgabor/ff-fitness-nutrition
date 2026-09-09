@@ -7,5 +7,15 @@ Thumbs.db
 worker/node_modules/
 worker/.wrangler/
 worker/.dev.vars
+telegram-assistant/node_modules/
+telegram-assistant/.wrangler/
+telegram-assistant/.dev.vars
+pulsul-duminicii/node_modules/
+pulsul-duminicii/.wrangler/
+pulsul-duminicii/.dev.vars
+librarie-test/worker/node_modules/
+librarie-test/worker/.wrangler/
+librarie-test/worker/.dev.vars
 .claude/
 player.gd
+ai-agency/

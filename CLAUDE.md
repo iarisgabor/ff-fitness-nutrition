@@ -3,7 +3,7 @@
 > Încărcat automat la fiecare sesiune Claude Code pornită în acest folder. Scopul lui:
 > să știi instant unde să te duci, fără să recitești tot repo-ul.
 
-Acest folder conține **patru proiecte reale, fără nicio legătură între ele**, plus
+Acest folder conține **opt proiecte reale, fără nicio legătură între ele**, plus
 tooling Claude Code și un vault personal de notițe Obsidian suprapus peste tot.
 Arhitectura completă a fiecărui proiect e în documente separate (linkate mai jos) —
 acest fișier e doar harta.
@@ -27,10 +27,14 @@ acest fișier e doar harta.
 | filmul de la scroll, canvas, camera care urmărește acul | `ia-bunicii-mele/js/film.js` |
 | coș, plată Stripe în pagină, marcat ia ca vândută | `ia-bunicii-mele/js/cos.js` + `ia-bunicii-mele/supabase/functions/` |
 | adăugat/schimbat ii, încărcat poze, cont de admin | `ia-bunicii-mele/admin.html` + `js/admin.js` |
-| skill-uri Claude Code, afaceri locale RO, eMag, prețuri cărți, generare site-uri, scroll-film | `.claude/skills/` → §5 |
+| fișă de meci, pauza muzicală, Blaugrana, FC Barcelona (pagina statică) | **FOTBALL/** → §5 |
+| librărie online demo, PRAG, autori, carte, coș (fără backend real) | **libraria-moderna/** → §6 |
+| nomenclator librărie, import POS, Bluecash50, PLU, coduri de bare, decenu.eu | **POS NOU/** → §7 |
+| agenție AI, site de prezentare Iaris Gabor, servicii AI | **ai-agency/** → §8 |
+| skill-uri Claude Code, afaceri locale RO, eMag, prețuri cărți, generare site-uri, scroll-film | `.claude/skills/` → §9 |
 | agentul de scor FC Barcelona | `.claude/agents/Show-score.md` |
-| notițe personale, vault | e Obsidian, nu cod → §6 |
-| fișier gol/orfan/necunoscut găsit prin repo | probabil în §6 — verifică acolo înainte să presupui că e activ |
+| notițe personale, vault | e Obsidian, nu cod → §10 |
+| fișier gol/orfan/necunoscut găsit prin repo | probabil în §10 — verifică acolo înainte să presupui că e activ |
 
 ## 1. FF Fitness — aplicația principală (rădăcina repo + `worker/`)
 
@@ -146,7 +150,48 @@ adresele și bonurile stau în Stripe.
 strat de netezire. Verificare: `?jump=<pixeli>` + `window.__ready`, cu
 `.claude/skills/scroll-film-studio/scripts/verify.js` (capturi + test de fluiditate).
 
-## 5. `.claude/` — tooling Claude Code (agent + skill-uri), separat de toate aplicațiile
+## 5. `FOTBALL/` — pagină statică de fișă de meci FC Barcelona
+
+Trei fișiere, fără backend, fără build step: `index.html` + `script.js` (76 linii) +
+`styles.css`. Fără legătură cu agentul `Show-score` din §9 — acela răspunde live prin
+WebSearch, asta e o pagină statică ("Blaugrana — fișa de meci & pauza muzicală").
+
+## 6. `libraria-moderna/` — demo de magazin online de cărți ("PRAG")
+
+Site static (fără framework, fără build step), date fictive hardcodate în
+`js/data.js` — **nu e conectat la niciun backend real**, nu confunda cu `librarie/`
+(design de referință pentru §3 pulsul-duminicii) sau `librarie-test/`.
+
+Fișiere:
+- `index.html`, `magazin.html`, `carte.html`, `autori.html`, `despre.html`, `contact.html`, `cos.html`
+- `js/data.js` — categorii, autori, cărți (placeholder)
+- `js/catalog.js`, `js/cart.js`, `js/main.js`
+- `css/styles.css`
+
+## 7. `POS NOU/` — nomenclator librărie → import Bluecash50 (POS)
+
+Nu e o aplicație — e un folder de lucru pentru curățarea unui nomenclator de
+bibliotecă/librărie (776 → 685 articole, doar cărți) și generarea fișierului de
+import PLU pentru un terminal fiscal **Datecs BlueCash 50**.
+
+**Detalii complete (format PLU, convenții TVA/grupă/departament, ce s-a curățat):
+`POS NOU/CLAUDE.md`.**
+
+Fișiere: `Nomenclator (2).xlsx` (sursă brută, nu se modifică), `Nomenclator (2) -
+curatat.xlsx` (sursa de adevăr), `plu_import.csv` (fișierul final de import),
+`plu.csv` (exemplu de format primit), `imagini_decenu/` (63 coperte JPEG pentru
+editura decenu.eu). `Book1.ods` și `Import BuCon.ods` sunt istoric, deprecated.
+
+## 8. `ai-agency/` — site de prezentare, agenție AI (Iaris Gabor)
+
+**Repo git separat, cu propriul remote GitHub (`iarisgabor/ai-agency`) — nu face
+parte din monorepo-ul acesta.** Ținut aici doar ca folder pe disc, ignorat explicit
+din `.gitignore` ca să nu apară ca gitlink/submodul spart. Orice commit la acest
+proiect se face din `ai-agency/` cu propriul `git`, separat de restul.
+
+Stack: Vite + React, deploy pe Vercel (`.vercel/project.json` prezent).
+
+## 9. `.claude/` — tooling Claude Code (agent + skill-uri), separat de toate aplicațiile
 
 - Agent `Show-score` — scor FC Barcelona (Haiku 4.5 + WebSearch)
 - Skill `afaceri-locale-ro` — director de afaceri RO din OpenStreetMap → CSV
@@ -158,7 +203,7 @@ strat de netezire. Verificare: `?jump=<pixeli>` + `window.__ready`, cu
 
 Flux tipic: `afaceri-locale-ro` → CSV → `website-afaceri-ro` → HTML în `rezultate/`.
 
-## 6. Nu sunt proiecte active — ignoră dacă nu ești rugat explicit de ele
+## 10. Nu sunt proiecte active — ignoră dacă nu ești rugat explicit de ele
 
 - `api/` — folder gol, rămășiță de dinainte de migrarea backend-ului la Cloudflare Worker.
 - `player.gd` — script Godot orfan (gitignored), fără legătură cu nimic din acest repo.

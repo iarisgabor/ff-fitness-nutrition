@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contact — PRAG Librărie</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<header class="site-header" data-site-header>
+  <div class="wrap">
+    <a href="index.html" class="brand">PRAG<span>.</span></a>
+    <nav class="nav-menu" data-nav-menu>
+      <div class="nav-links">
+        <a href="index.html">Acasă</a>
+        <a href="magazin.html">Magazin</a>
+        <a href="autori.html">Autori</a>
+        <a href="despre.html">Despre</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="nav-actions">
+        <a href="cos.html" class="cart-link">
+          Coș <span class="cart-badge" data-cart-count>0</span>
+        </a>
+      </div>
+    </nav>
+    <button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-label="Meniu">☰</button>
+  </div>
+</header>
+
+<section class="page-header">
+  <div class="wrap">
+    <span class="eyebrow">Scrie-ne</span>
+    <h1>Contact</h1>
+    <p>Întrebări despre o comandă, o recomandare de carte sau pur și simplu o observație — suntem aici.</p>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="product-layout" style="grid-template-columns: 1fr 1.3fr; padding-bottom:96px;">
+    <div>
+      <h3 style="margin-bottom:16px;">Detalii de contact</h3>
+      <p style="color:#4a453c; margin-bottom:24px;">contact@prag-libraria.demo<br />0700.000.000<br />Luni–Vineri, 09:00–17:00</p>
+      <p style="color:#6b6558; font-size:0.9rem;">Acesta e un proiect demo — formularul nu trimite date reale, doar afișează o confirmare.</p>
+    </div>
+    <div>
+      <form data-contact-form>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="name">Nume</label>
+            <input id="name" type="text" required />
+          </div>
+          <div class="form-field">
+            <label for="email">Email</label>
+            <input id="email" type="email" required />
+          </div>
+          <div class="form-field full">
+            <label for="subject">Subiect</label>
+            <input id="subject" type="text" required />
+          </div>
+          <div class="form-field full">
+            <label for="message">Mesaj</label>
+            <textarea id="message" required></textarea>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Trimite mesajul</button>
+      </form>
+      <div class="confirm-box" data-confirm-box>
+        <strong>Mesaj trimis (demo)</strong>
+        <p style="margin-top:8px;">Mulțumim pentru mesaj! Într-un site real, aici ai primi o confirmare și un răspuns pe email.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom" style="border-top:none; padding-top:0;">
+      <span>© <span data-year></span> PRAG Librărie — proiect demo, conținut fictiv.</span>
+      <a href="index.html">Înapoi acasă</a>
+    </div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script>
+  document.querySelector("[data-contact-form]").addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.target.style.display = "none";
+    document.querySelector("[data-confirm-box]").classList.add("is-visible");
+  });
+</script>
+</body>
+</html>

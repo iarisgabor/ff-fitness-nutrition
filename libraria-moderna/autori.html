@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Autori — PRAG Librărie</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<header class="site-header" data-site-header>
+  <div class="wrap">
+    <a href="index.html" class="brand">PRAG<span>.</span></a>
+    <nav class="nav-menu" data-nav-menu>
+      <div class="nav-links">
+        <a href="index.html">Acasă</a>
+        <a href="magazin.html">Magazin</a>
+        <a href="autori.html">Autori</a>
+        <a href="despre.html">Despre</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="nav-actions">
+        <a href="cos.html" class="cart-link">
+          Coș <span class="cart-badge" data-cart-count>0</span>
+        </a>
+      </div>
+    </nav>
+    <button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-label="Meniu">☰</button>
+  </div>
+</header>
+
+<section class="page-header">
+  <div class="wrap">
+    <span class="eyebrow">Oamenii din spatele cărților</span>
+    <h1>Autori</h1>
+    <p>Nouă voci, șapte colecții, un singur fir comun: cărți scrise ca să schimbe ceva, nu doar ca să se vândă.</p>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="section" style="padding-top:56px;">
+    <div class="author-grid" data-author-grid></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-bottom" style="border-top:none; padding-top:0;">
+      <span>© <span data-year></span> PRAG Librărie — proiect demo, conținut fictiv.</span>
+      <a href="index.html">Înapoi acasă</a>
+    </div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const grid = document.querySelector("[data-author-grid]");
+    const authorsWithBooks = AUTHORS.filter((a) => BOOKS.some((b) => b.authorId === a.id));
+    grid.innerHTML = authorsWithBooks
+      .map((a) => {
+        const count = BOOKS.filter((b) => b.authorId === a.id).length;
+        return `
+          <div class="author-card" id="${a.id}" data-reveal>
+            <div class="author-avatar">${a.initials}</div>
+            <h3>${a.name}</h3>
+            <p>${a.bio}</p>
+            <p style="margin-top:14px; font-size:0.8rem; color:var(--yellow-ink); font-weight:600;">
+              <a href="magazin.html?autor=${a.id}">${count} ${count === 1 ? "carte" : "cărți"} în magazin →</a>
+            </p>
+          </div>
+        `;
+      })
+      .join("");
+    initReveal();
+  });
+</script>
+</body>
+</html>
