@@ -1,0 +1,6 @@
+name = "librarie-test-chat"
+main = "index.js"
+compatibility_date = "2026-08-21"
+
+# Secrete — NICIODATĂ aici, doar prin:
+#   wrangler secret put ANTHROPIC_API_KEY

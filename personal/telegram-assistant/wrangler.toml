@@ -1,0 +1,26 @@
+name = "telegram-assistant"
+main = "src/index.js"
+compatibility_date = "2026-08-21"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "ASSISTANT_AGENT"
+class_name = "AssistantAgent"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AssistantAgent"]
+
+[vars]
+DEFAULT_TIMEZONE = "Europe/Bucharest"
+GOOGLE_CALENDAR_ID = "primary"
+DAILY_AGENDA_HOUR = "20"
+
+# Secrete — NICIODATĂ aici, doar prin:
+#   wrangler secret put TELEGRAM_BOT_TOKEN
+#   wrangler secret put TELEGRAM_WEBHOOK_SECRET
+#   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put GOOGLE_CALENDAR_CLIENT_ID
+#   wrangler secret put GOOGLE_CALENDAR_CLIENT_SECRET
+#   wrangler secret put GOOGLE_CALENDAR_REFRESH_TOKEN
+#   wrangler secret put ALLOWED_TELEGRAM_USER_ID

@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulsul Duminicii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1F3F8;
+    --surface:#FFFFFF;
+    --surface-2:#E8ECF3;
+    --surface-3:#DEE4ED;
+    --border:#D5DCE6;
+    --text:#12172A;
+    --text-2:#4A5468;
+    --text-3:#7C879C;
+    --gold:#B9832A;
+    --gold-bright:#9C6B1F;
+    --gold-mark:#B9832A;
+    --teal:#0E9C93;
+    --teal-mark:#0E9C93;
+    --neg1:#B9503A;
+    --neg2:#D98671;
+    --neutral3:#A8ADB8;
+    --pos4:#C9973B;
+    --pos5:#B9832A;
+    --shadow:0 1px 2px rgba(18,23,42,.04), 0 8px 24px rgba(18,23,42,.07);
+    --glow-gold: 0 0 0 rgba(0,0,0,0);
+    --glow-teal: 0 0 0 rgba(0,0,0,0);
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:8px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#090C13;
+      --surface:#121826;
+      --surface-2:#1A2233;
+      --surface-3:#232C40;
+      --border:#2B3549;
+      --text:#EEF1F7;
+      --text-2:#A6B0C3;
+      --text-3:#6B7488;
+      --gold:#E3B45C;
+      --gold-bright:#F0C879;
+      --gold-mark:#B8862A;
+      --teal:#4CDCD4;
+      --teal-mark:#1FA69E;
+      --neg1:#C1614C;
+      --neg2:#8F4536;
+      --neutral3:#4A5266;
+      --pos4:#A87830;
+      --pos5:#B8862A;
+      --shadow:0 1px 0 rgba(0,0,0,.3), 0 20px 60px rgba(0,0,0,.45);
+      --glow-gold: 0 0 28px rgba(227,180,92,.28);
+      --glow-teal: 0 0 28px rgba(76,220,212,.22);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#090C13;
+    --surface:#121826;
+    --surface-2:#1A2233;
+    --surface-3:#232C40;
+    --border:#2B3549;
+    --text:#EEF1F7;
+    --text-2:#A6B0C3;
+    --text-3:#6B7488;
+    --gold:#E3B45C;
+    --gold-bright:#F0C879;
+    --gold-mark:#B8862A;
+    --teal:#4CDCD4;
+    --teal-mark:#1FA69E;
+    --neg1:#C1614C;
+    --neg2:#8F4536;
+    --neutral3:#4A5266;
+    --pos4:#A87830;
+    --pos5:#B8862A;
+    --shadow:0 1px 0 rgba(0,0,0,.3), 0 20px 60px rgba(0,0,0,.45);
+    --glow-gold: 0 0 28px rgba(227,180,92,.28);
+    --glow-teal: 0 0 28px rgba(76,220,212,.22);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Sora',ui-sans-serif,system-ui,sans-serif; margin:0; text-wrap:balance;}
+  p{margin:0;}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:0 24px;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    backdrop-filter: blur(14px);
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    border-bottom:1px solid var(--border);
+  }
+  .topbar-inner{display:flex; align-items:center; justify-content:space-between; padding:14px 24px; max-width:1180px; margin:0 auto;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:26px; height:26px; flex:none;}
+  .brand-name{font-family:'Sora'; font-weight:700; font-size:15px; letter-spacing:.02em;}
+  .brand-sub{font-size:12px; color:var(--text-3);}
+  .topbar-meta{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-2);}
+  .live-dot{width:7px; height:7px; border-radius:50%; background:var(--teal); box-shadow:0 0 0 3px color-mix(in srgb, var(--teal) 20%, transparent);}
+
+  /* ---------- hero ---------- */
+  .hero{position:relative; padding:64px 0 40px; overflow:hidden;}
+  .hero-grid{
+    display:grid; grid-template-columns: 1.1fr .9fr; gap:48px; align-items:center;
+  }
+  .eyebrow{
+    font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--teal-mark);
+    font-weight:700; display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow::before{content:""; width:16px; height:1px; background:var(--teal-mark); display:inline-block;}
+  .hero h1{font-size:clamp(32px,4.4vw,50px); line-height:1.06; margin-top:14px; font-weight:700; letter-spacing:-.01em;}
+  .hero-desc{margin-top:16px; font-size:16px; line-height:1.6; color:var(--text-2); max-width:46ch;}
+  .hero-kpis{display:flex; gap:28px; margin-top:32px; flex-wrap:wrap;}
+  .hero-kpi .num{font-family:'Manrope'; font-weight:800; font-size:26px;}
+  .hero-kpi .lbl{font-size:12.5px; color:var(--text-3); margin-top:2px;}
+
+  .hero-dial{
+    position:relative; justify-self:center; width:100%; max-width:360px; aspect-ratio:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .hero-dial svg{position:absolute; inset:0; width:100%; height:100%;}
+  .hero-dial-core{
+    position:relative; z-index:2; text-align:center;
+    background:var(--surface); border:1px solid var(--border); border-radius:50%;
+    width:64%; aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:var(--shadow), var(--glow-gold);
+  }
+  .hero-dial-core .score{font-family:'Manrope'; font-weight:800; font-size:44px; color:var(--gold);}
+  .hero-dial-core .outof{font-size:12px; color:var(--text-3); margin-top:2px;}
+  .hero-dial-core .cap{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-top:8px;}
+
+  /* ---------- sections ---------- */
+  section{padding:56px 0;}
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:28px; flex-wrap:wrap;}
+  .section-head h2{font-size:24px; font-weight:700;}
+  .section-note{font-size:13px; color:var(--text-3); max-width:38ch;}
+  .divider{height:1px; background:var(--border); border:none; margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+  }
+  .pad{padding:26px;}
+
+  /* KPI row */
+  .kpi-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;}
+  .kpi{padding:20px 22px;}
+  .kpi .tag{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); font-weight:700;}
+  .kpi .val{font-family:'Manrope'; font-weight:800; font-size:28px; margin-top:8px;}
+  .kpi .sub{font-size:12.5px; color:var(--text-2); margin-top:4px;}
+  .kpi .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px;}
+
+  /* dimension bars */
+  .dim-list{display:flex; flex-direction:column; gap:4px;}
+  .dim-row{
+    display:grid; grid-template-columns: 208px 1fr 64px; align-items:center; gap:16px;
+    padding:11px 4px; border-radius:10px; cursor:default;
+  }
+  .dim-row:hover{background:var(--surface-2);}
+  .dim-name{font-size:14px; font-weight:600;}
+  .dim-n{font-size:11.5px; color:var(--text-3); font-weight:500;}
+  .bar-track{position:relative; height:22px; background:var(--surface-2); border-radius:6px; overflow:hidden;}
+  .bar-fill{
+    position:absolute; left:0; top:0; bottom:0; border-radius:6px 4px 4px 6px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold-mark) 75%, transparent), var(--gold-mark));
+  }
+  .dim-val{font-family:'IBM Plex Mono'; font-weight:600; font-size:14px; text-align:right; font-variant-numeric:tabular-nums;}
+
+  /* distribution small multiples */
+  .dist-legend{display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; font-size:12.5px; color:var(--text-2);}
+  .dist-legend span{display:inline-flex; align-items:center; gap:6px;}
+  .dist-legend i{width:10px; height:10px; border-radius:3px; display:inline-block;}
+  .dist-grid{display:grid; grid-template-columns:1fr 1fr; gap:22px 28px;}
+  .dist-item .head{display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px;}
+  .dist-item .head b{font-weight:600;}
+  .dist-item .head .avg{font-family:'IBM Plex Mono'; color:var(--text-2); font-variant-numeric:tabular-nums;}
+  .stack{display:flex; height:24px; border-radius:6px; overflow:hidden; gap:2px; background:var(--surface);}
+  .seg{height:100%; min-width:0; cursor:default;}
+
+  /* trend */
+  .trend-grid{display:grid; grid-template-columns: 1.3fr 1fr; gap:20px;}
+  .trend-card{padding:24px 24px 16px;}
+  .trend-card h3{font-size:14px; font-weight:700; margin-bottom:2px;}
+  .trend-sub{font-size:12px; color:var(--text-3); margin-bottom:14px;}
+  .vol-bars{display:flex; align-items:flex-end; gap:14px; height:150px; padding-top:10px;}
+  .vol-col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:8px;}
+  .vol-cap{font-family:'IBM Plex Mono'; font-size:12px; color:var(--text-2); font-variant-numeric:tabular-nums;}
+  .vol-bar{width:100%; max-width:34px; border-radius:5px 5px 3px 3px; background:linear-gradient(180deg, color-mix(in srgb, var(--teal-mark) 85%, transparent), var(--teal-mark));}
+  .vol-month{font-size:11.5px; color:var(--text-3);}
+
+  /* age */
+  .age-list{display:flex; flex-direction:column; gap:4px;}
+  .age-row{display:grid; grid-template-columns:120px 1fr 96px; align-items:center; gap:16px; padding:10px 4px; border-radius:10px;}
+  .age-row:hover{background:var(--surface-2);}
+  .age-name{font-size:13.5px; font-weight:600;}
+  .age-fill{background:linear-gradient(90deg, color-mix(in srgb, var(--teal-mark) 75%, transparent), var(--teal-mark)); border-radius:6px 4px 4px 6px;}
+  .age-val{font-family:'IBM Plex Mono'; font-size:12.5px; color:var(--text-2); text-align:right; font-variant-numeric:tabular-nums;}
+
+  /* quotes */
+  .quote-grid{columns:2; column-gap:20px;}
+  @media (max-width:760px){.quote-grid{columns:1;}}
+  .quote{break-inside:avoid; margin-bottom:20px; padding:20px 22px; position:relative;}
+  .quote-tag{display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); margin-bottom:12px;}
+  .quote-tag i{width:8px; height:8px; border-radius:50%; background:var(--gold-mark); display:inline-block;}
+  .quote p{font-size:14.5px; line-height:1.6; color:var(--text);}
+  .quote p::before{content:"\201C"; color:var(--gold); font-family:'Sora'; font-weight:700; margin-right:2px;}
+
+  /* date browser */
+  .date-pills{display:flex; gap:8px; overflow-x:auto; padding-bottom:16px; margin-bottom:20px; border-bottom:1px solid var(--border);}
+  .date-pill{
+    flex:none; display:flex; flex-direction:column; align-items:center; gap:1px;
+    padding:9px 13px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2);
+    cursor:pointer; min-width:58px; transition:border-color .12s, background .12s;
+  }
+  .date-pill:hover{border-color:color-mix(in srgb, var(--gold-mark) 45%, var(--border));}
+  .date-pill.active{border-color:var(--gold-mark); background:color-mix(in srgb, var(--gold-mark) 13%, var(--surface-2));}
+  .date-pill .d-num{font-family:'IBM Plex Mono'; font-weight:700; font-size:15px;}
+  .date-pill.active .d-num{color:var(--gold);}
+  .date-pill .d-mon{font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em;}
+  .date-pill .d-count{font-size:10px; color:var(--text-3); margin-top:3px; font-family:'IBM Plex Mono';}
+
+  .date-panel-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+  .date-panel-head h3{font-size:16px; font-weight:700;}
+  .date-panel-head .sub{font-size:12.5px; color:var(--text-3);}
+
+  .resp-card{border:1px solid var(--border); border-radius:14px; padding:20px 22px; margin-bottom:14px; background:var(--surface);}
+  .resp-card:last-child{margin-bottom:0;}
+  .resp-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; padding-bottom:13px; border-bottom:1px solid var(--border);}
+  .resp-time{font-family:'IBM Plex Mono'; font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:7px;}
+  .resp-time .tdot{width:6px; height:6px; border-radius:50%; background:var(--teal-mark);}
+  .chip{font-size:11px; padding:3px 10px; border-radius:999px; background:var(--surface-2); color:var(--text-2); border:1px solid var(--border);}
+  .chip.name{color:var(--text); font-weight:600;}
+  .resp-avg{margin-left:auto; font-family:'IBM Plex Mono'; font-size:12.5px; color:var(--text-3);}
+  .resp-avg b{color:var(--gold); font-weight:700;}
+
+  .resp-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px 24px;}
+  @media (max-width:700px){.resp-grid{grid-template-columns:1fr;}}
+  .qa-head{display:flex; align-items:center; gap:8px; margin-bottom:5px;}
+  .qa-badge{
+    width:21px; height:21px; border-radius:6px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono'; font-weight:700; font-size:11.5px; color:#fff;
+  }
+  .qa-badge.empty{background:var(--surface-2); color:var(--text-3); border:1px solid var(--border);}
+  .qa-label{font-size:11.5px; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.03em;}
+  .qa-text{font-size:13.5px; line-height:1.55; color:var(--text); padding-left:29px;}
+  .qa-text.empty{color:var(--text-3); font-style:italic;}
+
+  /* table view */
+  details.table-toggle{margin-top:22px;}
+  details.table-toggle summary{
+    cursor:pointer; font-size:13px; font-weight:600; color:var(--text-2);
+    list-style:none; display:inline-flex; align-items:center; gap:6px; padding:8px 0;
+  }
+  details.table-toggle summary::-webkit-details-marker{display:none;}
+  details.table-toggle summary::before{content:"\25B8"; font-size:11px; transition:transform .15s;}
+  details.table-toggle[open] summary::before{transform:rotate(90deg);}
+  .data-table-wrap{overflow-x:auto; margin-top:10px;}
+  table.data-table{border-collapse:collapse; width:100%; font-size:13px; min-width:560px;}
+  table.data-table th, table.data-table td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums;}
+  table.data-table th{color:var(--text-3); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em;}
+
+  /* tooltip */
+  #tooltip{
+    position:fixed; z-index:100; pointer-events:none; opacity:0; transform:translateY(4px);
+    transition:opacity .12s, transform .12s;
+    background:var(--surface-3); color:var(--text); border:1px solid var(--border);
+    border-radius:10px; padding:10px 13px; font-size:12.5px; line-height:1.45; max-width:260px;
+    box-shadow:var(--shadow);
+  }
+  #tooltip.show{opacity:1; transform:translateY(0);}
+  #tooltip b{display:block; font-weight:700; margin-bottom:3px;}
+  #tooltip .tt-sub{color:var(--text-3); font-size:11.5px;}
+
+  footer{padding:40px 0 70px; border-top:1px solid var(--border);}
+  footer p{font-size:12.5px; color:var(--text-3); line-height:1.7; max-width:64ch;}
+
+  @media (max-width:860px){
+    .hero-grid{grid-template-columns:1fr;}
+    .hero-dial{order:-1; max-width:220px; margin:0 auto;}
+    .dim-row{grid-template-columns:120px 1fr 52px; gap:10px;}
+    .dist-grid{grid-template-columns:1fr;}
+    .trend-grid{grid-template-columns:1fr;}
+    .age-row{grid-template-columns:96px 1fr 74px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="tooltip"></div>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 26 26" fill="none"><path d="M1 13H7L10 4L16 22L19 13H25" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>
+        <div class="brand-name">PULSUL&nbsp;DUMINICII</div>
+      </div>
+    </div>
+    <div class="topbar-meta">
+      <span class="live-dot"></span>
+      <span>36 răspunsuri &middot; 17 mai&ndash;6 sept 2026</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Feedback &middot; biserica Logos</div>
+        <h1>Vocea comunității, citită dintr-un formular și transformată în semnal clar.</h1>
+        <p class="hero-desc">36 de răspunsuri anonime la evaluarea întâlnirilor de duminică, din 17 mai până în 6 septembrie 2026, distilate în 7 dimensiuni, o evoluție lunară și o hartă a vârstelor.</p>
+        <div class="hero-kpis">
+          <div class="hero-kpi">
+            <div class="num mono" style="color:var(--gold)">4.83</div>
+            <div class="lbl">cea mai puternică &middot; Recomandare</div>
+          </div>
+          <div class="hero-kpi">
+            <div class="num mono" style="color:var(--teal)">83%</div>
+            <div class="lbl">au dat nota maximă la recomandare</div>
+          </div>
+          <div class="hero-kpi">
+            <div class="num mono">248</div>
+            <div class="lbl">note individuale colectate</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-dial">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3.2" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <circle cx="100" cy="100" r="92" fill="none" stroke="var(--border)" stroke-width="1"/>
+          <circle id="dial-arc" cx="100" cy="100" r="92" fill="none" stroke="var(--gold)" stroke-width="3" stroke-linecap="round" filter="url(#glow)" transform="rotate(-90 100 100)"/>
+          <g id="pulse-line" stroke="var(--teal)" stroke-width="1.6" fill="none" opacity=".55" filter="url(#glow)"></g>
+        </svg>
+        <div class="hero-dial-core">
+          <div class="score mono">4.41</div>
+          <div class="outof">din 5.00</div>
+          <div class="cap">Scor mediu general</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section id="overview">
+    <div class="section-head">
+      <h2>Pe scurt</h2>
+      <p class="section-note">Un instantaneu al celor 36 de răspunsuri, înainte de a intra în detalii.</p>
+    </div>
+    <div class="kpi-grid">
+      <div class="card kpi">
+        <div class="tag">Perioadă acoperită</div>
+        <div class="val" style="font-size:20px;">17 mai &ndash; 6 sept 2026</div>
+        <div class="sub">18 zile distincte cu răspunsuri primite</div>
+      </div>
+      <div class="card kpi">
+        <div class="tag"><span class="dot" style="background:var(--gold-mark)"></span>Punct forte</div>
+        <div class="val">Recomandare</div>
+        <div class="sub">medie 4.83 &middot; 83% note de 5</div>
+      </div>
+      <div class="card kpi">
+        <div class="tag"><span class="dot" style="background:var(--teal-mark)"></span>Zonă de creștere</div>
+        <div class="val">Cina Domnului</div>
+        <div class="sub">medie 4.06 &middot; cea mai variată dimensiune</div>
+      </div>
+      <div class="card kpi">
+        <div class="tag">Vârstă dominantă</div>
+        <div class="val">20&ndash;35 ani</div>
+        <div class="sub">16 din 36 răspunsuri (44%)</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="dimensions">
+    <div class="section-head">
+      <h2>Cele 7 dimensiuni ale întâlnirii</h2>
+      <p class="section-note">Medie pe o scală de 1&ndash;5, ordonate descrescător. Treci cu mouse-ul peste o bară pentru întrebarea completă.</p>
+    </div>
+    <div class="card pad">
+      <div class="dim-list" id="dim-list"></div>
+    </div>
+  </section>
+
+  <section id="distribution">
+    <div class="section-head">
+      <h2>Distribuția notelor</h2>
+      <p class="section-note">Fiecare bară arată ponderea notelor 1&ndash;5 pentru acea dimensiune, din totalul răspunsurilor primite.</p>
+    </div>
+    <div class="card pad">
+      <div class="dist-legend" id="dist-legend"></div>
+      <div class="dist-grid" id="dist-grid"></div>
+      <details class="table-toggle">
+        <summary>Vezi toate cifrele ca tabel</summary>
+        <div class="data-table-wrap">
+          <table class="data-table" id="data-table"></table>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section id="trend">
+    <div class="section-head">
+      <h2>Evoluție în timp</h2>
+      <p class="section-note">Medie compozită (toate cele 7 dimensiuni) și volum de răspunsuri, lună de lună.</p>
+    </div>
+    <div class="trend-grid">
+      <div class="card trend-card">
+        <h3>Medie compozită lunară</h3>
+        <div class="trend-sub">Linia punctată subțire marchează media generală (4.41)</div>
+        <svg id="trend-svg" viewBox="0 0 560 190" style="width:100%; height:190px;"></svg>
+      </div>
+      <div class="card trend-card">
+        <h3>Volum de răspunsuri</h3>
+        <div class="trend-sub">Numărul de formulare completate în fiecare lună</div>
+        <div class="vol-bars" id="vol-bars"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ages">
+    <div class="section-head">
+      <h2>Cine ne-a scris</h2>
+      <p class="section-note">Distribuția pe grupe de vârstă, întrebare adăugată începând din iunie.</p>
+    </div>
+    <div class="card pad">
+      <div class="age-list" id="age-list"></div>
+    </div>
+  </section>
+
+  <section id="by-date">
+    <div class="section-head">
+      <h2>Răspunsuri pe zile</h2>
+      <p class="section-note">Alege o zi ca să vezi toate răspunsurile trimise atunci, complete &mdash; note și texte, exact cum au fost scrise.</p>
+    </div>
+    <div class="card pad">
+      <div class="date-pills" id="date-pills"></div>
+      <div id="date-panel"></div>
+    </div>
+  </section>
+
+  <section id="quotes">
+    <div class="section-head">
+      <h2>Voci din comunitate</h2>
+      <p class="section-note">Citate reale, anonimizate, alese din răspunsurile deschise &mdash; câte 2&ndash;3 pentru fiecare dimensiune.</p>
+    </div>
+    <div class="quote-grid" id="quote-grid"></div>
+  </section>
+
+  <footer>
+    <p>
+      Date generate din formularul „Evaluare întâlnire duminică" (Google Forms), 36 de răspunsuri anonime colectate între 17 mai și 6 septembrie 2026, exportate ca PDF și prelucrate în această pagină. Citatele au fost selectate fără nume, pentru a păstra confidențialitatea celor care au răspuns. Notele de 1&ndash;5 lipsă dintr-o dimensiune (respondent care nu a completat acel câmp) nu sunt incluse în mediile de mai sus.
+    </p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const DATA = {
+    overallAvg: 4.41,
+    dims: [
+      {key:'q1', label:'Primire și conectare', full:'Cât de bine te-ai simțit primit și conectat la începutul întâlnirii?', avg:4.46, n:35, dist:[0,0,4,11,20]},
+      {key:'q2', label:'Închinare', full:'Cât de relevant și autentic a fost timpul de închinare?', avg:4.33, n:36, dist:[0,0,5,14,17]},
+      {key:'q3', label:'Rugăciune în grup mic', full:'Cât de semnificativă a fost experiența rugăciunii în grup mic?', avg:4.37, n:35, dist:[0,2,1,14,18]},
+      {key:'q5', label:'Predică', full:'Cât de clară și relevantă a fost predica pentru viața ta?', avg:4.25, n:36, dist:[0,0,6,15,15]},
+      {key:'q6', label:'Cina Domnului', full:'Cât de profund ai experimentat momentul Cinei Domnului?', avg:4.06, n:36, dist:[1,0,7,16,12]},
+      {key:'q7', label:'Încheierea întâlnirii', full:'Cât de bine a fost încheiată întâlnirea?', avg:4.57, n:35, dist:[0,0,4,7,24]},
+      {key:'q8', label:'Recomandare și revenire', full:'Cât de probabil este să revii sau să recomanzi această întâlnire?', avg:4.83, n:35, dist:[0,0,0,6,29]}
+    ],
+    months: [
+      {label:'Mai', short:'Mai', n:2, avg:4.50},
+      {label:'Iunie', short:'Iun', n:8, avg:4.67},
+      {label:'Iulie', short:'Iul', n:11, avg:4.44},
+      {label:'August', short:'Aug', n:12, avg:4.21},
+      {label:'Septembrie', short:'Sep', n:3, avg:4.33}
+    ],
+    ages: [
+      {label:'sub 20 ani', n:2},
+      {label:'20–35 ani', n:16},
+      {label:'35–50 ani', n:7},
+      {label:'50–65 ani', n:4},
+      {label:'nespecificat', n:7}
+    ],
+    quotes: {
+      q1: [
+        "Zâmbetul cald al Florinei și îmbrățișarea ei de dimineață m-au făcut să mă simt acasă.",
+        "M-am simțit binevenită datorită oamenilor de la întâmpinare — zâmbetul și îmbrățișarea lor mi-au înveselit ziua.",
+        "Persoanele care mereu mă întâmpină cu salutări și energie fac diferența."
+      ],
+      q2: [
+        "Cântările au fost bine alese și cântate; mi-a plăcut să aud cum toți din jur participau.",
+        "Energia, conexiunea cu Dumnezeu, fericirea și dragostea simțite când am lăudat cu toții împreună.",
+        "Cuvintele cântărilor, cu accent pe caracterul lui Dumnezeu, m-au ajutat să mă concentrez."
+      ],
+      q3: [
+        "Cu cât grupul e mai mic, cu atât deschiderea și împărtășirea sunt mai autentice.",
+        "Am fost înconjurată de prieteni — am fost deschisă și bucuroasă să mă rog pentru ei.",
+        "Acceptarea de a fi vulnerabil a deschis totul."
+      ],
+      q5: [
+        "Predica mi-a oferit un instrument practic de autoevaluare a vieții de slujire.",
+        "Vreau să fiu mai implicat în comunitate, să-mi înțeleg darurile și să exprim dragostea lui Hristos.",
+        "Una dintre predicile mele preferate — mesaj clar și aplicabil."
+      ],
+      q6: [
+        "Sentimentul de iertare — mă simt iertată de Dumnezeu și gata să-mi dedic viața Lui.",
+        "Rugăciunea lui Marius — am simțit-o profund mișcată de Duhul Sfânt.",
+        "Faptul că suntem iertați pentru toate păcatele noastre, oricât de mari le considerăm."
+      ],
+      q7: [
+        "A fost claritate — viziunea comunității s-a regăsit în mesajul final și în anunțuri.",
+        "Am plecat cu un sentiment de bucurie; cântecul de final mi-a umplut inima.",
+        "Claritate și o pace sufletească adusă la final."
+      ],
+      q8: [
+        "Nu aș schimba nimic — din punctul meu de vedere, întâlnirile sunt perfecte.",
+        "Aș adăuga un moment de rugăciune la final, în care toată biserica să se roage împreună.",
+        "Aș lăsa mai mult timp pentru rugăciune — nu trebuie neglijată."
+      ]
+    }
+  };
+
+  const css = getComputedStyle(document.documentElement);
+  const cv = name => css.getPropertyValue(name).trim();
+  const tt = document.getElementById('tooltip');
+  function showTip(html, x, y){
+    tt.innerHTML = html;
+    tt.classList.add('show');
+    positionTip(x,y);
+  }
+  function positionTip(x,y){
+    const pad = 16;
+    let left = x + 16, top = y + 16;
+    const rect = tt.getBoundingClientRect();
+    if(left + rect.width + pad > window.innerWidth) left = x - rect.width - 16;
+    if(top + rect.height + pad > window.innerHeight) top = y - rect.height - 16;
+    tt.style.left = left + 'px';
+    tt.style.top = top + 'px';
+  }
+  function hideTip(){ tt.classList.remove('show'); }
+  function bindTip(el, htmlFn){
+    el.addEventListener('mousemove', e => showTip(htmlFn(), e.clientX, e.clientY));
+    el.addEventListener('mouseleave', hideTip);
+    el.addEventListener('touchstart', e => {
+      const t = e.touches[0];
+      showTip(htmlFn(), t.clientX, t.clientY);
+    }, {passive:true});
+  }
+
+  /* ---- dimension ranking bars ---- */
+  const dimSorted = DATA.dims.slice().sort((a,b)=> b.avg - a.avg);
+  const dimList = document.getElementById('dim-list');
+  dimSorted.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'dim-row';
+    row.innerHTML = `
+      <div>
+        <div class="dim-name">${d.label}</div>
+        <div class="dim-n">${d.n} răspunsuri</div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(d.avg/5*100).toFixed(1)}%"></div></div>
+      <div class="dim-val">${d.avg.toFixed(2)}</div>
+    `;
+    bindTip(row, () => `<b>${d.label}</b>${d.full}<div class="tt-sub" style="margin-top:6px;">medie ${d.avg.toFixed(2)} / 5 &middot; ${d.n} răspunsuri</div>`);
+    dimList.appendChild(row);
+  });
+
+  /* ---- distribution small multiples ---- */
+  const distColors = ['var(--neg1)','var(--neg2)','var(--neutral3)','var(--pos4)','var(--pos5)'];
+  const distLabels = ['1 · foarte slab','2 · slab','3 · neutru','4 · bine','5 · excelent'];
+  const legend = document.getElementById('dist-legend');
+  distLabels.forEach((l,i)=>{
+    const span = document.createElement('span');
+    span.innerHTML = `<i style="background:${distColors[i]}"></i>${l}`;
+    legend.appendChild(span);
+  });
+
+  const distGrid = document.getElementById('dist-grid');
+  DATA.dims.forEach(d => {
+    const item = document.createElement('div');
+    item.className = 'dist-item';
+    const total = d.dist.reduce((a,b)=>a+b,0);
+    const stack = document.createElement('div');
+    stack.className = 'stack';
+    d.dist.forEach((count, i) => {
+      if(count <= 0) return;
+      const seg = document.createElement('div');
+      seg.className = 'seg';
+      const pct = total ? (count/total*100) : 0;
+      seg.style.width = pct + '%';
+      seg.style.background = distColors[i];
+      bindTip(seg, () => `<b>${d.label} &middot; nota ${i+1}</b>${count} din ${total} răspunsuri (${pct.toFixed(0)}%)`);
+      stack.appendChild(seg);
+    });
+    item.innerHTML = `<div class="head"><b>${d.label}</b><span class="avg mono">${d.avg.toFixed(2)}</span></div>`;
+    item.appendChild(stack);
+    distGrid.appendChild(item);
+  });
+
+  /* ---- data table ---- */
+  const table = document.getElementById('data-table');
+  let thead = '<thead><tr><th>Dimensiune</th><th>N</th><th>Medie</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>';
+  let tbody = '<tbody>' + DATA.dims.map(d => `<tr><td>${d.label}</td><td>${d.n}</td><td>${d.avg.toFixed(2)}</td>${d.dist.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('') + '</tbody>';
+  table.innerHTML = thead + tbody;
+
+  /* ---- trend line ---- */
+  const svg = document.getElementById('trend-svg');
+  const W = 560, H = 190, padL = 34, padR = 20, padT = 24, padB = 30;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const yMin = 3.6, yMax = 5.0;
+  const pts = DATA.months.map((m,i) => {
+    const x = padL + (i/(DATA.months.length-1)) * plotW;
+    const y = padT + (1 - (m.avg - yMin)/(yMax - yMin)) * plotH;
+    return {x,y,...m};
+  });
+  const avgY = padT + (1 - (DATA.overallAvg - yMin)/(yMax - yMin)) * plotH;
+  const pathD = pts.map((p,i)=> (i===0?'M':'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
+  const areaD = pathD + ` L ${pts[pts.length-1].x.toFixed(1)} ${padT+plotH} L ${pts[0].x.toFixed(1)} ${padT+plotH} Z`;
+
+  let svgHTML = `
+    <defs>
+      <filter id="lineGlow" x="-30%" y="-60%" width="160%" height="220%">
+        <feGaussianBlur stdDeviation="2.4" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--teal-mark)" stop-opacity="0.16"/>
+        <stop offset="100%" stop-color="var(--teal-mark)" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${W-padR}" y2="${avgY.toFixed(1)}" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="1 0" opacity="0.35"/>
+    <text x="${W-padR}" y="${(avgY-6).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--text-3)" font-family="IBM Plex Mono">medie 4.41</text>
+    <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
+    <path d="${areaD}" fill="url(#areaFill)"/>
+    <path d="${pathD}" fill="none" stroke="var(--teal-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#lineGlow)"/>
+  `;
+  pts.forEach((p,i)=>{
+    const isLast = i === pts.length-1;
+    svgHTML += `<circle class="pt" data-i="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isLast?6:4.5}" fill="var(--teal-mark)" stroke="var(--surface)" stroke-width="2" style="cursor:default"/>`;
+    svgHTML += `<text x="${p.x.toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text-3)" font-family="Manrope">${p.short}</text>`;
+    if(isLast){
+      svgHTML += `<text x="${p.x.toFixed(1)}" y="${(p.y-14).toFixed(1)}" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--gold)" font-family="IBM Plex Mono">${p.avg.toFixed(2)}</text>`;
+    }
+  });
+  svg.innerHTML = svgHTML;
+  svg.querySelectorAll('.pt').forEach(circle => {
+    const p = pts[+circle.dataset.i];
+    bindTip(circle, () => `<b>${p.label} 2026</b>medie compozită ${p.avg.toFixed(2)} / 5<div class="tt-sub" style="margin-top:4px;">${p.n} răspunsuri</div>`);
+  });
+
+  /* ---- volume bars ---- */
+  const volWrap = document.getElementById('vol-bars');
+  const maxN = Math.max(...DATA.months.map(m=>m.n));
+  DATA.months.forEach(m => {
+    const col = document.createElement('div');
+    col.className = 'vol-col';
+    const h = Math.max(6, (m.n/maxN) * 108);
+    col.innerHTML = `
+      <div class="vol-cap">${m.n}</div>
+      <div class="vol-bar" style="height:${h}px"></div>
+      <div class="vol-month">${m.short}</div>
+    `;
+    bindTip(col, () => `<b>${m.label} 2026</b>${m.n} răspunsuri completate`);
+    volWrap.appendChild(col);
+  });
+
+  /* ---- age bars ---- */
+  const ageList = document.getElementById('age-list');
+  const totalAge = DATA.ages.reduce((a,b)=>a+b.n,0);
+  const maxAge = Math.max(...DATA.ages.map(a=>a.n));
+  DATA.ages.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'age-row';
+    const pct = (a.n/totalAge*100);
+    row.innerHTML = `
+      <div class="age-name">${a.label}</div>
+      <div class="bar-track"><div class="bar-fill age-fill" style="width:${(a.n/maxAge*100).toFixed(1)}%"></div></div>
+      <div class="age-val">${a.n} &middot; ${pct.toFixed(0)}%</div>
+    `;
+    bindTip(row, () => `<b>${a.label}</b>${a.n} din ${totalAge} răspunsuri (${pct.toFixed(0)}%)`);
+    ageList.appendChild(row);
+  });
+
+  /* ---- date browser ---- */
+  const RESPONSES = [{"date":"17.05.2026","time":"23:44","age":"","name":"","q1":{"r":"5","t":"M-am simțit binevenită datorită oamenilor de la întâmpinare, zâmbetul și îmbrățișarea lor mi-au îmbunat ziua"},"q2":{"r":"5","t":"Dorința de ai mulțumi și al lăuda prin creareapropriului psalm, a fost foarte fain, mi-ar plăceasă facem o întâlnire în care să ne facem propriipsalmi despre care să discutăm"},"q3":{"r":"5","t":"Am fost înconjurată de 2 prieteni, am fost deschisă și bucuroasă să mă rog pentru ei"},"q5":{"r":"4","t":"Vreau să fiu mai implicată în comunitatea din viața mea, să îmi înțeleg darurile și să exprim dragostea lui Hristos prin mine"},"q6":{"r":"5","t":"Sentimentul de iertare, mă simt iertată deDumnezeu și gata să mi dedic viața lui"},"q7":{"r":"5","t":"Totul a fost clar, mi ar plăcea o explicație despre cum descoperi care este darul tău, sau măcar cum poți fi folositor încomunitatea din care faci parte"},"q8":{"r":"5","t":"Aș mai adăuga un moment de rugăciune la finalîn care toată biserica să se roage în picioarepentru ce are nevoie și apoi să ne despărțim sausă mai socializăm și să ne despărțim apoi."}},{"date":"18.05.2026","time":"15:26","age":"","name":"","q1":{"r":"5","t":"Bea la primire :)"},"q2":{"r":"4","t":"Timpul de meditat la 2-3 însușiri ale luiDumnezeu."},"q3":{"r":"4","t":"Cu cât grupul e mai mic, cu atât deschiderea și împărtășirea e mai autentică."},"q5":{"r":"4","t":"NImic nou, încerc să mă țin de ce știu și aplic deja. Predica mi-a oferit un instrument practic de autoevaluare a vieții de slujire.Trendul e bun :))"},"q6":{"r":"3","t":"Sentimentul a fost de un pic de frustrare că numă pot „aduna“, că nu pot pune pe pauză„zgomotul“ lăuntric. Iar adevărul a fost că pot sămă împărtășesc, că sunt primită chiar și așa."},"q7":{"r":"4","t":"Au venit un pic cam prea repede anunțurile după Cină :) E doar o sugestie, dar poate ar merge ceva melodie liniștită, potrivită,care să vină în prelungirea momentului Cinei. Sau citirea unui psalm, citate, gânduri sau mărturii... Zic ce îmi trece acum pringând."},"q8":{"r":"5","t":"Dacă aș putea schimba ceva, mă gândesc înprimul rând că aș schimba stresul lui Laviniu caprogramul să iasă bine :))"}},{"date":"14.06.2026","time":"12:58","age":"","name":"","q1":{"r":"5","t":"Zambetul Florinei cu care am fost intampinat"},"q2":{"r":"4","t":"Sinceritatea si smerenia lui Beni"},"q3":{"r":"5","t":"Am fost putini si mai usor sa ne deschidem"},"q5":{"r":"5","t":"Eu lucrez foarte bine cu lucruri predictibile. Dar Beni nea aratat cat de imprevizibil e Dumnezeu. Trebuie sa invat si eu sa ma laspurtat de credinta ..."},"q6":{"r":"4","t":"Nu imi dau seana acum ..."},"q7":{"r":"4","t":"Am plecat \"imbunatatit\" cred .... Meritul lui Beni! Sa mai faceti din astea ..."},"q8":{"r":"5","t":"Nu cred ca as putea schimba ceva .... Fiecare vine cu ce-i da Dumnezeu .... Doar ca eu cred ca trebuie sa accept unicitatea fiecaruia. Semnat: Teo Tarau :)))"}},{"date":"14.06.2026","time":"13:10","age":"","name":"","q1":{"r":"4","t":"Chipurile celor dragi . Imbratisarea la intrare. Ciocolata"},"q2":{"r":"4","t":"Iubirea ce am simtit-o. Lipsa de Judecata"},"q3":{"r":"5","t":"Acceptarea sa fiu vulnerabila"},"q5":{"r":"5","t":"Folosesc Profetia ca dar"},"q6":{"r":"5","t":""},"q7":{"r":"5","t":""},"q8":{"r":"","t":"As aduce lemne de Foc . Marturie de 2 min despre cum Profetia a schimbat viata noastra."}},{"date":"14.06.2026","time":"14:03","age":"","name":"","q1":{"r":"5","t":"Fetele de la welcome au fost in forma, ca de obicei. Cassi a fost foarte primitoare si zambareata desi se vedea ca eraobosita - am apreciat efortul ei. M-am conectat cu mai multi, si m-am simtit foarte bine."},"q2":{"r":"5","t":"Cantarile au fost bine alese si cantate, mi-aplacut sa aud cum toti din jurul meu participau sicantau. Tranzitiile intre cantari au fost facutebine si subtil."},"q3":{"r":"5","t":"Nu am fost parte la un grup azi, dar m-am rugat singur. Mi-a placut sa aud ce a spus Laviniu despre rugaciuneadin grupul lui - e fain sa stiu ca oamenii chiar se pot deschide in acest cadru."},"q5":{"r":"5","t":"Foarte relevanta, parca eu am trait-o. Fratele ***** s-a cam lungit. In rest a fost bine. Domnul sa-l ajute ***...😢🙏"},"q6":{"r":"5","t":"Mi-a placut ce a adaugat Laviniu - despreimportanta meditatiei si constientizarii prezenteiDuhului. Momentul Cinei a fost inedit caintotdeauna. Nu s-a mentionat faptul ca aveam sisuc de struguri, pentru cine nu dorea vin."},"q7":{"r":"5","t":"A fost claritate. Viziunea comunitatii s-a regasit in mesajul de final si anunturi."},"q8":{"r":"5","t":"Nu a fost neaparat o problema, dar atentie mai mare la proiectie - m-am simtit putin rau pentru Marius cand incerca sa vorbeasca inainte de rugaciune, dar textul se afisa cu dificultate. Mi-au placut slide-urile noi - cel de la inceput, si de la final pentru feedback. Sunt idei faine si pe viitor s-ar mai putea adauga treptat la rotatie si altele."}},{"date":"15.06.2026","time":"18:35","age":"","name":"","q1":{"r":"4","t":"Imbratisarile si ciocolata &(versetele de la intrare)"},"q2":{"r":"5","t":"Sunt relaxata acolo"},"q3":{"r":"5","t":"Aleg sa fiu vulnerabila si sa spun unde e pb mea"},"q5":{"r":"5","t":"Lemnele de Foc …sa imi aduc aminte CE a vb Dumnezeu"},"q6":{"r":"4","t":"Rugaciunea lui Marius (am simtit-o ff miscata deDh Sfant )"},"q7":{"r":"5","t":"Claritate"},"q8":{"r":"4","t":"As adauga marturii scurte despre CE a spus Dumnezeu si ce s-a intamplat. Daca tot s-a vb de \"lemne de Foc\" ptr profetic. Dumnezeu vb si cred ca e benefic sa invatam CUM ??"}},{"date":"21.06.2026","time":"14:49","age":"intre 20 si 35 ani","name":"","q1":{"r":"5","t":"Dan cu bomboanele lui bune și poveștile despre Diva😂"},"q2":{"r":"5","t":"Energia, am simțit conexiune cu Dumnezeu,fericire și dragoste în comunitate când l-amlăudat cu toții împreună."},"q3":{"r":"5","t":"Comunitatea a facilitat deschiderea mea în rugăciune, sunt bucuroasă să mă rog pentru ei și împreună cu ei"},"q5":{"r":"4","t":"Voi încerca să fiu mai conștientă de darurile mele și de cum îi pot ajuta pe cei din jurul meu pentru a ne zidi și crește împreună"},"q6":{"r":"4","t":"Adevărul că suntem iertați pentru toate păcatelenoastre indiferent de cât de mari le considerămnoi și că prin Isus putem trăi cu adevărat"},"q7":{"r":"5","t":"Am plecat cu un sentiment de bucurie, cântatul de la final mi-a umplut inima, îmi place tare să îl aud pe Iaris(nu-i spuneți)😂🤍"},"q8":{"r":"5","t":"Aș lăsa mai mult timp pentru rugăciune, cu toate că grupurile sunt mai mici, încontinuare nu ne ajunge timpul, consider că rugăciunea nu trebuie neglijată ci chiar mai implementată, cum s-a menționat și azi, cel mai bine ne conectăm cu Dumnezeu prin rugăciune."}},{"date":"21.06.2026","time":"15:32","age":"intre 20 si 35 ani","name":"","q1":{"r":"4","t":"Personal ce ma face sa ma simt binevenit sunt persoanele care mereu ma intampina cu salutari si energie cand vin ."},"q2":{"r":"5","t":"Rugaciunile in grup"},"q3":{"r":"5","t":"Dorinta de ai ajuta pe altii"},"q5":{"r":"4","t":"Sa incerc sa descopar mai mult despre darurile lui Dumnezeu ."},"q6":{"r":"4","t":"Faptul ca El ne iarta indiferent de cat de mult amgresit si cat de departe credem ca suntem"},"q7":{"r":"5","t":"Claritate , mi s a adus o pace sufleteasca"},"q8":{"r":"5","t":"Sa vina cat mai multi din prietenii mei acolo ."}},{"date":"21.06.2026","time":"23:46","age":"sub 20 ani","name":"","q1":{"r":"5","t":"inca de la intrare"},"q2":{"r":"5","t":"rugaciunea"},"q3":{"r":"5","t":"nimic nu a impuedicat"},"q5":{"r":"4","t":"meditatea asupra zidirii sufletului"},"q6":{"r":"5","t":"faptul ca Domnul ne iarta"},"q7":{"r":"5","t":"de dataa aceasta nu am plecat cu un sentiment special"},"q8":{"r":"5","t":"nimic nu as schimba"}},{"date":"22.06.2026","time":"10:34","age":"sub 20 ani","name":"","q1":{"r":"4","t":"Fericirea oamenilor să vadă simpla mea prezență î"},"q2":{"r":"4","t":"Cântările"},"q3":{"r":"4","t":"A facilitat faptul că ei veneau la mine,nu a trebuit să merg eu la ei"},"q5":{"r":"5","t":"Să-l caut pe Dumnezeu în lucrurile pe care le fac zi de zi,să caut voia Lui"},"q6":{"r":"4","t":"Faptul că acela e trupul și sângele Lui"},"q7":{"r":"5","t":"Un sentiment de claritate"},"q8":{"r":"5","t":"Nimic"}},{"date":"05.07.2026","time":"15:26","age":"intre 20 si 35 ani","name":"","q1":{"r":"3","t":"Am discutat puțin cu oamenii"},"q2":{"r":"4","t":"Încurajările din timpul închinării, piesele alese,rugăciunea în timpul închinării prin muzică"},"q3":{"r":"4","t":"Întrebările despre viața mea, ce motive am de rugaciune"},"q5":{"r":"4","t":"Mi-a plăcut predica, dar cred ca este grea aplicarea. Să-ți găsești un mentor sau ucenic… este greu de găsit, nu știu, dar nu esteceva ce putem imediat pune în practică. Este frumoasă ideea în sine, dar greu mă pot conecta la un nivel mai profun."},"q6":{"r":"3","t":"Unitatea"},"q7":{"r":"4","t":"Calitate"},"q8":{"r":"5","t":"Nimic"}},{"date":"05.07.2026","time":"16:30","age":"intre 20 si 35 ani","name":"","q1":{"r":"5","t":"Zâmbetul cald al Florinei și îmbrățișare ei de dimineață"},"q2":{"r":"4","t":"Mesajul cântărilor în special versul \"O,trezeștepoporul, O, trezește orașul\" datorită contextuluiactual la care trebuie să medităm în acestmoment și să ne unim spre binele comunității."},"q3":{"r":"2","t":"Azi a fost o rugăciune scurtă și interesantă, dar afundată în discuții irelevante care m-au împiedicat din a măconecta."},"q5":{"r":"3","t":"Voi contempla mai mult vizavi de generozitatea mea."},"q6":{"r":"5","t":"Acela că sunt aici datorită Lui, că fără acestsacrificiu n-aș mai fi avut oportunitatea să am orelație cu Dumnezeu."},"q7":{"r":"5","t":"Legat de predică a fost puțin în grabă, faptul că am trecut câte puțin prin toate acele slide uri m-a derutat, sunt un om căruia îi place să citească ceea ce mi se pune în față, iar dacă predica este pe lângă ce se prezintă mă pierd, aș fi avut nevoie poate de mai puține cuvinte în spate:) însă am înțeles mesajul generozității. Legat de închinarea de la final, am fost încântată, mă bucur mult că s-a întors Ovi, prezența lui face o diferență în echipa de închinare."},"q8":{"r":"5","t":"Să introducem încă un moment de rugăciune, cred că ar fi folositor, căci după program din grabă sau alte considerente, oamenii nu apelează la rugăciune."}},{"date":"05.07.2026","time":"16:43","age":"intre 35 si 50 ani","name":"","q1":{"r":"5","t":"Faptul ca sunt oameni pe care ii cunosc și la care țin💖"},"q2":{"r":"4","t":"M-au ajutat cuvintele cântărilor, care au pusaccent pe caracterul lui Dumnezeu."},"q3":{"r":"4","t":"E mult mai ușor să te deschizi în grup mic între oameni cunoscuți. Mă ajută ca s-a trecut de la grupuri mai marila cele de 2-4 persoane."},"q5":{"r":"5","t":"Nu cred ca e un lucru principal de care să mă țin, ci de ritmul pomenit și în lista de azi, care implică o viață care integrează maimulte aspecte, disciplină pe mai multe planuri. Lista respectivă mi se pare un instrument foarte util de autoevaluare și încurajare,mai ales în momentele grele când simți ca faci, dar nu mai știi pe unde ești."},"q6":{"r":"3","t":"Sentimentul că sunt primită cu tot haosul meu."},"q7":{"r":"5","t":"Claritate. Probabil din cauza ca era cunoscuta succesiunea momentelor și am simțit ca fiecare fază a programului a fost curost și fără grabă, n-am simțit ca trebuie să bifez, ci ca există invitația la participare."},"q8":{"r":"5","t":"1. Predica a fost un pic prea perfectă. S-a simțit prea tare contribuția AI în detrimentul frământării specific umane. Și un pic prea multe slide-uri prea detaliate. Ramane mai bine întipărită în minte o schema vizuală scurtă, completat oral cu restul lucrurilor care aduc coerență și consistență. Sper tare mult ca suna ca o critică… 2. Ma întreb cum ar fi dacă momentele de rugăciune s-ar încheia cu rugăciunea „Tatăl nostru” rostită în comun. Uneori nu ai dispoziția sufletească, spirituală de a te ruga cu cineva sau uneori nu ai nimic special de împărtășit sau dimpotrivă, ai lucruri pe care nu le poți spune și cumva rămâi dupa timpul de rugăciune cu cat ai putut oferi/primi în părtășie cu cel de lângă tine. Dar indiferent de stare sau de cum simte fiecare momentul, poate ca „Tatal nostru” ar fi un moment comunitar concret, o încununare a rugăciunii fiecărui grup mic și o manifestare a unității tuturor celor prezenți."}},{"date":"06.07.2026","time":"11:29","age":"intre 35 si 50 ani","name":"","q1":{"r":"4","t":"Nu am fost acolo fizic dar mi-a placut mult felul in care Beni a initiat chemarea la inchinare pornind de la identitatea pecare o avem si nu trebuie sa o castigam de fiecare data"},"q2":{"r":"4","t":"Mi-a placut mult sound-ul, cum a sunat trupa si momentul de rugaciune dintre piese... Good Job Iaris pt lead-ul de la \"Doar Cristos, speranta mea\"👍 a fost o mica distragere legat de versursile de la una dintre piese... nu am apucat sa vb cu Beni L sa vad ce s-a intamplat... sorry about that"},"q3":{"r":"","t":"Nu a venit nimeni la mine in grup🙃"},"q5":{"r":"5","t":"Ideea darniciei si generozitatii planificateNevoia de a fi in acelasi timp ucenic, mentor si prietenMi-au placut si slide-urile👍"},"q6":{"r":"4","t":"a fost o continuare naturala si binevenita dupaprovocarile din predica"},"q7":{"r":"","t":""},"q8":{"r":"5","t":""}},{"date":"12.07.2026","time":"15:40","age":"intre 20 si 35 ani","name":"","q1":{"r":"5","t":"M-a făcut să mă simți bine oameni din biserică"},"q2":{"r":"5","t":""},"q3":{"r":"5","t":"Cred că a facilitat foarte mult faptul ca le cunoaștem puțin mai multe pe persoanele din grupul meu"},"q5":{"r":"4","t":"Rugăciunea pt rugăciunile uitate"},"q6":{"r":"4","t":""},"q7":{"r":"5","t":""},"q8":{"r":"5","t":"Atitudinea oratorului față de receptori, cumva săcaptați mai mult atenția, pentru ca pe mineuneori mă pierdeți în timpul predici."}},{"date":"12.07.2026","time":"17:30","age":"intre 35 si 50 ani","name":"","q1":{"r":"5","t":"Intampinarea Danielei."},"q2":{"r":"4","t":"M-au ajutat sa ma focalizez: Versurile cantecelor."},"q3":{"r":"4","t":"A facilitat faptul ca a fost grup restrans."},"q5":{"r":"4","t":"Sper sa scriu experiente/marturi în care am văzut cât de frumos a lucrat Dumnezeu în viata mea pt a nu le uita."},"q6":{"r":"4","t":"Iertarea lui Dumnezeu."},"q7":{"r":"4","t":"Am plecat pe graba sa mai fac ce mi-am propus."},"q8":{"r":"4","t":"Nu stiu acum."}},{"date":"12.07.2026","time":"17:57","age":"intre 20 si 35 ani","name":"","q1":{"r":"5","t":"mi-a placut foarte mult ca, ce-i mai multi din biserica foloseau expresia “Domnul sa te binecuvânteze”"},"q2":{"r":"4","t":"mi-a plăcut exercițiul de imaginație al Flaviei - nu doar sa ne gândim la Dumnezeu ca un tata atunci cand ne rugam, ci si ca un rege atotputernic, caruia i se canta \"Sfant Sfant Sfant\" de mii de ingeri\". s-a potrivit foarte bine cu indemnul dat de Marius pentru rugaciunea pe grupri \"sa avem speranța ca Dumnezeu nu intarzie, ci le face pe toate la momentul potrivit, doar sa nu renuntam sa credem, sau daca renuntam, sa revenim i guess \""},"q3":{"r":"5","t":"am fost intr-o grupa cu persoane dragi, ceea ce a ușurat deschiderea mea, iar rugaciunea rostita de una dintrepersoanele din grup, m-a incurajat tare mult"},"q5":{"r":"4","t":"sa-mi fac propriu meu psalm de mulțumire"},"q6":{"r":"4","t":"pace in suflet"},"q7":{"r":"5","t":"Beni chiar se pricepe la anunturi si le explica chiar foarte clar"},"q8":{"r":"4","t":"inca nu am nici o idee"}},{"date":"13.07.2026","time":"14:27","age":"","name":"","q1":{"r":"5","t":"Ideea lui Dana cu tombola mi-a placut foarte mult si zambetul ei cald imi lumineaza ziua☺"},"q2":{"r":"5","t":"Mi-au placut mult piesele alese! M-am bucurat mult sa o aud din nou pe Flavia cantand si indemnul ei intre melodii m-a ajutat sa intru si mai bine si in starea de inchinare, imaginandu-L pe El in fata mea in timp ce cantam❤ De asemenea Ovi face o treaba foaaarte foarte buna!! Si sper sa il mai auzim pe Iaris la voce tot mai mult✨"},"q3":{"r":"5","t":"Mi-a placut provocarea lui Marius in legatura cu visele noastre. E ceva la care o sa ma mai gandesc ceva timpsi in momentele mele de rugaciune cand sunt singura."},"q5":{"r":"5","t":"Cel mai mult mi-a placut momentul de marturie, ceea ce a facut mesajul despre har si neprihanirea pe care chiar daca nu omeritam o primim de la Dumnezeu, sa fie mai personal si tangibil."},"q6":{"r":"5","t":"Marius s-a folosit foarte bine de slide-ul cuintrebari de la mesajul lui Beni. S-a potrivit binecu momentul Cinei intrebarea \"Cine te-a salvat?\""},"q7":{"r":"5","t":""},"q8":{"r":"5","t":""}},{"date":"19.07.2026","time":"19:47","age":"intre 35 si 50 ani","name":"","q1":{"r":"5","t":"Ema"},"q2":{"r":"5","t":"Versurile"},"q3":{"r":"5","t":"Oamenii și nevoile similare"},"q5":{"r":"5","t":"Conectarea cu Dumnezeu și încredere în El și in modul Lui de a orchestra lucrurile."},"q6":{"r":"5","t":"Dumnezeu e prezent"},"q7":{"r":"5","t":"Atentia asupra bunatatii, puterii și suveranitatii lui Dumnezeu."},"q8":{"r":"5","t":"Pe mine"}},{"date":"19.07.2026","time":"20:17","age":"intre 20 si 35 ani","name":"","q1":{"r":"4","t":"Am povestit cu oamenii"},"q2":{"r":"3","t":"Piesele, atmosfera, flow-ul = m au ajutat"},"q3":{"r":"4","t":"Ca am fost cu cunoscuți"},"q5":{"r":"4","t":"Să-mi analizez viața"},"q6":{"r":"3","t":""},"q7":{"r":"3","t":"Claritate"},"q8":{"r":"5","t":""}},{"date":"20.07.2026","time":"13:57","age":"intre 20 si 35 ani","name":"","q1":{"r":"","t":""},"q2":{"r":"5","t":"Ca de obicei indemnurile lui Flavia m-au ajutatcel mai mult si modul in care Ovi a condus salain timpul cantarilor."},"q3":{"r":"5","t":"A fost o oportunitate buna de a ne deschide despre sezonul in care suntem."},"q5":{"r":"5","t":"Una dintre predicile mele preferate, ca mesaj❤Puncte bonus pentru glumele lui Marius☺Ce imi doresc sa incerc saptamana asta in mod special este aplicatia personala de a-mi \"reciti povestea prin credinta\"."},"q6":{"r":"5","t":"Ca de obicei, un moment bun de cercetare siconectare cu dragostea lui Dumnezeu."},"q7":{"r":"5","t":"Mi-a placut ca Beni a mentionat cu ce a ramas din predica, a fost o atmosfera placuta, de family."},"q8":{"r":"5","t":""}},{"date":"02.08.2026","time":"15:51","age":"intre 20 si 35 ani","name":"","q1":{"r":"5","t":"Oameni din biserică"},"q2":{"r":"4","t":"Laudă și închinarea"},"q3":{"r":"4","t":""},"q5":{"r":"3","t":"Rugăciunea"},"q6":{"r":"4","t":""},"q7":{"r":"4","t":""},"q8":{"r":"5","t":""}},{"date":"02.08.2026","time":"16:13","age":"intre 50 si 65 ani","name":"","q1":{"r":"4","t":"zambetul fetelor de la intrare"},"q2":{"r":"4","t":"prima piesa mi s-a parut ca a inceput preagalagios dar ultima piesa a fost foarte binevenita"},"q3":{"r":"4","t":"prezentarea lui Ladislau I a fost chiar educativa si a fost un timp de conectare cu ceilalti la un alt nivel"},"q5":{"r":"3","t":"cred ca povestea despre Absalom a fost prea lunga, explicatiile textului au fost faine dar conectarea cu viata reala nu prea amreusit sa o identific, parca prea teoretica si nu stiu ce voi aplica"},"q6":{"r":"4","t":"indiferent de situatiile prin care trec Hristosramane disponibil pentru mine"},"q7":{"r":"5","t":"au fost clare cel putin anunturile si piesa de final a fost foarte binevenita"},"q8":{"r":"5","t":"cred ca as avea nevoie de ceva mai multareverenta, cel putin la Cina"}},{"date":"02.08.2026","time":"16:21","age":"intre 50 si 65 ani","name":"","q1":{"r":"3","t":"Salutările oamenilor de la început și discuțiile de după."},"q2":{"r":"3","t":"Azi a ieșit în evidență vocea lui Iaris și mi-aplăcut ."},"q3":{"r":"2","t":"Nu am făcut parte din grupul de rugăciune, am stat și am meditat"},"q5":{"r":"3","t":"Să încerc să îl pun pe aFumnezeu în orice circumstanță a vieții/ acesta a fost și gândul meu la care am meditat în ultima perioadă"},"q6":{"r":"3","t":"Nu a fost nimic de genul acesta - este doarmomentul de conectare, reconectare cu Cristos"},"q7":{"r":"3","t":"Nu am plecat în grabă, am discutat cu câteva persoane"},"q8":{"r":"5","t":"În acest moment, la mine am de schimbat nu laalții sau la programe"}},{"date":"02.08.2026","time":"16:50","age":"intre 35 si 50 ani","name":"","q1":{"r":"4","t":"Fetele de la primire"},"q2":{"r":"4","t":"Versurile"},"q3":{"r":"4","t":"Faciliteaza faptul ca sunt putine persoane"},"q5":{"r":"4","t":"As vrea sa cer foame după Dumnezeu."},"q6":{"r":"4","t":"Sa cred ca Dumnezeu e tot ce am nevoie. El emai mult decat orice altceva cred ca am nevoie."},"q7":{"r":"4","t":"Am plecat cu sentimentul ca am nevoie mai mult din Dumnezeu."},"q8":{"r":"4","t":"Pe mine."}},{"date":"02.08.2026","time":"17:14","age":"intre 35 si 50 ani","name":"","q1":{"r":"5","t":"A fost o atmosferă foarte primitoare în biserică astăzi. Mă simt ca în casa mea spirituală."},"q2":{"r":"5","t":"Cântecele și meditația din timpul rugăciunii. Deasemenea, predica a fost profundă."},"q3":{"r":"4","t":"Era un grup rigid. Nu ne puteam deschide ca în alte dăți."},"q5":{"r":"5","t":"DOMNUL este sursa mea de ajutor în această perioadă grea de încercare. Așa cum EL a fost alături de David în mijloculdezastrului familial și m-a ajutat să trec prin el. EL manifestă aceeași putere cerească ca și mine."},"q6":{"r":"1","t":"Nu am vrut Cina Domnului săptămâna aceastapentru prima dată de când merg la bisericaLogos."},"q7":{"r":"4","t":"Rămân cu idei bune care să mă susțină în situația foarte dificilă prin care trec în această perioadă a vieții mele."},"q8":{"r":"5","t":""}},{"date":"03.08.2026","time":"14:23","age":"intre 20 si 35 ani","name":"","q1":{"r":"4","t":"Am discutați cu oamenii"},"q2":{"r":"3","t":"Închinarea a fost mai slăbită, fiind mai puțini înfata… parcă a fost așa “tras de păr”"},"q3":{"r":"3","t":"Ne am rugat pentru cei noi veniți în bise (sora și mama lui Beni oz)"},"q5":{"r":"4","t":""},"q6":{"r":"3","t":""},"q7":{"r":"3","t":""},"q8":{"r":"4","t":""}},{"date":"09.08.2026","time":"12:24","age":"intre 20 si 35 ani","name":"","q1":{"r":"5","t":""},"q2":{"r":"5","t":""},"q3":{"r":"5","t":""},"q5":{"r":"3","t":""},"q6":{"r":"4","t":""},"q7":{"r":"5","t":""},"q8":{"r":"5","t":""}},{"date":"16.08.2026","time":"12:19","age":"intre 20 si 35 ani","name":"","q1":{"r":"3","t":""},"q2":{"r":"5","t":""},"q3":{"r":"4","t":""},"q5":{"r":"3","t":""},"q6":{"r":"4","t":""},"q7":{"r":"5","t":""},"q8":{"r":"5","t":""}},{"date":"16.08.2026","time":"12:20","age":"intre 50 si 65 ani","name":"","q1":{"r":"4","t":""},"q2":{"r":"4","t":""},"q3":{"r":"4","t":""},"q5":{"r":"4","t":""},"q6":{"r":"4","t":""},"q7":{"r":"5","t":""},"q8":{"r":"5","t":""}},{"date":"16.08.2026","time":"12:38","age":"intre 20 si 35 ani","name":"Delia ^_^","q1":{"r":"5","t":"Oamenii"},"q2":{"r":"5","t":"Ce m a ajutat sa ma conectez cu oamenii maimulte a fost timpul de rugaciune si cantecele"},"q3":{"r":"5","t":"A felicitar faptul ca le cunosteam deja pe fete"},"q5":{"r":"5","t":"Iertarea si vindecarea"},"q6":{"r":"5","t":"Ranile nevidecate"},"q7":{"r":"5","t":"Cu sentiment de clatitate, predica a fost foarte frumoasa"},"q8":{"r":"5","t":"Niciunul, imi plac exact asa cum sunt"}},{"date":"16.08.2026","time":"23:32","age":"intre 50 si 65 ani","name":"sa fiti sanatosi :)","q1":{"r":"4","t":"atmosfera f primitoare creata de oamenii prezenti si incepamd cu Bea"},"q2":{"r":"5","t":"piesele alese si faptul ca cei mai multi din sala cantau si ei"},"q3":{"r":"4","t":"ne-am rtugat pentru cauzele ce au fost propuse din fata si cred cafelul acesta de a ne conecta cu comunitateasi cu istoria ne ajuta"},"q5":{"r":"4","t":"nu as putea spune ca voi aplica ceva anume dar cred ca m-a ajutat sa constientizez cat de importante sunt discutiile dificile si mi-a deschis mai multe teme de meditat"},"q6":{"r":"5","t":"m-a ajutat ideea ca Isus este cel ce a venit catrenoi si nu a asteptat sa Il cautam noi prima data"},"q7":{"r":"5","t":"am plecat destul de grabit datorita unei situatii personale"},"q8":{"r":"5","t":"nimic"}},{"date":"30.08.2026","time":"23:00","age":"intre 20 si 35 ani","name":"Francois di Tuttomundo","q1":{"r":"5","t":"M-am simțit bine întâmpinat la intrare, şi la barul unde s-au servit băuturi şi discuții."},"q2":{"r":"5","t":"The people all sang beautifully together, and I could tell that the people in front of us put a lot of emotion into their songs. The link between the first song and the introduction made it feel more meaningful than usual."},"q3":{"r":"5","t":"A témát jól kifejtették; a multikulturalizmus kérdése pedig aktuális Nagyvárad és a mi generációnk számára is– amint azt éppen ez az általam most írt, maga is multikulturális jellegű beszámoló is bizonyítja. A témasegített abban, hogy egyetlen dologra összpontosítsunk, és együtt imádkozzunk."},"q5":{"r":"5","t":"Εκτίμησα την εξήγηση σχετικά με τους γιους του Ιακώβ και τον ψαλμό του Δαβίδ. Με έκανε να αναλογιστώ πώς θααντιδρούσα σε μια κρίσιμη κατάσταση και αν θα παρέμενα πιστός αφού αυτή θα είχε περάσει."},"q6":{"r":"5","t":".אותיולסובביםלאלוהיםחיבורהרגשתי"},"q7":{"r":"5","t":"这就像中文一样一目了然。"},"q8":{"r":"5","t":"日本人である私は、何一つよく理解できていませんでした。"}},{"date":"06.09.2026","time":"16:27","age":"intre 20 si 35 ani","name":"","q1":{"r":"5","t":""},"q2":{"r":"3","t":""},"q3":{"r":"5","t":""},"q5":{"r":"4","t":""},"q6":{"r":"5","t":""},"q7":{"r":"5","t":""},"q8":{"r":"5","t":"As mai inversa locul cinei în program pentru împrospătare"}},{"date":"06.09.2026","time":"17:43","age":"intre 20 si 35 ani","name":"","q1":{"r":"5","t":"Comunitatea"},"q2":{"r":"5","t":""},"q3":{"r":"5","t":"M-a ajutat foarte mult să mă deschid persoanele cu care am fost în grup"},"q5":{"r":"5","t":"Credința că eu sunt copil de dumnezeu"},"q6":{"r":"4","t":"Binecuvântare că pot să i-au cina"},"q7":{"r":"5","t":"Am plecat cu un sentiment de claritate în ceea ce privește identitatea mea in Christos"},"q8":{"r":"5","t":"Nu aș schimba nimic, din punctul meu de vedere întâlnirile sunt perfecte."}},{"date":"06.09.2026","time":"17:47","age":"intre 35 si 50 ani","name":"","q1":{"r":"3","t":"Oamenii"},"q2":{"r":"3","t":"Versurile"},"q3":{"r":"4","t":"Persoane cunoscute"},"q5":{"r":"5","t":"Vreau sa constientizez prezenta permanenta a lui Dumnezeu in fiecare circumstanta."},"q6":{"r":"3","t":"Apartenenta la trupul lui Hristos."},"q7":{"r":"3","t":"Dumnezeu e singurul care este și care ramane cu noi in toate situatiile."},"q8":{"r":"4","t":"Pe mine."}}];
+
+  const QLABELS = [
+    {key:'q1', label:'Primire și conectare'},
+    {key:'q2', label:'Închinare'},
+    {key:'q3', label:'Rugăciune în grup mic'},
+    {key:'q5', label:'Predică'},
+    {key:'q6', label:'Cina Domnului'},
+    {key:'q7', label:'Încheierea întâlnirii'},
+    {key:'q8', label:'Recomandare și revenire'}
+  ];
+  const MONTHS_RO = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','noi','dec'];
+  const MONTHS_RO_FULL = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function ratingColor(r){
+    const n = Number(r);
+    if(!n) return null;
+    return ['var(--neg1)','var(--neg2)','var(--neutral3)','var(--pos4)','var(--pos5)'][n-1];
+  }
+  function parseDMY(d){
+    const [dd,mm,yyyy] = d.split('.').map(Number);
+    return {dd,mm,yyyy};
+  }
+
+  const dateGroups = [];
+  const dateIndex = {};
+  RESPONSES.forEach(r => {
+    if(!(r.date in dateIndex)){
+      dateIndex[r.date] = dateGroups.length;
+      dateGroups.push({ date: r.date, items: [] });
+    }
+    dateGroups[dateIndex[r.date]].items.push(r);
+  });
+
+  const pillsWrap = document.getElementById('date-pills');
+  const datePanel = document.getElementById('date-panel');
+
+  dateGroups.forEach((g, i) => {
+    const {dd,mm} = parseDMY(g.date);
+    const pill = document.createElement('div');
+    pill.className = 'date-pill';
+    pill.innerHTML = `<div class="d-num">${dd}</div><div class="d-mon">${MONTHS_RO[mm-1]}</div><div class="d-count">${g.items.length}&times;</div>`;
+    pill.addEventListener('click', () => selectDate(i));
+    pillsWrap.appendChild(pill);
+  });
+
+  function selectDate(i){
+    Array.prototype.forEach.call(pillsWrap.children, (el, idx) => el.classList.toggle('active', idx === i));
+    renderDatePanel(dateGroups[i]);
+  }
+
+  function renderDatePanel(group){
+    const {dd,mm,yyyy} = parseDMY(group.date);
+    let html = `
+      <div class="date-panel-head">
+        <h3>${dd} ${MONTHS_RO_FULL[mm-1]} ${yyyy}</h3>
+        <div class="sub">${group.items.length} ${group.items.length===1?'răspuns':'răspunsuri'}</div>
+      </div>
+    `;
+    html += group.items.map(r => {
+      const ratings = QLABELS.map(q => r[q.key].r).filter(v => v && /^[1-5]$/.test(v)).map(Number);
+      const avg = ratings.length ? (ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(2) : null;
+      const qaBlocks = QLABELS.map(q => {
+        const item = r[q.key];
+        const color = ratingColor(item.r);
+        const badge = item.r
+          ? `<div class="qa-badge" style="background:${color}">${item.r}</div>`
+          : `<div class="qa-badge empty">&ndash;</div>`;
+        const text = item.t
+          ? `<div class="qa-text">${esc(item.t)}</div>`
+          : `<div class="qa-text empty">fără răspuns</div>`;
+        return `<div class="qa-block"><div class="qa-head">${badge}<div class="qa-label">${q.label}</div></div>${text}</div>`;
+      }).join('');
+      const chips = (r.age ? `<span class="chip">${esc(r.age)}</span>` : '') + (r.name ? `<span class="chip name">${esc(r.name)}</span>` : '');
+      return `
+        <div class="resp-card">
+          <div class="resp-head">
+            <div class="resp-time"><span class="tdot"></span>${esc(r.time)}</div>
+            ${chips}
+            ${avg ? `<div class="resp-avg">medie <b>${avg}</b></div>` : ''}
+          </div>
+          <div class="resp-grid">${qaBlocks}</div>
+        </div>
+      `;
+    }).join('');
+    datePanel.innerHTML = html;
+  }
+
+  selectDate(dateGroups.length - 1);
+
+  /* ---- quotes ---- */
+  const quoteGrid = document.getElementById('quote-grid');
+  DATA.dims.forEach(d => {
+    (DATA.quotes[d.key] || []).forEach(text => {
+      const card = document.createElement('div');
+      card.className = 'card quote';
+      card.innerHTML = `<div class="quote-tag"><i></i>${d.label}</div><p>${text}</p>`;
+      quoteGrid.appendChild(card);
+    });
+  });
+
+  /* ---- hero dial arc + ambient pulse ---- */
+  const dialArc = document.getElementById('dial-arc');
+  const circumference = 2 * Math.PI * 92;
+  const frac = DATA.overallAvg / 5;
+  dialArc.setAttribute('stroke-dasharray', `${circumference*frac} ${circumference}`);
+
+  const pulseG = document.getElementById('pulse-line');
+  const seq = DATA.months.map(m => m.avg);
+  const minA = Math.min(...seq), maxA = Math.max(...seq);
+  const pw = 150, ph = 40, ox = 25, oy = 150;
+  const ppts = seq.map((v,i) => {
+    const x = ox + (i/(seq.length-1))*pw;
+    const y = oy - ((v-minA)/((maxA-minA)||1))*ph;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const poly = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  poly.setAttribute('points', ppts.join(' '));
+  poly.setAttribute('stroke-linecap','round');
+  poly.setAttribute('stroke-linejoin','round');
+  pulseG.appendChild(poly);
+})();
+</script>
+</body>
+</html>

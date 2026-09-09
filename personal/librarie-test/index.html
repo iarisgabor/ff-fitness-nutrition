@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Filă cu Filă — librărie</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <div class="logo">Filă cu Filă</div>
+    <nav>
+      <a href="#catalog">Catalog</a>
+      <a href="#despre">Despre</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>O carte pentru fiecare stare de spirit.</h1>
+    <p>Nu știi ce să citești? Spune-i librarului nostru cu AI ce te frământă — îți găsește o carte din raft.</p>
+    <button class="btn-primary" id="hero-cta">Întreabă librarul</button>
+  </div>
+</section>
+
+<section class="catalog" id="catalog">
+  <div class="wrap">
+    <h2>Catalog</h2>
+    <div class="book-grid" id="book-grid"></div>
+  </div>
+</section>
+
+<section class="despre" id="despre">
+  <div class="wrap">
+    <h2>Despre acest site</h2>
+    <p>Acesta este un site de test/demo pentru o librărie, construit pentru a încerca un chat cu AI care recomandă cărți din catalogul afișat mai sus, pe baza a ceea ce spune vizitatorul.</p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">© Filă cu Filă — site demo.</div>
+</footer>
+
+<!-- Chat widget -->
+<button class="chat-toggle" id="chat-toggle" aria-label="Deschide chat-ul cu librarul">
+  <span class="chat-toggle-icon">💬</span>
+</button>
+
+<div class="chat-panel" id="chat-panel" hidden>
+  <div class="chat-header">
+    <div>
+      <div class="chat-title">Librarul AI</div>
+      <div class="chat-subtitle">Îți recomandă o carte din librărie</div>
+    </div>
+    <button class="chat-close" id="chat-close" aria-label="Închide chat-ul">✕</button>
+  </div>
+  <div class="chat-messages" id="chat-messages"></div>
+  <form class="chat-input-row" id="chat-form">
+    <input
+      type="text"
+      id="chat-input"
+      placeholder="Ce te frământă azi?"
+      autocomplete="off"
+      maxlength="1000"
+    />
+    <button type="submit" class="chat-send" aria-label="Trimite">➤</button>
+  </form>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
