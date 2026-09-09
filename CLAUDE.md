@@ -9,12 +9,14 @@ Code și un vault personal de notițe Obsidian suprapuse peste tot, la rădăcin
 Arhitectura completă a fiecărui proiect e în documente separate (linkate mai jos) —
 acest fișier e doar harta.
 
-**Notă de migrare:** toate proiectele au fost mutate din rădăcina repo-ului în
-`personal/` sau `profesional/`. FF Fitness în particular era la rădăcină (nu
-într-un subfolder) — dacă deploy-ul lui pe Vercel e legat prin dashboard de
-"Root Directory" = rădăcina repo-ului, acel setting trebuie actualizat manual la
-`personal/ff-fitness` ca deploy-ul live să nu se rupă. Nu e ceva ce se poate face
-din cod/CLI de aici.
+**Notă de migrare (rezolvată):** toate proiectele au fost mutate din rădăcina
+repo-ului în `personal/` sau `profesional/`. FF Fitness era la rădăcină (nu
+într-un subfolder) — proiectul Vercel `ff-fitness-nutrition` are Root Directory
+setat acum la `personal/ff-fitness` (schimbat prin `vercel project update
+ff-fitness-nutrition --root-directory personal/ff-fitness`), commit-urile au fost
+împinse pe `origin/main`, iar Vercel a redeployat automat prin integrarea Git.
+Verificat live: homepage + `assets/logo.png` răspund cu HTTP 200 pe
+https://ff-fitness-nutrition.vercel.app.
 
 ## Hartă rapidă — "despre ce vorbim?"
 
@@ -69,11 +71,14 @@ Fișiere:
 - `worker/index.js` — tot backend-ul (rute API, Stripe, Gmail, Anthropic, cache/rate-limit)
 - `worker/wrangler.toml` — config Worker (`name = ff-fitness-nutrition`)
 
-Deploy: frontend static pe **Vercel**; backend pe **Cloudflare Workers**
+Deploy: frontend static pe **Vercel** (proiect `ff-fitness-nutrition`, Root
+Directory = `personal/ff-fitness`, deploy automat la push pe `origin/main` prin
+integrarea Git); backend pe **Cloudflare Workers**
 (`ff-fitness-nutrition.iarisgabor.workers.dev`). Secrete doar ca Wrangler secrets
-(`worker/.dev.vars` local, gitignored). **Vezi nota de migrare de mai sus** — dacă
-Vercel are Root Directory setat la rădăcina repo-ului, trebuie schimbat manual la
-`personal/ff-fitness`.
+(`worker/.dev.vars` local, gitignored). Local mai există și `.vercel/` +
+`.env.local` (create de `vercel link`, gitignorate global din `.gitignore`) și un
+`.gitignore` propriu în acest folder (`.vercel`, `.env*`) — redundant cu regulile
+de la rădăcină, dar inofensiv.
 
 ### 2. `personal/telegram-assistant/` — bot personal de Telegram
 
