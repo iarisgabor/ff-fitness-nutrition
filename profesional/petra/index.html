@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Petra Butincu — fotografă de beauty și produs, Oradea</title>
+<meta name="description" content="Petra Butincu, fotografă în Oradea — beauty, fashion editorial și campanii de produs cosmetic. Portofoliu, colaborări și contact.">
+<meta name="theme-color" content="#F6F2EA">
+
+<!-- Site în lucru: portret, testimoniale reale, cifre reale și dreptul de portofoliu
+     pe brandurile vizibile încă lipsesc — vezi CLAUDE.md, secțiunea „De completat".
+     Scoate linia de mai jos DOAR după ce checklist-ul de lansare e bifat complet. -->
+<meta name="robots" content="noindex, nofollow">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Petra Butincu — fotografă de beauty și produs, Oradea">
+<meta property="og:description" content="Beauty, fashion editorial și campanii de produs — printre altele, pentru Lumedics și Splendor Professional.">
+<meta property="og:image" content="assets/og-cover.jpg">
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/fraunces-display-600-latin.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/fraunces-display-600-latin-ext.woff2" crossorigin>
+<link rel="stylesheet" href="vendor/lenis/lenis.css">
+<link rel="stylesheet" href="css/styles.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Petra Butincu",
+  "jobTitle": "Fotografă",
+  "image": "assets/og-cover.jpg",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Oradea",
+    "addressCountry": "RO"
+  },
+  "knowsAbout": ["Fotografie beauty", "Fotografie de produs", "Fashion editorial"]
+}
+</script>
+<!-- Adaugă "url" (domeniul, o dată ales) și "sameAs" (Instagram, o dată confirmat)
+     — SITE.online.domeniu și SITE.instagram.confirmat din js/config.js spun exact ce lipsește. -->
+</head>
+<body>
+
+<a class="sari" href="#continut">Sari la conținut</a>
+
+<header class="antet" data-antet>
+  <a class="antet__monograma" href="#continut"><span data-cfg="monograma">PB</span></a>
+  <nav class="antet__nav" aria-label="Principal">
+    <a href="#lucrari">Lucrări</a>
+    <a href="#despre">Despre</a>
+    <a href="#contact">Contact</a>
+  </nav>
+  <a class="buton-cta" data-contact="whatsapp" href="#" target="_blank" rel="noopener">Cere ofertă</a>
+</header>
+
+<main id="continut">
+
+  <!-- ===================== HERO =====================
+       Tipografie-întâi, nu foto-întâi — fără ecran de încărcare: nu există
+       un hero fotografic greu (tip Ken Burns) de așteptat, doar o poză mică,
+       asimetrică. Vezi CLAUDE.md pentru de ce diferă de fratele React. -->
+  <section class="hero container" data-hero>
+    <p class="eyebrow" data-reveal><span data-cfg="profesie">Fotografă</span> în <span data-cfg="oras">Oradea</span></p>
+    <h1 class="hero__titlu" data-hero-titlu>Petra Butincu</h1>
+    <p class="hero__sub" data-reveal>Beauty, fashion editorial <em>și</em> campanii de produs.</p>
+    <a class="hero__derulare" href="#lucrari" data-reveal>Vezi lucrările ↓</a>
+    <div class="hero__cadru" data-reveal>
+      <img src="assets/foto/beauty-crin-01-1024.webp"
+           srcset="assets/foto/beauty-crin-01-640.webp 640w, assets/foto/beauty-crin-01-1024.webp 1024w"
+           sizes="(min-width: 860px) 280px, 60vw"
+           width="1282" height="1600"
+           alt="Prim-plan de beauty, din seria Pistrui și crin"
+           fetchpriority="high">
+    </div>
+  </section>
+
+  <!-- ===================== LUCRĂRI =====================
+       Cele 4 proiecte reale, cu srcset scris direct aici din ultima rulare a
+       scripts/optimizeaza-poze.mjs — dacă fetch-ul de manifest.json din
+       gallery.js pică, grila tot arată lucrări reale, nu goale. -->
+  <section class="lucrari container" id="lucrari">
+    <h2 class="sectiune-titlu" data-reveal>Lucrări</h2>
+    <div class="lucrari__grid">
+
+      <article class="proiect" data-proiect="fashion-plaja" data-reveal>
+        <button class="proiect__trigger" type="button" data-proiect-trigger
+                aria-label="Alb pe mare — serie editorială de fashion. Deschide seria de 4 cadre.">
+          <div class="proiect__cadru" data-proiect-cadru>
+            <span class="proiect__numar" aria-hidden="true">01</span>
+            <img src="assets/foto/fashion-plaja-rochie-01-1024.webp"
+                 srcset="assets/foto/fashion-plaja-rochie-01-640.webp 640w, assets/foto/fashion-plaja-rochie-01-1024.webp 1024w"
+                 sizes="(min-width: 720px) 45vw, 92vw"
+                 width="1058" height="1600" alt="" loading="lazy">
+            <div class="proiect__overlay"><span class="proiect__eticheta">Vezi seria (4)</span></div>
+          </div>
+        </button>
+        <div class="proiect__info">
+          <span class="proiect__titlu">Alb pe mare</span>
+          <span class="proiect__meta">Editorial · Fashion</span>
+        </div>
+      </article>
+
+      <article class="proiect" data-proiect="lumedics" data-reveal>
+        <button class="proiect__trigger" type="button" data-proiect-trigger
+                aria-label="Lumină controlată — campanie Lumedics. Deschide seria de 2 cadre.">
+          <div class="proiect__cadru" data-proiect-cadru>
+            <span class="proiect__numar" aria-hidden="true">02</span>
+            <img src="assets/foto/lumedics-masca-led-01-1024.webp"
+                 srcset="assets/foto/lumedics-masca-led-01-640.webp 640w, assets/foto/lumedics-masca-led-01-1024.webp 1024w"
+                 sizes="(min-width: 720px) 45vw, 92vw"
+                 width="1189" height="1600" alt="" loading="lazy">
+            <div class="proiect__overlay"><span class="proiect__eticheta">Vezi seria (2)</span></div>
+          </div>
+        </button>
+        <div class="proiect__info">
+          <span class="proiect__titlu">Lumină controlată</span>
+          <span class="proiect__meta">Lumedics · Campanie produs</span>
+        </div>
+      </article>
+
+      <article class="proiect" data-proiect="beauty-crin" data-reveal>
+        <button class="proiect__trigger" type="button" data-proiect-trigger
+                aria-label="Pistrui și crin — prim-plan de beauty. Deschide cadrul.">
+          <div class="proiect__cadru" data-proiect-cadru>
+            <span class="proiect__numar" aria-hidden="true">03</span>
+            <img src="assets/foto/beauty-crin-01-1024.webp"
+                 srcset="assets/foto/beauty-crin-01-640.webp 640w, assets/foto/beauty-crin-01-1024.webp 1024w"
+                 sizes="(min-width: 720px) 45vw, 92vw"
+                 width="1282" height="1600" alt="" loading="lazy">
+            <div class="proiect__overlay"><span class="proiect__eticheta">Vezi cadrul</span></div>
+          </div>
+        </button>
+        <div class="proiect__info">
+          <span class="proiect__titlu">Pistrui și crin</span>
+          <span class="proiect__meta">Editorial · Beauty</span>
+        </div>
+      </article>
+
+      <article class="proiect" data-proiect="splendor" data-reveal>
+        <button class="proiect__trigger" type="button" data-proiect-trigger
+                aria-label="Silk Wear — campanie Splendor Professional. Deschide cadrul.">
+          <div class="proiect__cadru" data-proiect-cadru>
+            <span class="proiect__numar" aria-hidden="true">04</span>
+            <img src="assets/foto/splendor-silk-wear-01-1600.webp"
+                 srcset="assets/foto/splendor-silk-wear-01-640.webp 640w, assets/foto/splendor-silk-wear-01-1024.webp 1024w, assets/foto/splendor-silk-wear-01-1600.webp 1600w"
+                 sizes="92vw"
+                 width="1600" height="845" alt="" loading="lazy">
+            <div class="proiect__overlay"><span class="proiect__eticheta">Vezi cadrul</span></div>
+          </div>
+        </button>
+        <div class="proiect__info">
+          <span class="proiect__titlu">Silk Wear</span>
+          <span class="proiect__meta">Splendor Professional · Campanie produs</span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ===================== DESPRE + bandă de încredere =====================
+       Bio din fapte confirmate — nu inventează istoric personal, doar
+       ce se știe sigur (nume, oraș, specialități, clienți reali). -->
+  <section class="despre container" id="despre">
+    <div class="despre__portret" aria-hidden="true">Portret</div>
+    <div class="despre__text">
+      <h2 class="sectiune-titlu" data-reveal>Despre</h2>
+      <p class="despre__bio" data-reveal>Petra Butincu este fotografă în Oradea, cu lucrări în beauty, fashion editorial și campanii de produs — printre altele, pentru Lumedics și Splendor Professional.</p>
+      <p class="de-completat" data-reveal>Text de personalizat de Petra</p>
+      <p class="despre__incredere" data-reveal>Colaborări: <strong>Lumedics</strong> · <strong>Splendor Professional</strong></p>
+    </div>
+  </section>
+
+  <!-- ===================== CIFRE ===================== -->
+  <section class="cifre container">
+    <p class="de-completat cifre__nota" data-reveal>Cifre reale — de completat</p>
+    <div class="cifre__grid">
+      <div class="cifra" data-reveal>
+        <span class="cifra__valoare">—</span>
+        <span class="cifra__eticheta">Ședințe foto</span>
+      </div>
+      <div class="cifra" data-reveal>
+        <span class="cifra__valoare">—</span>
+        <span class="cifra__eticheta">Colaborări branduri</span>
+      </div>
+      <div class="cifra" data-reveal>
+        <span class="cifra__valoare">—</span>
+        <span class="cifra__eticheta">Ani de portofoliu</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TESTIMONIALE =====================
+       Explicit mostre — nu se inventează recenzii verosimile pe numele
+       unei persoane reale. Vezi CLAUDE.md. -->
+  <section class="testimoniale container">
+    <h2 class="sectiune-titlu" data-reveal>Testimoniale</h2>
+    <div class="testimoniale__grid">
+      <blockquote class="testimonial" data-reveal>
+        <p class="testimonial__citat">„Text de probă. Aici vine ce a spus efectiv un client, după ce Petra are acordul lui.”</p>
+        <p class="testimonial__autor"><strong>Client demonstrativ</strong> — Brand de probă</p>
+      </blockquote>
+      <blockquote class="testimonial" data-reveal>
+        <p class="testimonial__citat">„Text de probă. Loc rezervat pentru un testimonial real.”</p>
+        <p class="testimonial__autor"><strong>Client demonstrativ</strong> — Brand de probă</p>
+      </blockquote>
+      <blockquote class="testimonial" data-reveal>
+        <p class="testimonial__citat">„Text de probă. Se înlocuiește înainte de lansare.”</p>
+        <p class="testimonial__autor"><strong>Client demonstrativ</strong> — Brand de probă</p>
+      </blockquote>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== CONTACT / SUBSOL ===================== -->
+<footer class="subsol" id="contact" data-subsol>
+  <div class="container">
+    <h2 class="subsol__titlu" data-reveal>Hai să vorbim despre proiectul tău.</h2>
+    <div class="subsol__butoane" data-reveal>
+      <a class="buton-cta" data-contact="whatsapp" href="#" target="_blank" rel="noopener">Scrie pe WhatsApp</a>
+      <a class="buton-secundar" data-contact="tel" href="#"><span data-cfg="contact.telefonAfisat">0732 002 029</span></a>
+      <a class="buton-secundar" data-contact="email" href="#"><span data-cfg="contact.email">Petra.g.photography@gmail.com</span></a>
+      <a class="buton-secundar" data-contact="instagram" href="#" target="_blank" rel="noopener">Instagram</a>
+    </div>
+    <p class="subsol__stare" data-reveal>Accept proiecte noi</p>
+    <div class="subsol__jos">
+      <span>© <span data-year>2026</span> Petra Butincu</span>
+      <a href="#continut">Sus ↑</a>
+    </div>
+  </div>
+</footer>
+
+<!-- CTA sticky, doar sub pragul de mobil (vezi css/styles.css) -->
+<div class="cta-sticky" data-cta-sticky>
+  <a class="buton-cta" data-contact="whatsapp" href="#" target="_blank" rel="noopener">Scrie pe WhatsApp</a>
+</div>
+
+<!-- Lightbox — populat dinamic de js/lightbox.js -->
+<div class="lightbox" data-lightbox hidden>
+  <div class="lightbox__scrim" data-lightbox-scrim></div>
+  <div class="lightbox__panel" role="dialog" aria-modal="true" aria-label="Vizualizare fotografie">
+    <button class="lightbox__inchide" type="button" data-lightbox-close aria-label="Închide">×</button>
+    <button class="lightbox__nav lightbox__nav--prev" type="button" data-lightbox-prev aria-label="Cadrul anterior">‹</button>
+    <figure class="lightbox__figura">
+      <img data-lightbox-img src="" alt="">
+      <figcaption data-lightbox-caption></figcaption>
+    </figure>
+    <button class="lightbox__nav lightbox__nav--next" type="button" data-lightbox-next aria-label="Cadrul următor">›</button>
+  </div>
+</div>
+
+<!-- Ordinea contează: config/proiecte (clasice, blocante) → GSAP/ScrollTrigger/
+     Lenis vendorizate → modulele Petra.* → main.js la final. Reordonarea rupe
+     citirile de window.SITE / window.PROIECTE din modulele de mai jos. -->
+<script src="js/config.js"></script>
+<script src="js/proiecte.js"></script>
+<script src="vendor/gsap/gsap.min.js"></script>
+<script src="vendor/gsap/ScrollTrigger.min.js"></script>
+<script src="vendor/lenis/lenis.min.js"></script>
+<script src="js/reduced-motion.js"></script>
+<script src="js/lenis-init.js"></script>
+<script src="js/reveal.js"></script>
+<script src="js/gallery.js"></script>
+<script src="js/lightbox.js"></script>
+<script src="js/sticky-cta.js"></script>
+<script src="js/contact-links.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

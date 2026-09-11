@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /
+
+# Site în lucru — vezi CLAUDE.md, „De completat înainte de lansare".
+# Scoate Disallow-ul de mai sus DOAR după ce checklist-ul e bifat complet,
+# apoi adaugă aici linia "Sitemap: https://<domeniu>/sitemap.xml".

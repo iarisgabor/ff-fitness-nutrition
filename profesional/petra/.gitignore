@@ -1,0 +1,8 @@
+scripts/node_modules/
+
+# Originalele fotografiilor stau doar local — derivatele WebP din assets/foto/ sunt cele comise.
+poze-fotograf/*
+!poze-fotograf/.gitkeep
+
+.DS_Store
+Thumbs.db

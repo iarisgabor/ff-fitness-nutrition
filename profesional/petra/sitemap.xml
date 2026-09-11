@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Neterminat intenționat: nu există încă un domeniu confirmat pentru acest
+  proiect (vezi js/config.js — SITE.online.domeniu rămâne null până atunci,
+  ca să nu inventăm o adresă pe care Google ar putea-o indexa din greșeală).
+  Completează <loc> cu domeniul real (Vercel sau propriu) când site-ul e gata
+  de lansare, apoi adaugă linia "Sitemap:" înapoi în robots.txt.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>[COMPLETEAZĂ: https://domeniu/]</loc>
+    <lastmod>2026-09-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

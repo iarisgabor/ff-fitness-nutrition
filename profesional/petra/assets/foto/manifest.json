@@ -1,0 +1,134 @@
+[
+  {
+    "id": "beauty-crin-01",
+    "latime": 1282,
+    "inaltime": 1600,
+    "orientare": "vert",
+    "variante": [
+      {
+        "latime": 640,
+        "fisier": "beauty-crin-01-640.webp"
+      },
+      {
+        "latime": 1024,
+        "fisier": "beauty-crin-01-1024.webp"
+      }
+    ]
+  },
+  {
+    "id": "fashion-plaja-corset-02",
+    "latime": 1066,
+    "inaltime": 1600,
+    "orientare": "vert",
+    "variante": [
+      {
+        "latime": 640,
+        "fisier": "fashion-plaja-corset-02-640.webp"
+      },
+      {
+        "latime": 1024,
+        "fisier": "fashion-plaja-corset-02-1024.webp"
+      }
+    ]
+  },
+  {
+    "id": "fashion-plaja-dantela-04",
+    "latime": 1165,
+    "inaltime": 1600,
+    "orientare": "vert",
+    "variante": [
+      {
+        "latime": 640,
+        "fisier": "fashion-plaja-dantela-04-640.webp"
+      },
+      {
+        "latime": 1024,
+        "fisier": "fashion-plaja-dantela-04-1024.webp"
+      }
+    ]
+  },
+  {
+    "id": "fashion-plaja-paiete-03",
+    "latime": 1066,
+    "inaltime": 1600,
+    "orientare": "vert",
+    "variante": [
+      {
+        "latime": 640,
+        "fisier": "fashion-plaja-paiete-03-640.webp"
+      },
+      {
+        "latime": 1024,
+        "fisier": "fashion-plaja-paiete-03-1024.webp"
+      }
+    ]
+  },
+  {
+    "id": "fashion-plaja-rochie-01",
+    "latime": 1058,
+    "inaltime": 1600,
+    "orientare": "vert",
+    "variante": [
+      {
+        "latime": 640,
+        "fisier": "fashion-plaja-rochie-01-640.webp"
+      },
+      {
+        "latime": 1024,
+        "fisier": "fashion-plaja-rochie-01-1024.webp"
+      }
+    ]
+  },
+  {
+    "id": "lumedics-dispozitiv-led-02",
+    "latime": 1156,
+    "inaltime": 1599,
+    "orientare": "vert",
+    "variante": [
+      {
+        "latime": 640,
+        "fisier": "lumedics-dispozitiv-led-02-640.webp"
+      },
+      {
+        "latime": 1024,
+        "fisier": "lumedics-dispozitiv-led-02-1024.webp"
+      }
+    ]
+  },
+  {
+    "id": "lumedics-masca-led-01",
+    "latime": 1189,
+    "inaltime": 1600,
+    "orientare": "vert",
+    "variante": [
+      {
+        "latime": 640,
+        "fisier": "lumedics-masca-led-01-640.webp"
+      },
+      {
+        "latime": 1024,
+        "fisier": "lumedics-masca-led-01-1024.webp"
+      }
+    ]
+  },
+  {
+    "id": "splendor-silk-wear-01",
+    "latime": 1600,
+    "inaltime": 845,
+    "orientare": "oriz",
+    "variante": [
+      {
+        "latime": 640,
+        "fisier": "splendor-silk-wear-01-640.webp"
+      },
+      {
+        "latime": 1024,
+        "fisier": "splendor-silk-wear-01-1024.webp"
+      },
+      {
+        "latime": 1600,
+        "fisier": "splendor-silk-wear-01-1600.webp"
+      }
+    ]
+  }
+]
