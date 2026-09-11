@@ -336,7 +336,7 @@ pe care o duce mai departe clienta înainte să investești în vreuna.
 |---|---|
 | `profesional/petra-butincu-portofoliu/` | Portofoliul clasic, descris mai jos. React + Vite, temă închisă. |
 | `profesional/petra-butincu-film/` | **„CAMERA OBSCURĂ"** — site static, fără build step, cu footage generat (Higgsfield). Titlul + o cutie cu film redă singur, în buclă (`<video autoplay loop>`, `site/film.mp4`); restul paginii se derulează normal. **Nu mai e scroll-film** — a fost convertit din varianta originală full-bleed scrubată la scroll, la cererea utilizatorului (vezi „Istoric" din CLAUDE.md-ul lui). `site/frames/` (cadrele vechiului motor de canvas) rămân doar ca istoric, ignorate din git — regenerabile din `site/film.mp4`. |
-| `profesional/petra/` | **"Studio Alb"** — static, fără build step, GSAP+Lenis vendorizate local. Fundal ivoire cald, tipografie serif uriașă, deliberat opusul temelor închise ale celorlalte două. Detalii: `profesional/petra/CLAUDE.md`. |
+| `profesional/petra/` | **"Studio Alb"** — static, fără build step, GSAP+Lenis vendorizate local. Fundal ivoire cald, tipografie serif uriașă, deliberat opusul temelor închise ale celorlalte două. **Live (noindex): https://petra-zeta.vercel.app**. Detalii: `profesional/petra/CLAUDE.md`. |
 
 #### `profesional/petra-butincu-portofoliu/` — portofoliul clasic
 

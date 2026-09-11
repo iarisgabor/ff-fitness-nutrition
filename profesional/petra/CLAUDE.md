@@ -113,6 +113,21 @@ ca la `profesional/instalatii` și la celelalte două site-uri Petra.
 
 ## Deploy
 
-Nu s-a făcut încă niciun deploy pentru acest proiect. Odată gata: Vercel,
-fără framework preset (site static, fără `package.json` la rădăcină — vezi
-mai sus), Root Directory `profesional/petra`.
+**Live (noindex, link nedistribuit public):** https://petra-zeta.vercel.app
+
+Vercel, proiect `petra` (org `iarisgabors-projects`), fără framework preset
+(site static, fără `package.json` la rădăcină — vezi mai sus), Root Directory
+`profesional/petra`, conectat la `github.com/iarisgabor/ff-fitness-nutrition`
+(același repo Git ca restul monorepo-ului — fiecare proiect Vercel din el își
+setează propriul Root Directory). Push pe `origin/main` ar trebui să
+redeployeze automat prin integrarea Git; verifică totuși manual după un push,
+fiindcă legătura a fost configurată separat de link-ul CLI inițial (vezi
+istoricul din sesiunea care a publicat site-ul, 2026-09-11).
+
+Pentru un deploy manual din CLI: `vercel --prod --yes`, rulat din **rădăcina
+monorepo-ului** (nu din `profesional/petra/`) — Root Directory fiind setat la
+`profesional/petra`, un deploy pornit direct din acel folder eșuează cu
+„Root Directory does not exist" (CLI-ul urcă doar folderul curent, iar
+setarea de Root Directory se așteaptă apoi la o subcale care nu mai există în
+ce s-a urcat). Necesită un link Vercel și la rădăcina monorepo-ului
+(`.vercel/project.json`, gitignored), nu doar în `profesional/petra/.vercel/`.
