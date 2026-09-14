@@ -1,6 +1,6 @@
 import { DIMENSIONS, META_COLUMNS, AGE_BUCKETS, AGE_FALLBACK_LABEL, MAX_QUOTES_PER_DIMENSION } from './config.js';
 
-function normalizeText(s) {
+export function normalizeText(s) {
   return String(s || '')
     .toLowerCase()
     .normalize('NFD')
@@ -12,7 +12,7 @@ function normalizeText(s) {
 // bifeze "anume", dar "inchei" trebuie să bifeze atât "incheiere" cât și "incheiata"
 // (forme diferite ale aceluiași cuvânt). Cuvântul-cheie trebuie să apară imediat
 // după începutul textului sau după un caracter care nu e literă/cifră.
-function containsAny(normalizedHeader, keywords) {
+export function containsAny(normalizedHeader, keywords) {
   return keywords.some((kw) => {
     const escaped = normalizeText(kw).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`(^|[^a-z0-9])${escaped}`).test(normalizedHeader);
@@ -142,7 +142,9 @@ export function rowsToResponses(rows, columnMap) {
   }).filter((r) => r.date); // ignoră rânduri fără dată validă (ex. rând gol la final)
 }
 
-function dimensionStats(responses) {
+// Exportat — reutilizat de render.js ca să compare dimensiunile pe subseturi
+// diferite de răspunsuri (ex. duminicile unui predicator vs restul).
+export function dimensionStats(responses) {
   return DIMENSIONS.map((dim) => {
     const dist = [0, 0, 0, 0, 0];
     let sum = 0;
@@ -227,7 +229,7 @@ function ageBucketsFrom(responses) {
     .map(([label, n]) => ({ label, n }));
 }
 
-function pickQuotes(responses) {
+export function pickQuotes(responses) {
   const quotes = {};
   const sorted = responses.slice().sort((a, b) => (a.date < b.date ? 1 : -1)); // cele mai recente primele
   for (const dim of DIMENSIONS) {

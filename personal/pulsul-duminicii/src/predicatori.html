@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pulsul Duminicii — Predicatori</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+__SHARED_CSS__
+
+.page-head{padding:48px 0 8px;}
+.page-head h1{font-size:clamp(26px,3.2vw,36px); font-weight:700;}
+.page-head p{margin-top:10px; font-size:14.5px; color:var(--text-2); max-width:64ch;}
+
+.preachers-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; padding:40px 0 20px;}
+.preacher-card{
+  display:flex; flex-direction:column; gap:16px; padding:22px 22px 20px;
+  text-decoration:none; color:inherit; border-left:4px solid var(--r3);
+}
+.preacher-card .p-name{font-family:'Sora'; font-weight:700; font-size:17px;}
+.preacher-card .p-sub{font-size:12.5px; color:var(--text-3);}
+.preacher-card .p-row{display:flex; align-items:center; justify-content:space-between; margin-top:auto;}
+.preacher-card .p-n{font-size:12.5px; color:var(--text-2);}
+.preacher-card .p-avg{font-family:'IBM Plex Mono'; font-weight:700; font-size:18px;}
+.preacher-card:hover{border-left-color:var(--accent-mark); box-shadow:var(--shadow), 0 0 0 1px var(--accent-mark) inset;}
+
+.empty-state{padding:60px 0; text-align:center; color:var(--text-3);}
+.notice{margin:24px 0; padding:16px 18px; border-radius:12px; border:1px dashed var(--border); background:var(--surface-2); font-size:13px; color:var(--text-2); line-height:1.5;}
+
+.section-block{margin:16px 0 60px;}
+.section-block h3{font-size:16px; font-weight:700; margin-bottom:2px;}
+.section-sub{font-size:12.5px; color:var(--text-3); max-width:64ch; margin-bottom:18px;}
+</style>
+</head>
+<body>
+
+<div id="tooltip"></div>
+<div class="topbar" id="topbar-root"></div>
+<div id="stale-banner" class="stale-banner" hidden></div>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>Predicatori</h1>
+    <p>Nota la Predică și cum arată celelalte dimensiuni în duminicile fiecăruia, comparativ cu restul duminicilor.</p>
+  </div>
+
+  <div id="notice-wrap"></div>
+
+  <div class="preachers-grid" id="preachers-grid"></div>
+
+  <div class="section-block" id="comparison-section">
+    <h3>Comparație directă, pe dimensiuni</h3>
+    <p class="section-sub">Media fiecărei dimensiuni, calculată doar din duminicile în care a predicat omul respectiv.</p>
+    <div class="card pad">
+      <div class="data-table-wrap">
+        <table class="data-table" id="comparison-table"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+__SHARED_JS__
+</script>
+<script>
+(function(){
+  const PAYLOAD = __PULS_DATA_JSON__;
+  const PREACHERS = PAYLOAD.preachers || [];
+  const COMPARISON = PAYLOAD.comparisonRows || [];
+  const META = PAYLOAD.meta || {};
+
+  initNav('preachers', `${META.totalResponses||0} răspunsuri · ${META.dateRangeLabel||''}`);
+
+  if (META.stale) {
+    const banner = document.getElementById('stale-banner');
+    banner.hidden = false;
+    banner.textContent = 'Date posibil neactualizate — nu am reușit să citim Sheet-ul live la ultima încercare; se arată ultima versiune bună cunoscută.';
+  }
+
+  if (PAYLOAD.scheduleError) {
+    document.getElementById('notice-wrap').innerHTML = `<div class="notice">${esc(PAYLOAD.scheduleError)}</div>`;
+  }
+
+  const grid = document.getElementById('preachers-grid');
+  const comparisonSection = document.getElementById('comparison-section');
+  if (!PREACHERS.length) {
+    grid.outerHTML = '<div class="empty-state">Niciun predicator cu duminici suprapuse peste datele de feedback încă.</div>';
+    comparisonSection.hidden = true;
+    return;
+  }
+
+  function avgColor(avg){
+    return avg ? `var(--r${Math.max(1,Math.min(5,Math.round(avg)))})` : 'var(--r3)';
+  }
+
+  PREACHERS.forEach(p => {
+    const color = avgColor(p.avgOverall);
+    const a = document.createElement('a');
+    a.className = 'card preacher-card';
+    a.href = `/predicatori/${p.slug}`;
+    a.style.borderLeftColor = color;
+    a.innerHTML = `
+      <div>
+        <div class="p-name">${esc(p.name)}</div>
+        <div class="p-sub">${p.sundayCount} ${p.sundayCount===1?'duminică':'duminici'} cu feedback</div>
+      </div>
+      <div class="p-row">
+        <div class="p-n">medie la Predică</div>
+        <div class="p-avg" style="color:${color}">${p.avgQ5 != null ? p.avgQ5.toFixed(2) : '–'}</div>
+      </div>
+    `;
+    grid.appendChild(a);
+  });
+
+  // ---- tabel comparativ pe dimensiuni ----
+  const thead = '<thead><tr><th>Dimensiune</th>' + PREACHERS.map(p => `<th>${esc(p.name)}</th>`).join('') + '</tr></thead>';
+  const tbody = '<tbody>' + COMPARISON.map(row => {
+    const cells = PREACHERS.map(p => {
+      const entry = row.perPreacher.find(x => x.slug === p.slug);
+      if (!entry || entry.avg == null) return '<td style="color:var(--text-3)">–</td>';
+      return `<td style="color:${avgColor(entry.avg)}; font-weight:700;">${entry.avg.toFixed(2)}</td>`;
+    }).join('');
+    return `<tr><td>${esc(row.label)}</td>${cells}</tr>`;
+  }).join('') + '</tbody>';
+  document.getElementById('comparison-table').innerHTML = thead + tbody;
+})();
+</script>
+</body>
+</html>

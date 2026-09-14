@@ -2,8 +2,10 @@
 // interactiv) + citire Google Sheets API v4. Doar fetch() nativ + crypto.subtle
 // (WebCrypto din workerd) — fără SDK-uri, la fel ca restul API-urilor externe din
 // acest repo (vezi worker/index.js — Stripe/Gmail/Anthropic prin fetch() direct).
-
-import { SHEET_RANGE } from './config.js';
+//
+// Un singur service account/token citește DOUĂ Sheet-uri diferite (feedback +
+// calendarul de predicare) — de-aia fetchSheetValues ia sheetId și range ca
+// parametri, nu le știe pe ale cui sunt.
 
 const TOKEN_KV_KEY = 'sheets_access_token';
 const TOKEN_TTL_SECONDS = 50 * 60; // sub cele 3600s de valabilitate reală
@@ -80,8 +82,8 @@ export async function getAccessToken(env) {
   return data.access_token;
 }
 
-export async function fetchSheetValues(env, accessToken) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.GOOGLE_SHEET_ID)}/values/${encodeURIComponent(SHEET_RANGE)}?valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`;
+export async function fetchSheetValues(env, accessToken, sheetId, range) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`;
   const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!resp.ok) {
     const body = await resp.text();

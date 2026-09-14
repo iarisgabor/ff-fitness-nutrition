@@ -50,6 +50,13 @@ Viewer pe un singur Sheet e suficient și mai simplu de întreținut.
    `butmarius@gmail.com`, deci pasul ăsta trebuie făcut de cineva cu drept de editare
    pe el (Marius sau altcineva din echipă cu acces), nu neapărat de tine.
 7. `GOOGLE_SHEET_ID` e deja completat în `wrangler.toml` (`1NIRVF-Dfxbu3BweApf9eWhMW80ZLeXw6RGPAVAQieic`).
+8. **Repetă pasul 6, dar pentru al doilea Sheet** — „Calendar predicare"
+   ([id `1LVHzHB4z_dGm5v9xsnp_i2NotgUVGnBdmzpv3XsWpN0`](https://docs.google.com/spreadsheets/d/1LVHzHB4z_dGm5v9xsnp_i2NotgUVGnBdmzpv3XsWpN0/edit)),
+   folosit de paginile `/predicatori`. E un fișier diferit, cu alt proprietar — trebuie
+   distribuit separat către același `client_email`, cu rol **Viewer**, de cineva cu drept
+   de editare pe el. `PREACHERS_SHEET_ID` e deja completat în `wrangler.toml`. Fără acest
+   pas, `/predicatori` rămâne funcțional dar gol, cu un mesaj explicativ (vezi CLAUDE.md,
+   regula 15) — restul site-ului nu e afectat.
 
 `src/config.js` a fost deja verificat contra headerului real al Sheet-ului (tab-ul
 se numește „Răspunsuri la formular 1", `SHEET_RANGE` e deja setat corect) — nu ar
@@ -97,6 +104,12 @@ npm run dev
   neactualizate" cu ultima versiune bună, nu o eroare goală.
 - Light/dark mode (moștenit din raportul static original) arată corect în ambele.
 - `npx wrangler tail` în timpul testelor, pentru excepții neprinse.
+- `/predicatori` arată cardurile predicatorilor cu duminici suprapuse peste feedback;
+  `/predicatori/:slug` arată trendul la Predică, tabelul comparativ și citatele lui.
+  Dacă service account-ul nu a fost încă adăugat Viewer pe „Calendar predicare", pagina
+  arată un mesaj explicativ în loc de date — nu o eroare, și restul site-ului rămâne intact.
+- Pe `/zile/:slug`, pentru o duminică din calendarul de predicare, apare chip-ul
+  „Predică: Nume" cu link spre pagina predicatorului respectiv.
 
 ## Schimbarea modelului de acces sau de refresh
 

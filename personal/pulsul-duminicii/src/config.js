@@ -75,3 +75,13 @@ export const AGE_BUCKETS = [
 export const AGE_FALLBACK_LABEL = 'nespecificat';
 
 export const MAX_QUOTES_PER_DIMENSION = 3;
+
+// Mapare pentru al DOILEA Sheet — "Calendar predicare" (id diferit, propriu,
+// pus în GOOGLE var separată — vezi wrangler.toml). Confirmat contra Sheet-ului
+// real (2026-09-14): coloanele sunt "Data" (DD/MM/AAAA) și "Speaker"; range fără
+// nume de foaie în față -> Sheets API alege automat prima/singura foaie.
+export const PREACHERS_SHEET_RANGE = 'A1:Z';
+export const PREACHER_COLUMNS = {
+  date: { keywords: ['data'] },
+  speaker: { keywords: ['speaker', 'predicator'] },
+};

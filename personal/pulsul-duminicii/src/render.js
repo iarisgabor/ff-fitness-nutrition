@@ -3,13 +3,19 @@ import DAYS_TEMPLATE from './days.html';
 import DAY_TEMPLATE from './day.html';
 import CATEGORIES_TEMPLATE from './categories.html';
 import CATEGORY_TEMPLATE from './category.html';
+import PREACHERS_TEMPLATE from './predicatori.html';
+import PREACHER_TEMPLATE from './predicator.html';
 import SHARED_CSS from './shared.css';
 import SHARED_JS from './shared.txt';
 import { getAccessToken, fetchSheetValues } from './sheets.js';
-import { buildColumnMap, rowsToResponses, buildData, summarizeByDate, dateToSlug, slugToDate } from './transform.js';
+import {
+  buildColumnMap, rowsToResponses, buildData, summarizeByDate, dateToSlug, slugToDate,
+  dimensionStats, categoryWeeklySeries, pickQuotes, perResponseAverage,
+} from './transform.js';
 import { getCachedAiSummary, generateAndCacheAiSummary } from './aiSummary.js';
 import { RANGE_PRESETS, weeksForPreset, getCachedTrendSummary, generateAndCacheTrendSummary } from './aiTrendSummary.js';
-import { DIMENSIONS } from './config.js';
+import { SHEET_RANGE, PREACHERS_SHEET_RANGE, DIMENSIONS } from './config.js';
+import { buildPreacherColumnMap, rowsToSchedule, preacherSlug } from './preachers.js';
 
 const PAYLOAD_KEY = 'sheet_payload';
 const PAYLOAD_LAST_GOOD_KEY = 'sheet_payload:last_good';
@@ -34,7 +40,7 @@ function formatDateLabel(dmy) {
 
 async function fetchAndTransform(env) {
   const accessToken = await getAccessToken(env);
-  const rows = await fetchSheetValues(env, accessToken);
+  const rows = await fetchSheetValues(env, accessToken, env.GOOGLE_SHEET_ID, SHEET_RANGE);
   if (!rows.length) throw new Error('Sheet-ul nu are niciun rând.');
   const [headerRow, ...dataRows] = rows;
   const columnMap = buildColumnMap(headerRow, dataRows);
@@ -79,6 +85,52 @@ export async function refreshPayloadCache(env) {
     ]);
   }
   return payload;
+}
+
+// ---- pas 1b: calendarul de predicare, al doilea Sheet — cache separat, fail-soft ----
+//
+// Spre deosebire de getComputedPayload, o eroare aici NU trebuie să dărâme restul
+// site-ului (paginile de feedback existau dinainte de acest Sheet) — dacă
+// service account-ul încă n-a fost adăugat Viewer pe "Calendar predicare", sau
+// GOOGLE_SHEET_ID-ul lui lipsește din config, /predicatori arată o stare goală
+// cu explicație, nu 503.
+
+const SCHEDULE_KEY = 'preacher_schedule';
+const SCHEDULE_LAST_GOOD_KEY = 'preacher_schedule:last_good';
+const SCHEDULE_TTL_SECONDS = 10 * 60;
+
+async function fetchAndTransformSchedule(env) {
+  const accessToken = await getAccessToken(env);
+  const rows = await fetchSheetValues(env, accessToken, env.PREACHERS_SHEET_ID, PREACHERS_SHEET_RANGE);
+  if (!rows.length) return [];
+  const [headerRow, ...dataRows] = rows;
+  const columnMap = buildPreacherColumnMap(headerRow);
+  return rowsToSchedule(dataRows, columnMap);
+}
+
+async function getSchedule(env, ctx) {
+  if (!env.PREACHERS_SHEET_ID) {
+    return { schedule: [], stale: false, error: 'PREACHERS_SHEET_ID nu e setat în wrangler.toml.' };
+  }
+  if (env.PULSUL_KV) {
+    const cached = await env.PULSUL_KV.get(SCHEDULE_KEY, 'json');
+    if (cached) return { schedule: cached, stale: false, error: null };
+  }
+  try {
+    const schedule = await fetchAndTransformSchedule(env);
+    if (env.PULSUL_KV) {
+      ctx.waitUntil(Promise.all([
+        env.PULSUL_KV.put(SCHEDULE_KEY, JSON.stringify(schedule), { expirationTtl: SCHEDULE_TTL_SECONDS }),
+        env.PULSUL_KV.put(SCHEDULE_LAST_GOOD_KEY, JSON.stringify(schedule)),
+      ]));
+    }
+    return { schedule, stale: false, error: null };
+  } catch (err) {
+    console.error('fetchAndTransformSchedule a eșuat:', err);
+    const lastGood = env.PULSUL_KV ? await env.PULSUL_KV.get(SCHEDULE_LAST_GOOD_KEY, 'json') : null;
+    if (lastGood) return { schedule: lastGood, stale: true, error: null };
+    return { schedule: [], stale: false, error: 'Nu am putut citi calendarul de predicare — verifică accesul service account-ului pe acel Sheet.' };
+  }
 }
 
 function baseMeta(responses, stale) {
@@ -180,14 +232,18 @@ export async function renderDay(env, ctx, slug) {
     ctx.waitUntil(generateAndCacheAiSummary(env, date, items));
   }
 
-  const meta = baseMeta(responses, stale);
+  const { schedule, stale: scheduleStale } = await getSchedule(env, ctx);
+  const scheduleEntry = schedule.find((s) => s.date === date);
+  const preacher = scheduleEntry ? { name: scheduleEntry.speaker, slug: preacherSlug(scheduleEntry.speaker) } : null;
+
+  const meta = baseMeta(responses, stale || scheduleStale);
   delete meta._dates;
   meta.prevSlug = prevSlug;
   meta.nextSlug = nextSlug;
   meta.overallAvg = data.overallAvg;
 
   const dimLabels = DIMENSIONS.map((d) => ({ key: d.key, label: d.label, full: d.full }));
-  const payload = { date, items, dimLabels, aiSummary, meta };
+  const payload = { date, items, dimLabels, aiSummary, preacher, meta };
   return injectShared(DAY_TEMPLATE).replace('__PULS_DATA_JSON__', safeJsonForScript(payload));
 }
 
@@ -231,4 +287,95 @@ export async function renderCategoryDetail(env, ctx, key) {
 
   const payload = { key, label: dim.label, full: dim.full, series, allKeys, trendSummaries, meta };
   return injectShared(CATEGORY_TEMPLATE).replace('__PULS_DATA_JSON__', safeJsonForScript(payload));
+}
+
+// ---- pagina /predicatori ----
+
+function compositeAvg(responses) {
+  const averages = responses.map(perResponseAverage).filter((v) => v != null);
+  return averages.length ? averages.reduce((a, b) => a + b, 0) / averages.length : null;
+}
+
+export async function renderPreachersIndex(env, ctx) {
+  const { responses, stale } = await getComputedPayload(env, ctx);
+  const { schedule, stale: scheduleStale, error: scheduleError } = await getSchedule(env, ctx);
+  const meta = baseMeta(responses, stale || scheduleStale);
+  delete meta._dates;
+
+  const names = [...new Set(schedule.map((s) => s.speaker))];
+  const byPreacher = names
+    .map((name) => {
+      const dates = new Set(schedule.filter((s) => s.speaker === name).map((s) => s.date));
+      const theirResponses = responses.filter((r) => dates.has(r.date));
+      return { name, slug: preacherSlug(name), theirResponses };
+    })
+    .filter((p) => p.theirResponses.length > 0);
+
+  const preachers = byPreacher
+    .map(({ name, slug, theirResponses }) => {
+      const sundayCount = new Set(theirResponses.map((r) => r.date)).size;
+      const q5 = dimensionStats(theirResponses).find((d) => d.key === 'q5');
+      return {
+        name, slug, sundayCount,
+        avgQ5: q5.n ? q5.avg : null, nQ5: q5.n,
+        avgOverall: compositeAvg(theirResponses),
+      };
+    })
+    .sort((a, b) => (b.avgOverall || 0) - (a.avgOverall || 0));
+
+  const comparisonRows = DIMENSIONS.map((dim) => ({
+    key: dim.key,
+    label: dim.label,
+    perPreacher: byPreacher.map(({ name, slug, theirResponses }) => {
+      const d = dimensionStats(theirResponses).find((x) => x.key === dim.key);
+      return { name, slug, avg: d.n ? d.avg : null, n: d.n };
+    }),
+  }));
+
+  const payload = { preachers, comparisonRows, scheduleError: scheduleError || null, meta };
+  return injectShared(PREACHERS_TEMPLATE).replace('__PULS_DATA_JSON__', safeJsonForScript(payload));
+}
+
+// ---- pagina /predicatori/:slug ----
+
+export async function renderPreacherDetail(env, ctx, slug) {
+  const { responses, data, stale } = await getComputedPayload(env, ctx);
+  const { schedule, stale: scheduleStale, error: scheduleError } = await getSchedule(env, ctx);
+
+  const names = [...new Set(schedule.map((s) => s.speaker))];
+  const name = names.find((n) => preacherSlug(n) === slug);
+  if (!name) return null; // 404 — predicator necunoscut sau calendar indisponibil
+
+  const dates = new Set(schedule.filter((s) => s.speaker === name).map((s) => s.date));
+  const theirResponses = responses.filter((r) => dates.has(r.date));
+  const restResponses = responses.filter((r) => !dates.has(r.date));
+
+  const theirStats = dimensionStats(theirResponses);
+  const restStats = dimensionStats(restResponses);
+  const comparison = DIMENSIONS.map((dim) => {
+    const t = theirStats.find((d) => d.key === dim.key);
+    const r = restStats.find((d) => d.key === dim.key);
+    return {
+      key: dim.key, label: dim.label,
+      theirAvg: t.n ? t.avg : null, theirN: t.n,
+      restAvg: r.n ? r.avg : null, restN: r.n,
+      delta: (t.n && r.n) ? t.avg - r.avg : null,
+    };
+  });
+
+  const q5Series = categoryWeeklySeries(theirResponses).q5 || [];
+  const quotes = pickQuotes(theirResponses).q5 || [];
+  const sundayCount = new Set(theirResponses.map((r) => r.date)).size;
+
+  const meta = baseMeta(responses, stale || scheduleStale);
+  delete meta._dates;
+  meta.globalOverallAvg = data.overallAvg;
+
+  const payload = {
+    name, slug, sundayCount,
+    avgOverall: compositeAvg(theirResponses),
+    q5Series, comparison, quotes,
+    scheduleError: scheduleError || null, meta,
+  };
+  return injectShared(PREACHER_TEMPLATE).replace('__PULS_DATA_JSON__', safeJsonForScript(payload));
 }

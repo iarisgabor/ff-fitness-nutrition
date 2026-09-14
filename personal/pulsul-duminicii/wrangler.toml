@@ -15,6 +15,9 @@ fallthrough = true
 # de configurat aici, doar în dashboard Zero Trust).
 AUTH_MODE = "none"
 GOOGLE_SHEET_ID = "1NIRVF-Dfxbu3BweApf9eWhMW80ZLeXw6RGPAVAQieic"
+# "Calendar predicare" — cine predică în fiecare duminică, Sheet SEPARAT de cel
+# de mai sus. Service account-ul trebuie adăugat Viewer și pe acesta (vezi README).
+PREACHERS_SHEET_ID = "1LVHzHB4z_dGm5v9xsnp_i2NotgUVGnBdmzpv3XsWpN0"
 
 # Rulează întâi:
 #   wrangler kv namespace create PULSUL_KV

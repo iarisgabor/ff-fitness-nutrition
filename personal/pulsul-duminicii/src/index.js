@@ -1,5 +1,5 @@
 import { checkAccess } from './auth.js';
-import { renderHome, renderDaysList, renderDay, renderCategoriesIndex, renderCategoryDetail, refreshPayloadCache } from './render.js';
+import { renderHome, renderDaysList, renderDay, renderCategoriesIndex, renderCategoryDetail, renderPreachersIndex, renderPreacherDetail, refreshPayloadCache } from './render.js';
 
 const HTML_HEADERS = {
   'content-type': 'text/html; charset=utf-8',
@@ -37,6 +37,17 @@ export default {
         const html = await renderCategoryDetail(env, ctx, categoryMatch[1]);
         if (html === null) {
           return new Response('Categoria nu există.', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+        }
+        return new Response(html, { headers: HTML_HEADERS });
+      }
+      if (path === '/predicatori') {
+        return new Response(await renderPreachersIndex(env, ctx), { headers: HTML_HEADERS });
+      }
+      const preacherMatch = path.match(/^\/predicatori\/([a-z0-9-]+)$/);
+      if (preacherMatch) {
+        const html = await renderPreacherDetail(env, ctx, preacherMatch[1]);
+        if (html === null) {
+          return new Response('Predicatorul nu a fost găsit.', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
         }
         return new Response(html, { headers: HTML_HEADERS });
       }

@@ -87,6 +87,7 @@ function initNav(activeKey, topbarText){
             <a class="menu-item${activeKey==='home'?' active':''}" href="/">Acasă — statistici generale</a>
             <a class="menu-item${activeKey==='days'||activeKey==='day'?' active':''}" href="/zile">Răspunsuri pe zile</a>
             <a class="menu-item${activeKey==='categories'||activeKey==='category'?' active':''}" href="/categorii">Analiză pe categorii</a>
+            <a class="menu-item${activeKey==='preachers'||activeKey==='preacher'?' active':''}" href="/predicatori">Predicatori</a>
           </div>
         </div>
       </div>
