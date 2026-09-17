@@ -24,8 +24,9 @@ npm install
 | `ALLOWED_TELEGRAM_USER_ID` | ID-ul tău numeric de Telegram (ex. via `@userinfobot`) |
 | `INTERNAL_ADMIN_SECRET` | generat de tine — protejează ruta internă `/internal/run-daily-agenda` |
 | `PLANNING_CENTER_APP_ID` / `PLANNING_CENTER_SECRET` | Personal Access Token din Planning Center (vezi mai jos) |
+| `ALEXA_REFRESH_TOKEN` | pus automat de `npm run alexa-login` (aer condiționat, vezi mai jos) — **dă acces la contul Amazon** |
 
-`DEFAULT_TIMEZONE`, `GOOGLE_CALENDAR_ID` și `DAILY_AGENDA_HOUR` sunt în `wrangler.toml` (`[vars]`), nu secrete.
+`DEFAULT_TIMEZONE`, `GOOGLE_CALENDAR_ID`, `DAILY_AGENDA_HOUR` și `ALEXA_*` (fără token) sunt în `wrangler.toml` (`[vars]`), nu secrete.
 
 ## Configurare Google Calendar OAuth (o singură dată)
 
@@ -67,6 +68,37 @@ npm install
 Notă: token-ul are exact drepturile contului tău Planning Center (același nivel de acces
 ca atunci când te loghezi manual) — dacă botul trebuie doar să citească, folosește un cont
 cu rol limitat dacă organizația ta are unul.
+
+## Aer condiționat prin Alexa (o singură dată + la expirarea logării)
+
+Aerul condiționat (Sinclair, aplicația EWPE Smart) nu are API public. Drumul e:
+bot → **API-ul neoficial Alexa** (`src/alexa.js`, același ca alexa.amazon.de /
+ioBroker.alexa2) → skill-ul **EWPE Smart Home** → aparat. Gratuit, orice temperatură,
+plus citirea stării (pornit, mod, temperatură setată, temperatura din cameră).
+
+Precondiție: în aplicația Alexa, skill-ul **EWPE Smart Home** activat și aparatul descoperit
+(în contul curent apare ca „AC").
+
+1. `npm install` (aduce `alexa-remote2`, folosit DOAR de scriptul de logare, nu de Worker).
+2. `npm run alexa-login` → deschide **http://localhost:3456/** în browser (exact
+   `localhost`, nu `127.0.0.1`) și loghează-te cu contul Amazon al Alexei (+ cod 2FA).
+3. Scriptul:
+   - pune `ALEXA_REFRESH_TOKEN` direct în Cloudflare (prin stdin — nu apare pe ecran/disc);
+   - afișează valorile pentru `wrangler.toml`: `ALEXA_API_HOST` (depinde de regiunea
+     contului — contul actual e NA, deci `na-api-alexa.amazon.de`), `ALEXA_DEVICE_APP_NAME`,
+     `ALEXA_AC_ENTITY_ID`, `ALEXA_AC_APPLIANCE_ID`. Actualizează-le dacă diferă.
+   Alt nume de dispozitiv decât „AC": `ALEXA_AC_NAME="Clima" npm run alexa-login`.
+   Doar id-urile, fără să atingi secretul: `npm run alexa-login -- --dry-run`.
+4. `npx wrangler deploy`, apoi pe Telegram: „cum e aerul?", „pune 23 de grade pe răcire",
+   „oprește aerul la 23:00", „în fiecare zi la 7 pornește încălzirea pe 22".
+
+**Când botul răspunde „Sesiunea Alexa a expirat"**: Amazon a invalidat tokenul (schimbare de
+parolă, deconectare dispozitive din cont, schimbări la Amazon). Reia pașii 2–3; nu e nevoie de
+redeploy dacă id-urile nu s-au schimbat.
+
+**Securitate:** `ALEXA_REFRESH_TOKEN` = acces la contul Amazon. Stă doar ca Wrangler secret.
+Revocare: amazon.com → Account → *Login & security* / *Manage Your Content and Devices →
+Devices* → dezînregistrează dispozitivul „ioBroker Alexa2".
 
 ## Deploy și înregistrare webhook
 

@@ -15,6 +15,14 @@ new_sqlite_classes = ["AssistantAgent"]
 DEFAULT_TIMEZONE = "Europe/Bucharest"
 GOOGLE_CALENDAR_ID = "primary"
 DAILY_AGENDA_HOUR = "20"
+# Aer condiționat prin API-ul neoficial Alexa (src/alexa.js). Contul Amazon e în regiunea NA,
+# deci API-ul e pe na-api-alexa.amazon.de, chiar dacă logarea s-a făcut pe amazon.de.
+# Id-urile aparatului „AC" (skill EWPE Smart Home) vin din getSmarthomeDevicesV2 — vezi README.
+ALEXA_AMAZON_PAGE = "amazon.de"
+ALEXA_API_HOST = "na-api-alexa.amazon.de"
+ALEXA_DEVICE_APP_NAME = "ioBroker Alexa2"
+ALEXA_AC_ENTITY_ID = "f2dbe4c5-b4a7-4a3b-a929-711cf1ad6739"
+ALEXA_AC_APPLIANCE_ID = "SKILL_eyJza2lsbElkIjoiYW16bjEuYXNrLnNraWxsLjVkMWFlOTBjLTcwN2MtNGZkZi05MzNmLTYzODM1ODc2Nzc5YiIsInN0YWdlIjoibGl2ZSJ9_3067253"
 
 # Secrete — NICIODATĂ aici, doar prin:
 #   wrangler secret put TELEGRAM_BOT_TOKEN
@@ -24,3 +32,4 @@ DAILY_AGENDA_HOUR = "20"
 #   wrangler secret put GOOGLE_CALENDAR_CLIENT_SECRET
 #   wrangler secret put GOOGLE_CALENDAR_REFRESH_TOKEN
 #   wrangler secret put ALLOWED_TELEGRAM_USER_ID
+#   wrangler secret put ALEXA_REFRESH_TOKEN      (aer condiționat — acces la contul Amazon, vezi README)

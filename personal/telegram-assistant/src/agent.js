@@ -6,6 +6,7 @@ import { listEventsForDate } from './tools/calendar.js';
 import { sendTelegramMessage, isPrivateTextMessage } from './telegram.js';
 import { nextDailyRunAt, isoDateInTimeZone } from './datetime.js';
 import { formatDailyAgenda } from './agenda.js';
+import { runScheduledAcCommand } from './tools/air-conditioner.js';
 
 const HISTORY_WINDOW = 20;
 const DAILY_AGENDA_CALLBACK = 'sendDailyAgenda';
@@ -28,6 +29,8 @@ const ERROR_MESSAGES = {
   PLANNING_CENTER_AUTH_FAILED:
     'Nu m-am putut autentifica la Planning Center. Verifică App ID/Secret.',
   PLANNING_CENTER_REQUEST_FAILED: 'Nu am reușit să iau datele din Planning Center. Încearcă din nou.',
+  ALEXA_AUTH_MISSING: 'Controlul aerului condiționat nu e configurat încă (lipsește ALEXA_REFRESH_TOKEN).',
+  ALEXA_AUTH_FAILED: 'Sesiunea Alexa a expirat — trebuie refăcută logarea (vezi README, aer condiționat).',
   TELEGRAM_SEND_FAILED: null,
 };
 
@@ -107,6 +110,21 @@ export class AssistantAgent extends Agent {
     await this.schedule(next, DAILY_AGENDA_CALLBACK, {});
   }
 
+  // Callback-ul programărilor de aer condiționat (vezi tools/air-conditioner.js). Anunță pe
+  // Telegram rezultatul — altfel o programare eșuată ar trece neobservată.
+  async runScheduledAirConditioner(payload) {
+    let text;
+    try {
+      const result = await runScheduledAcCommand(this.env, payload, this);
+      const s = result.stare_dupa;
+      const stare = s ? ` Acum: ${s.pornit ? 'pornit' : 'oprit'}, ${s.mod}, ${s.temperatura_setata}°C (în cameră ${s.temperatura_camera}°C).` : '';
+      text = `Programare aer condiționat rulată: ${result.descriere}.${stare}`;
+    } catch (err) {
+      text = `Programarea de aer condiționat a eșuat: ${err.message}`;
+    }
+    await sendTelegramMessage(this.env, { chatId: this.name, text }).catch(() => {});
+  }
+
   // Răspunde imediat 200 și procesează asincron prin coada internă a SDK-ului — dacă am aștepta
   // aici pipeline-ul complet (Claude + Calendar + Telegram, ~3-7s), un timeout pe partea de
   // Telegram ar declanșa o reîncercare și ar putea crea un eveniment duplicat în calendar.
@@ -155,7 +173,7 @@ export class AssistantAgent extends Agent {
         system: buildSystemPrompt(this.env),
         messages,
         tools: TOOL_DEFINITIONS,
-        executeTool: (name, input) => executeTool(this.env, name, input),
+        executeTool: (name, input) => executeTool(this.env, name, input, this),
       });
 
       this.sql`INSERT INTO messages (role, content) VALUES ('assistant', ${JSON.stringify(replyText)})`;

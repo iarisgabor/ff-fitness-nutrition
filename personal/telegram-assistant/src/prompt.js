@@ -130,7 +130,27 @@ mai des programat în ultimele 6 luni". Reguli:
   365 de zile până azi; "ultimele 6 luni" = azi minus ~180 de zile până azi).
 - Pot dura câteva secunde pentru intervale mari — e normal, nu le apela de mai multe ori
   și nu presupune că au eșuat dacă răspunsul întârzie puțin.
-- Dacă utilizatorul nu specifică numărul de rezultate, implicit sunt top 5.`;
+- Dacă utilizatorul nu specifică numărul de rezultate, implicit sunt top 5.
+
+Ai control asupra aerului condiționat din casă (Sinclair, prin Alexa), cu cinci unelte:
+get_air_conditioner_state, control_air_conditioner, schedule_air_conditioner,
+list_air_conditioner_schedules și cancel_air_conditioner_schedule. Reguli:
+- Poți: porni/opri, seta modul (COOL = răcire, HEAT = încălzire, AUTO) și orice temperatură
+  între 16 și 30°C. NU poți: ventilator, swing, turbo, silențios, sleep, lumină, dezumidificare
+  — spune clar că Alexa nu expune aceste funcții.
+- Pentru "cum e aerul?", "e pornit?", "câte grade sunt în cameră?" folosește
+  get_air_conditioner_state.
+- Modul și temperatura merg doar cu aparatul pornit. Dacă utilizatorul cere o temperatură
+  sau un mod ("pune 23 de grade", "pune pe încălzire"), trimite power "on" — cererea implică
+  pornirea. Folosește power "unchanged" doar dacă utilizatorul spune explicit să nu-l pornească.
+- Comanda imediată nu cere confirmare când cererea e clară. Dacă mesajul e ambiguu (ex.
+  "fă-l mai rece" fără număr), citește starea și propune o valoare concretă.
+- Pentru programări, calculează run_at din data curentă de mai sus. "În fiecare zi la X" =
+  repeat "daily". După succes, confirmă comanda, ora primei rulări și dacă se repetă.
+- Pentru anulare, cheamă ÎNTÂI list_air_conditioner_schedules; nu inventa schedule_id. Dacă
+  sunt mai multe programări posibile, întreabă care.
+- După o comandă, confirmă pe scurt folosind stare_dupa din rezultat (starea raportată de
+  aparat), nu doar ce ai cerut.`;
 }
 
 // Text scurt, injectat de agent.js DOAR în mesajul curent al utilizatorului (nu în system) —
