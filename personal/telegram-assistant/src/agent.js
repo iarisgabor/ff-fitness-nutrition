@@ -7,6 +7,7 @@ import { sendTelegramMessage, isPrivateTextMessage } from './telegram.js';
 import { nextDailyRunAt, isoDateInTimeZone } from './datetime.js';
 import { formatDailyAgenda } from './agenda.js';
 import { runScheduledAcCommand } from './tools/air-conditioner.js';
+import { sendPush } from './push.js';
 
 const HISTORY_WINDOW = 20;
 const DAILY_AGENDA_CALLBACK = 'sendDailyAgenda';
@@ -123,6 +124,157 @@ export class AssistantAgent extends Agent {
       text = `Programarea de aer condiționat a eșuat: ${err.message}`;
     }
     await sendTelegramMessage(this.env, { chatId: this.name, text }).catch(() => {});
+  }
+
+  // Executorul de unelte pentru calea vocală (VoiceSession → RPC pe stub-ul acestui agent).
+  //
+  // De ce nu cheamă VoiceSession direct executeTool: uneltele de aer condiționat folosesc
+  // `agent.schedule()`, `agent.listSchedules()`, `agent.cancelSchedule()` — metode pe INSTANȚA
+  // Durable Object. Un stub obținut cu getAgentByName NU e instanța (n-are nici starea, nici
+  // alarmele ei), deci pasat ca `agent` ar rupe programările. Aici `this` e instanța reală, deci
+  // o programare făcută prin voce rulează și notifică exact ca una făcută din Telegram.
+  async runVoiceTool(name, input) {
+    return executeTool(this.env, name, input, this);
+  }
+
+  // ─── Notificări push ───────────────────────────────────────────────────────────────────
+  //
+  // Abonamentul telefonului (endpoint + chei) stă în `agent_meta`, nu într-un tabel separat:
+  // e un singur utilizator, deci un singur abonament activ. La reabonare se suprascrie.
+
+  async savePushSubscription(subscription) {
+    this.sql`
+      INSERT INTO agent_meta (key, value) VALUES ('push_subscription', ${JSON.stringify(subscription)})
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `;
+    return { ok: true };
+  }
+
+  getPushSubscription() {
+    const rows = this.sql`SELECT value FROM agent_meta WHERE key = 'push_subscription'`;
+    if (rows.length === 0) return null;
+    try {
+      return JSON.parse(rows[0].value);
+    } catch {
+      return null;
+    }
+  }
+
+  // Textul notificării NU călătorește cu semnalul de push (vezi src/push.js) — se lasă aici, iar
+  // service worker-ul îl cere când sună telefonul. Ținem doar ultimul: dacă se adună mai multe
+  // înainte să fie citite, cea nouă o înlocuiește pe cea veche în loc să facă o coadă pe care
+  // n-ar citi-o nimeni.
+  async setPendingNotification(titlu, text) {
+    this.sql`
+      INSERT INTO agent_meta (key, value)
+      VALUES ('push_pending', ${JSON.stringify({ titlu, text, la: Date.now() })})
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `;
+  }
+
+  async takePendingNotification() {
+    const rows = this.sql`SELECT value FROM agent_meta WHERE key = 'push_pending'`;
+    if (rows.length === 0) return null;
+    this.sql`DELETE FROM agent_meta WHERE key = 'push_pending'`;
+    try {
+      return JSON.parse(rows[0].value);
+    } catch {
+      return null;
+    }
+  }
+
+  // Există vreo cale de a ajunge la telefon? Se uită la AMBELE: legătura permanentă a
+  // aplicației native ȘI abonamentul de notificări web. Verificând doar una, asistentul ar
+  // spune „nu am unde trimite" exact când cealaltă e disponibilă.
+  async poateAjungeLaTelefon() {
+    try {
+      const id = this.env.LISTEN_SESSION.idFromName(String(this.name));
+      if (await this.env.LISTEN_SESSION.get(id).eConectat()) return true;
+    } catch {
+      /* fără legătură nativă; mai rămâne push-ul */
+    }
+    return !!this.getPushSubscription();
+  }
+
+  // Trimite acum o notificare pe telefon. Încearcă DOUĂ căi, în ordinea asta:
+  //
+  // 1. Legătura permanentă a aplicației native (ListenSession). Ajunge instant, poate aprinde
+  //    ecranul ca un apel adevărat, și nu depinde de niciun serviciu al altcuiva.
+  // 2. Web Push, pentru varianta din browser / APK-ul vechi.
+  //
+  // Prima are prioritate fiindcă e singura care poate suna, nu doar anunța.
+  async notificaPeTelefon(titlu, text, tip = 'notificare') {
+    try {
+      const id = this.env.LISTEN_SESSION.idFromName(String(this.name));
+      const listen = this.env.LISTEN_SESSION.get(id);
+      const rezultat = await listen.trimiteEveniment({ tip, titlu, text, la: Date.now() });
+      if (rezultat.livrate > 0) return { ok: true, cale: 'nativ' };
+    } catch (err) {
+      console.error('LISTEN_TRIMITERE_ESUATA', String(err?.message || err));
+    }
+
+    const subscription = this.getPushSubscription();
+    if (!subscription) return { ok: false, motiv: 'Telefonul nu e abonat la notificări.' };
+
+    await this.setPendingNotification(titlu, text);
+    const rezultat = await sendPush(this.env, subscription);
+
+    // Abonament mort (aplicație dezinstalată, permisiune retrasă): îl ștergem, altfel am
+    // reîncerca la nesfârșit către un endpoint care nu mai există.
+    if (rezultat.expirat) {
+      this.sql`DELETE FROM agent_meta WHERE key = 'push_subscription'`;
+      return { ok: false, motiv: 'Abonamentul telefonului a expirat — redeschide aplicația.' };
+    }
+    return { ok: rezultat.ok, motiv: rezultat.ok ? null : `Serviciul de push a răspuns ${rezultat.status}` };
+  }
+
+  // Callback-ul programărilor făcute cu unealta `programeaza_apel` (vezi tools/notificari.js).
+  // Aceeași formă ca runScheduledAirConditioner: o metodă pe agent, chemată de `this.schedule`.
+  async runScheduledNotification(payload) {
+    const { titlu, text, repeta } = payload || {};
+    const rezultat = await this.notificaPeTelefon(titlu || 'Asistent', text || 'Te caut.');
+
+    // Dacă telefonul nu poate fi notificat, nu pierdem mesajul — pleacă pe Telegram.
+    if (!rezultat.ok) {
+      await sendTelegramMessage(this.env, {
+        chatId: this.name,
+        text: `${titlu ? titlu + ': ' : ''}${text}`,
+      }).catch(() => {});
+    }
+
+    if (repeta === 'daily') {
+      const urmatoarea = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await this.schedule(urmatoarea, 'runScheduledNotification', payload);
+    }
+  }
+
+  // Istoricul recent, pentru începutul unui apel vocal: fără el, fiecare apel ar porni cu
+  // memoria goală, iar o discuție începută ieri (sau pe Telegram) n-ar exista pentru asistent.
+  // Întoarce cel mai vechi întâi, cum se citește o conversație.
+  async getRecentHistory(limit = HISTORY_WINDOW) {
+    const rows = this.sql`
+      SELECT role, content FROM messages ORDER BY id DESC LIMIT ${limit}
+    `.reverse();
+
+    return rows
+      .map((row) => {
+        let content = null;
+        try {
+          content = JSON.parse(row.content);
+        } catch {
+          content = null;
+        }
+        return { role: row.role, content: typeof content === 'string' ? content : null };
+      })
+      .filter((row) => row.content);
+  }
+
+  // Conversația vocală ajunge în același tabel `messages` ca cea din Telegram — un singur fir,
+  // indiferent de canal. Vine din inputAudioTranscription/outputAudioTranscription (Gemini Live).
+  async saveVoiceTranscript(role, text) {
+    const clean = typeof text === 'string' ? text.trim() : '';
+    if (!clean) return;
+    this.sql`INSERT INTO messages (role, content) VALUES (${role}, ${JSON.stringify(clean)})`;
   }
 
   // Răspunde imediat 200 și procesează asincron prin coada internă a SDK-ului — dacă am aștepta

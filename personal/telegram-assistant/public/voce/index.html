@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Asistent</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0d1014">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root {
+    --fundal: #0d1014;
+    --panou: rgba(22, 27, 33, 0.72);
+    --text: #e8edf2;
+    --stins: #8c99a6;
+    --accent: #4ec9a0;
+    --rosu: #e5565a;
+    --contur: rgba(255, 255, 255, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--fundal);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    overflow: hidden; /* orbul e fundal fix; nu se derulează pagina, ci doar transcrierea */
+  }
+
+  /* Orbul ocupă tot ecranul, în spatele a tot. Desenat în canvas, nu în CSS: are nevoie de
+     mișcare pe eșantioane audio în fiecare cadru, iar o animație CSS n-ar putea urmări vocea. */
+  #orb {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    touch-action: none;
+  }
+
+  .coaja {
+    position: relative;
+    z-index: 1;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 14px);
+  }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 0 0;
+  }
+
+  .titlu { flex: 1; min-width: 0; }
+
+  h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  #status {
+    margin: 3px 0 0;
+    font-size: 14px;
+    color: var(--stins);
+    min-height: 21px;
+  }
+  #status[data-state="live"] { color: var(--accent); }
+  #status[data-state="error"] { color: var(--rosu); }
+
+  /* Rând de diagnostic: rata microfonului, starea contextului de redare, blocuri primite. */
+  #diag {
+    margin: 1px 0 0;
+    font-size: 11px;
+    color: #5f6b78;
+    font-variant-numeric: tabular-nums;
+    min-height: 15px;
+  }
+
+  .pastile {
+    flex: none;
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  #auto,
+  #comuta {
+    flex: none;
+    padding: 7px 13px;
+    border: 1px solid var(--contur);
+    border-radius: 999px;
+    background: rgba(22, 27, 33, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--stins);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #auto[aria-pressed="true"],
+  #comuta[aria-pressed="true"] {
+    color: var(--text);
+    border-color: rgba(78, 201, 160, 0.4);
+  }
+
+  /* Spațiul liber din mijloc e chiar orbul — nu are conținut, doar lasă fundalul să se vadă. */
+  .gol { flex: 1; min-height: 0; }
+
+  #panou {
+    flex: none;
+    max-height: 42dvh;
+    overflow: hidden;
+    border: 1px solid var(--contur);
+    border-radius: 18px;
+    background: var(--panou);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    margin-bottom: 10px;
+    transition: max-height 0.28s ease, opacity 0.2s ease, margin-bottom 0.28s ease,
+      border-color 0.2s ease;
+  }
+  /* Ascuns: rămâne doar orbul, fără nimic peste el. */
+  #panou[data-deschis="false"] {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+    border-color: transparent;
+  }
+
+  #transcript {
+    max-height: 42dvh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .bubble {
+    margin: 0;
+    max-width: 88%;
+    padding: 9px 13px;
+    border-radius: 16px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .bubble[data-role="user"] {
+    align-self: flex-end;
+    background: rgba(58, 74, 92, 0.85);
+    border-bottom-right-radius: 5px;
+  }
+  .bubble[data-role="assistant"] {
+    align-self: flex-start;
+    background: rgba(30, 38, 46, 0.85);
+    border-bottom-left-radius: 5px;
+  }
+
+  .note {
+    margin: 0;
+    align-self: center;
+    font-size: 13px;
+    color: var(--stins);
+  }
+
+  .controale {
+    flex: none;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  #mut {
+    flex: none;
+    width: 58px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--contur);
+    border-radius: 999px;
+    background: rgba(22, 27, 33, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text);
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  #mut:disabled { opacity: 0.35; cursor: default; }
+  /* Tăietura peste microfon apare doar când e oprit — starea se vede fără să citești nimic. */
+  #mut .taie { display: none; }
+  #mut[aria-pressed="true"] {
+    color: var(--rosu);
+    border-color: rgba(229, 86, 90, 0.5);
+    background: rgba(229, 86, 90, 0.12);
+  }
+  #mut[aria-pressed="true"] .taie { display: inline; }
+
+  #call {
+    flex: 1;
+    min-width: 0;
+    display: block;
+    padding: 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #06120d;
+    font: inherit;
+    font-size: 18px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  #call[data-active="true"] {
+    background: var(--rosu);
+    color: #fff;
+  }
+  #call:active { filter: brightness(0.92); }
+
+  #text-form {
+    flex: none;
+    display: flex;
+    gap: 8px;
+  }
+
+  #text-input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--contur);
+    border-radius: 999px;
+    background: rgba(22, 27, 33, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text);
+    font: inherit;
+    font-size: 16px; /* sub 16px, iOS mărește pagina la focus */
+  }
+  #text-input::placeholder { color: var(--stins); }
+  #text-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  #text-form button {
+    padding: 12px 18px;
+    border: 1px solid var(--contur);
+    border-radius: 999px;
+    background: rgba(22, 27, 33, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="orb" aria-hidden="true"></canvas>
+
+<div class="coaja">
+  <header>
+    <div class="titlu">
+      <h1>Asistent</h1>
+      <p id="status">Apasă „Sună” ca să începi.</p>
+      <p id="diag"></p>
+    </div>
+    <div class="pastile">
+      <button id="auto" type="button" aria-pressed="true"
+              title="Sună singur când deschizi aplicația">Auto</button>
+      <button id="comuta" type="button" aria-pressed="true" aria-controls="panou">Transcriere</button>
+    </div>
+  </header>
+
+  <div class="gol"></div>
+
+  <section id="panou" data-deschis="true">
+    <div id="transcript" aria-live="polite"></div>
+  </section>
+
+  <div class="controale">
+    <button id="mut" type="button" aria-pressed="false" aria-label="Oprește microfonul" disabled>
+      <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <rect x="9" y="3" width="6" height="11" rx="3"/>
+        <path d="M5 11a7 7 0 0 0 14 0"/>
+        <path d="M12 18v3"/>
+        <path class="taie" d="M4.5 4.5l15 15"/>
+      </svg>
+    </button>
+    <button id="call" type="button" data-active="false">Sună</button>
+  </div>
+
+  <form id="text-form" autocomplete="off">
+    <input id="text-input" type="text" placeholder="…sau scrie" enterkeyhint="send">
+    <button type="submit">Trimite</button>
+  </form>
+</div>
+
+<script src="orb.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

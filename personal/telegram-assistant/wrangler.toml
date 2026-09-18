@@ -7,9 +7,32 @@ compatibility_flags = ["nodejs_compat"]
 name = "ASSISTANT_AGENT"
 class_name = "AssistantAgent"
 
+# Legătura permanentă cu telefonul, prin care Worker-ul îl poate suna (src/voice/listen.js).
+[[durable_objects.bindings]]
+name = "LISTEN_SESSION"
+class_name = "ListenSession"
+
+# Un obiect per apel vocal (id unic, nu pe nume) — vezi ruta /voice-ws din src/index.js.
+[[durable_objects.bindings]]
+name = "VOICE_SESSION"
+class_name = "VoiceSession"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AssistantAgent"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["VoiceSession"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["ListenSession"]
+
+# PWA-ul de apel vocal (public/voce/). Fișierele statice sunt servite înaintea Worker-ului;
+# rutele lui (/, /privacy, /terms, /telegram-webhook, /voice-ws) nu se suprapun cu ele.
+[assets]
+directory = "./public"
 
 [vars]
 DEFAULT_TIMEZONE = "Europe/Bucharest"
@@ -24,6 +47,30 @@ ALEXA_DEVICE_APP_NAME = "ioBroker Alexa2"
 ALEXA_AC_ENTITY_ID = "f2dbe4c5-b4a7-4a3b-a929-711cf1ad6739"
 ALEXA_AC_APPLIANCE_ID = "SKILL_eyJza2lsbElkIjoiYW16bjEuYXNrLnNraWxsLjVkMWFlOTBjLTcwN2MtNGZkZi05MzNmLTYzODM1ODc2Nzc5YiIsInN0YWdlIjoibGl2ZSJ9_3067253"
 
+# Apel vocal prin Gemini Live (src/voice/). Modelul stă aici, nu hardcodat — id-ul vine din
+# exemplul oficial și se poate schimba fără atingerea codului.
+GEMINI_LIVE_MODEL = "models/gemini-3.8-live"
+GEMINI_VOICE_LANGUAGE = "ro-RO"
+# Gacrux: cea mai apropiată de JARVIS din cele 30, aleasă după măsurători pe mostre reale —
+# gravă (110 Hz), ritm lent, intonație plată. ATENȚIE: un nume de voce greșit NU dă eroare,
+# Gemini trece tăcut pe vocea lui implicită (alta, ~195 Hz). Dacă vocea nu pare schimbată,
+# prima suspectă e o greșeală de tipar aici.
+GEMINI_VOICE_NAME = "Gacrux"
+# Pune "1" DOAR dacă API-ul respinge responseModalities din generationConfig — atunci se trimite
+# direct sub `setup`, cum arată exemplul „get started with WebSockets". Vezi src/voice/gemini.js.
+GEMINI_MODALITIES_IN_SETUP = "0"
+
+# APK-ul (TWA generat cu PWABuilder). Se completează DUPĂ prima construire, cu datele din
+# pachetul descărcat, apoi deploy — abia atunci dispare bara de adrese din aplicație.
+# Amprenta e cea a cheii de semnare, în formatul AA:BB:CC:... (nu e secretă, vezi index.js).
+# Notificări push (Web Push). Cheia publică VAPID e publică prin design — perechea ei privată
+# se pune ca secret: wrangler secret put VAPID_PRIVATE_KEY
+VAPID_PUBLIC_KEY = "BPDBQWTiZOw0y-S7NNVKq7iebHJazis_uel3JECzf-AfSorLdRDK2qBLXjhpbACiQV3HcnhBvHQ62EWls6vh4HY"
+VAPID_SUBJECT = "iaris.gabor28@gmail.com"
+
+TWA_PACKAGE_ID = "dev.workers.iarisgabor.asistent"
+TWA_FINGERPRINT = "B0:1C:96:C1:2E:0E:83:E3:E3:6B:B3:75:F8:CD:0F:B6:09:E0:D9:99:A4:B0:4C:A3:CE:CD:31:D7:15:DD:4D:F4"
+
 # Secrete — NICIODATĂ aici, doar prin:
 #   wrangler secret put TELEGRAM_BOT_TOKEN
 #   wrangler secret put TELEGRAM_WEBHOOK_SECRET
@@ -33,3 +80,7 @@ ALEXA_AC_APPLIANCE_ID = "SKILL_eyJza2lsbElkIjoiYW16bjEuYXNrLnNraWxsLjVkMWFlOTBjL
 #   wrangler secret put GOOGLE_CALENDAR_REFRESH_TOKEN
 #   wrangler secret put ALLOWED_TELEGRAM_USER_ID
 #   wrangler secret put ALEXA_REFRESH_TOKEN      (aer condiționat — acces la contul Amazon, vezi README)
+#   wrangler secret put GEMINI_API_KEY           (apel vocal — Google AI Studio)
+#   wrangler secret put VOICE_ACCESS_TOKEN       (apel vocal — șir aleatoriu, îl știe doar PWA-ul)
+#   wrangler secret put ELEVENLABS_API_KEY       (opțional — vocale în Telegram, vezi src/speech.js)
+#   wrangler secret put ELEVENLABS_VOICE_ID      (opțional — aceeași)

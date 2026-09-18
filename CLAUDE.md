@@ -36,8 +36,11 @@ https://ff-fitness-nutrition.vercel.app.
 | stiluri, teme, culori (FF Fitness) | `personal/ff-fitness/styles.css` |
 | Termeni / Confidențialitate (FF Fitness) | `personal/ff-fitness/terms.html` / `privacy.html` |
 | API, backend, Stripe, plăți, Gmail, rate limiting, cache | `personal/ff-fitness/worker/index.js` → §1 + `architecture.md` §2 |
-| bot de Telegram, Google Calendar, Planning Center, agendă zilnică | **personal/telegram-assistant/** → §2 + `README.md` |
-| feedback biserică, Pulsul Duminicii, statistici duminică, slideshow pe categorie, rezumat AI feedback | **personal/pulsul-duminicii/** → §3 + `README.md` |
+| bot de Telegram, Google Calendar, Planning Center, agendă zilnică, aer condiționat, Sinclair, EWPE Smart, Alexa | **personal/telegram-assistant/** → §2 + `README.md` |
+| asistent vocal, apel cu AI, Gemini Live, orb care pulsează, PWA de voce | `personal/telegram-assistant/public/voce/` + `src/voice/` → §2 |
+| aplicație Android, APK, cuvânt de trezire, „Jarvis", fundal, ecran de blocare, Capacitor, Vosk | `personal/telegram-assistant/app/` → §2 |
+| notificări push, „sună-mă tu", VAPID, legătură permanentă cu telefonul | `personal/telegram-assistant/src/push.js` + `src/voice/listen.js` → §2 |
+| feedback biserică, Pulsul Duminicii, statistici duminică, slideshow pe categorie, rezumat AI feedback, predicatori, Laviniu, Marius, Beni | **personal/pulsul-duminicii/** → §3 + `README.md` |
 | ii cusute de bunica, magazin de ii, scroll-film, broderie | **personal/ia-bunicii-mele/** → §4 + `README.md` |
 | ia desenată punct cu punct, silueta cămășii, altiță/încreț/râuri/poale | `personal/ia-bunicii-mele/js/pattern.js` |
 | filmul de la scroll, canvas, camera care urmărește acul | `personal/ia-bunicii-mele/js/film.js` |
@@ -49,15 +52,22 @@ https://ff-fitness-nutrition.vercel.app.
 | avize librărie, calcul preț de vânzare cărți, room22-replica | **personal/librarie/** → §8 |
 | chat AI recomandare cărți, widget librărie, "Filă cu Filă" | **personal/librarie-test/** → §9 |
 | primul client, playbook, outreach, nișă, mesaj de cold outreach, abonament lunar, checklist clienți | **personal/primul-client/** → §10 |
+| impeccable vs taste, comparație skill-uri de design, magazin Boabă, cafea de specialitate (demo) | **personal/impeccable-vs-taste/** → §10a |
 | nomenclator librărie, import POS, Bluecash50, PLU, coduri de bare, decenu.eu | **profesional/POS NOU/** → §11 |
-| site instalații, instalator, Doctor Kumy Instal, sanitare/termice/electrice/climatizare/centrale, ANRE, ISCIR | **profesional/instalatii/** → §12 |
+| site instalații, instalator, Doctor Kumy Instal, sanitare/termice/electrice/climatizare/centrale, ANRE, ISCIR | **profesional/Lead-uri HVAC/standard/doctor-kumy-instal/** → §12 |
+| Doctor Kumy varianta design-taste, triaj „Ce s-a întâmplat?", instalatii Tailwind/Vite | **profesional/Lead-uri HVAC/taste/doctor-kumy-instal-taste/** → §12a |
+| lead-uri HVAC, firme instalații Oradea, template site instalatii, outreach firme HVAC, Consactiv, Interfrig, Alcano Impex | **profesional/Lead-uri HVAC/** → §14 |
+| variante taste HVAC, `<slug>-taste`, triaj/index/tehnic, Archivo/Manrope/Space Grotesk pentru HVAC | **profesional/Lead-uri HVAC/** (secțiunea „Variantele taste" din CLAUDE.md) → §14 |
+| Epify hvak, OK Instal Tech, Olah Karoly, Dateo Instal, calculator BTU, instalator Nojorid, centrale pe peleți, site-uri dedicate HVAC | **profesional/Lead-uri HVAC/taste/** (secțiunea „Lotul „Epify hvak"" din CLAUDE.md-ul folderului) → §14 |
 | portofoliu fotograf, Petra Butincu, beauty, fashion editorial, campanii de produs, Lumedics, Splendor | **profesional/petra-butincu-portofoliu/** → §13 |
 | CAMERA OBSCURĂ, film Petra Butincu, hero cu autoplay, footage generat, storyboard | **profesional/petra-butincu-film/** → §13 (al doilea site, separat) |
-| portofoliu Petra Studio Alb, fundal ivoire, beauty+produs, fără temă închisă | **profesional/petra/** → §13 (a treia variantă, separată) |
-| skill-uri Claude Code, afaceri locale RO, eMag, prețuri cărți, generare site-uri, scroll-film | `.claude/skills/` → §14 |
+| view shooting, highlight-uri, BTS, behind the scenes, burgundy, client fotograf | **profesional/client-fotograf/** → §13 (al treilea site, separat) |
+| test de valori, chestionar, radar chart, Misional/Înrădăcinat/Colaborativ/Mobilizat/Implicat/Intențional/Integru/Vizionar | **profesional/profil-valori/** → §14a |
+| skill-uri Claude Code, afaceri locale RO, eMag, prețuri cărți, generare site-uri, scroll-film | `.claude/skills/` → §15 |
+| import membralitate, import membri, listă SMS → Excel, cod tert, organizatie judeteana/locala, `yso_wopImportTertiWeb` | `.claude/skills/import-membralitate/` → §15 |
 | agentul de scor FC Barcelona | `.claude/agents/Show-score.md` |
-| notițe personale, vault | e Obsidian, nu cod → §15 |
-| fișier gol/orfan/necunoscut găsit prin repo | probabil în §15 — verifică acolo înainte să presupui că e activ |
+| notițe personale, vault | e Obsidian, nu cod → §16 |
+| fișier gol/orfan/necunoscut găsit prin repo | probabil în §16 — verifică acolo înainte să presupui că e activ |
 
 ## Ghidul fiecărui proiect
 
@@ -74,10 +84,13 @@ https://ff-fitness-nutrition.vercel.app.
 | 9 | librarie-test | `personal/librarie-test/CLAUDE.md` | `README.md` (rulare, deploy) |
 | 10 | primul-client | `personal/primul-client/CLAUDE.md` | — |
 | 11 | POS NOU | `profesional/POS NOU/CLAUDE.md` | — |
-| 12 | instalatii | `profesional/instalatii/CLAUDE.md` | — |
+| 12 | doctor-kumy-instal | `profesional/Lead-uri HVAC/standard/doctor-kumy-instal/CLAUDE.md` | — |
+| 12a | doctor-kumy-instal-taste | `profesional/Lead-uri HVAC/taste/doctor-kumy-instal-taste/CLAUDE.md` | — |
 | 13 | petra-butincu-portofoliu | `profesional/petra-butincu-portofoliu/CLAUDE.md` | `.tmp/grill-me/portofoliu-fotograf.md` (cele 24 de decizii de design) |
 | 13 | petra-butincu-film (CAMERA OBSCURĂ) | `profesional/petra-butincu-film/CLAUDE.md` | `docs/storyboard.md` (storyboard, prompturi de motor, paletă, buget) |
-| 13 | petra (Studio Alb) | `profesional/petra/CLAUDE.md` | — |
+| 13 | client-fotograf | `profesional/client-fotograf/CLAUDE.md` | — |
+| 14 | Lead-uri HVAC | `profesional/Lead-uri HVAC/CLAUDE.md` | `README.md` (comenzi de build/deploy, adăugarea unei firme noi) |
+| 14a | profil-valori | `profesional/profil-valori/CLAUDE.md` | — |
 
 ## Personal (`personal/`)
 
@@ -113,9 +126,17 @@ de la rădăcină, dar inofensiv.
 
 ### 2. `personal/telegram-assistant/` — bot personal de Telegram
 
-Bot pe Cloudflare Workers (Agents SDK, Durable Object cu SQLite) care înțelege
-limbaj natural în română și acționează pe Google Calendar și Planning Center
-Services, plus agendă zilnică automată. Cont unic, blocat pe `ALLOWED_TELEGRAM_USER_ID`.
+Asistent personal cu **trei fețe și un singur creier**: bot de Telegram (text), **apel vocal
+în timp real** printr-un PWA, și o **aplicație Android nativă** peste aceeași pagină. Creierul
+e Worker-ul: un prompt, **23 de unelte**, un istoric — indiferent pe unde vorbești cu el.
+
+Acționează pe Google Calendar, Planning Center Services și aerul condiționat din casă
+(Sinclair, prin API-ul neoficial Alexa — aparatul nu are API public), trimite agenda zilnică,
+și **te poate căuta el**: notificări programate care sună telefonul. Aplicația nativă adaugă
+ce un site nu poate face — apelul continuă când ieși din aplicație, se deschide de pe ecranul
+de blocare, și răspunde la cuvântul de trezire **„Jarvis"** (recunoscut local, offline).
+
+Cont unic, blocat pe `ALLOWED_TELEGRAM_USER_ID`; apelurile vocale cer `VOICE_ACCESS_TOKEN`.
 
 **Setup, secrete, OAuth, deploy, testare: `README.md` din acest folder.**
 
@@ -129,11 +150,27 @@ Fișiere:
 - `src/agenda.js` — formatare agendă zilnică
 - `src/tools/calendar.js` — CRUD Google Calendar
 - `src/tools/planning-center.js` — Planning Center Services/People
+- `src/tools/air-conditioner.js` — aer condiționat (stare, comenzi, programări)
+- `src/tools/notificari.js` — programează un apel/o notificare pe telefon
+- `src/alexa.js` — client pentru API-ul neoficial Alexa (prin el merge aerul condiționat)
+- `src/push.js` — Web Push (VAPID); notificările se trimit **fără conținut**, intenționat
+- `src/voice/gemini.js` — protocolul Gemini Live (setup, unelte, reluarea sesiunii)
+- `src/voice/session.js` — Durable Object per apel: releu audio, unelte, reconectare
+- `src/voice/listen.js` — legătura permanentă (hibernabilă) prin care telefonul poate fi sunat
+- `public/voce/` — PWA-ul: microfon, redare, orbul care reacționează la voce
+- `app/` — aplicația Android (Capacitor): serviciu de fundal, „Jarvis" (Vosk), apel pe blocat
+- `scripts/alexa-login.js` — logarea Alexa, rulată local (`npm run alexa-login`)
 
-**Stare: commis o dată cu reorganizarea în `personal/` (`e8987ca`)** — lucru în
-desfășurare, mai are `console.log`-uri de debug de scos. Complet separat de FF Fitness —
-singura suprapunere e că OAuth-ul de Gmail din `personal/ff-fitness/worker/` a fost model
-pentru cel de Google Calendar de aici.
+**Stare:** Telegram și vocea merg în producție; aplicația Android e construită și instalată
+pe telefon (build `debug`, nesemnat pentru magazin). Uneltele de compilare Android stau în
+`D:android-tools` (JDK 21 + SDK), **nu în repo**. Complet separat de FF Fitness — singura
+suprapunere e că OAuth-ul de Gmail din `personal/ff-fitness/worker/` a fost model pentru cel
+de Google Calendar de aici.
+
+**Patru capcane l-au costat cel mai mult, toate eșuând în tăcere** (detalii în CLAUDE.md-ul
+lui): `fetch()` respinge `wss://` în Workers; cadrele binare de WebSocket sunt Blob-uri, în
+ambele sensuri; adresele relative duc spre telefon în aplicația nativă; iar Android interzice
+unui serviciu din fundal să deschidă o aplicație.
 
 ### 3. `personal/pulsul-duminicii/` — statistici live pentru feedback-ul de duminică
 
@@ -144,23 +181,30 @@ formularului „Evaluare întâlnire duminică" și randează un raport în stil
 dată, acum în §8). Adaugă un slideshow pe categorie (Închinare, Rugăciune, Predică
 etc.) pentru duminica aleasă — gândit pentru întâlnirea de feedback de luni a
 echipei — și un rezumat opțional generat de Claude peste răspunsurile deschise ale
-zilei.
+zilei. Are și `/predicatori` — statistici per predicator (Laviniu, Marius, Beni I,
+Beni Oz): notă la Predică, trend în timp, și comparație cu restul duminicilor pe
+celelalte dimensiuni (Închinare, Rugăciune etc.), citind un al DOILEA Google Sheet
+separat („Calendar predicare", cine predică în fiecare duminică) și alăturându-l pe
+dată cu Sheet-ul de feedback.
 
-**Setup (service account Google, secrete, deploy, testare): `README.md` din acest folder.**
+**Setup (service account Google — pentru AMBELE Sheet-uri, secrete, deploy, testare):
+`README.md` din acest folder.**
 
 Fișiere:
-- `src/index.js` — entry point Worker (`fetch`/`scheduled`), rutare `/`, `/zile`, `/zile/:slug`, `/categorii`, `/categorii/:key`
+- `src/index.js` — entry point Worker (`fetch`/`scheduled`), rutare `/`, `/zile`, `/zile/:slug`, `/categorii`, `/categorii/:key`, `/predicatori`, `/predicatori/:slug`
 - `src/auth.js` — poarta de acces, comutabilă din `wrangler.toml` (`AUTH_MODE`)
-- `src/sheets.js` — auth Google prin service account (JWT semnat cu `crypto.subtle`, fără OAuth interactiv) + citire Sheets API
-- `src/config.js` — maparea coloană-Sheet → categorie (singurul loc de ajustat dacă se schimbă formularul)
+- `src/sheets.js` — auth Google prin service account (JWT semnat cu `crypto.subtle`, fără OAuth interactiv) + citire Sheets API, parametrizat pe `sheetId`/`range` ca să citească ambele Sheet-uri
+- `src/config.js` — maparea coloană-Sheet → categorie pentru Sheet-ul de feedback (singurul loc de ajustat dacă se schimbă formularul), plus maparea pentru Sheet-ul „Calendar predicare"
 - `src/transform.js` — rânduri brute → `DATA`/`RESPONSES` + toate agregatele, inclusiv `categoryWeeklySeries` (serie săptămânală per categorie, pentru pagina de analiză)
+- `src/preachers.js` — parsare „Calendar predicare" → listă `{date, speaker}` + `preacherSlug()` (numele normalizat pentru URL)
 - `src/aiSummary.js` — rezumat opțional per duminică (Claude Haiku 4.5), cache KV pe hash de conținut
 - `src/aiTrendSummary.js` — analiză AI opțională a tendinței per categorie (Claude Haiku 4.5), doar pentru presetup-urile de interval de pe `/categorii/:cheie` (1/3/6/12 luni, Tot), cache KV
-- `src/render.js` — orchestrează fetch→transform→randare, cu fallback din cache la eroare
+- `src/render.js` — orchestrează fetch→transform→randare, cu fallback din cache la eroare; „Calendar predicare" are propriul cache/fail-soft (`getSchedule()`), izolat de restul
 - `src/shared.css`, `src/shared.txt` — stiluri și JS comune tuturor paginilor (temă, meniu, tooltip)
 - `src/home.html` — pagina Acasă (statistici generale)
-- `src/days.html`, `src/day.html` — lista de duminici și pagina unei duminici (slideshow/dashboard pe categorie)
+- `src/days.html`, `src/day.html` — lista de duminici și pagina unei duminici (slideshow/dashboard pe categorie; `day.html` arată și predicatorul zilei, dacă e cunoscut)
 - `src/categories.html`, `src/category.html` — analiză pe categorie în timp, cu interval selectabil (1/3/6/12 luni, tot, sau custom)
+- `src/predicatori.html`, `src/predicator.html` — index predicatori + pagina unui predicator
 
 Live la fiecare vizită, fără cron — „automatizarea" cerută (update lunea) e implicită.
 Link neafișat public, fără parolă (`AUTH_MODE = "none"`) — conținutul include uneori
@@ -206,7 +250,7 @@ strat de netezire. Verificare: `?jump=<pixeli>` + `window.__ready`, cu
 ### 5. `personal/FOTBALL/` — pagină statică de fișă de meci FC Barcelona
 
 Trei fișiere, fără backend, fără build step: `index.html` + `script.js` (76 linii) +
-`styles.css`. Fără legătură cu agentul `Show-score` din §14 — acela răspunde live prin
+`styles.css`. Fără legătură cu agentul `Show-score` din §15 — acela răspunde live prin
 WebSearch, asta e o pagină statică ("Blaugrana — fișa de meci & pauza muzicală").
 
 ### 6. `personal/libraria-moderna/` — demo de magazin online de cărți ("PRAG")
@@ -286,6 +330,17 @@ Reguli:
   `personalizeaza()` — dacă adaugi un placeholder nou în `TEMPLATE_MESAJE`, adaugă-i și
   regula de înlocuire acolo.
 
+### 10a. `personal/impeccable-vs-taste/` — același magazin, construit de trei ori
+
+Experiment de comparație între skill-uri de design: magazinul fictiv **Boabă** (cafea de
+specialitate, Oradea, demo fără plată) construit din același `BRIEF.md` și aceleași 20 de
+poze (`_poze/`, Higgsfield) în trei variante: `impeccable/` (skill-ul `impeccable`, static),
+`taste-skill/` (skill-ul `design-taste-frontend`, Vite + React + Tailwind v4) și
+`fara-skill/` (fără skill, static). Concluziile în `COMPARATIE.md`, capturile alăturate în
+`compare.html`.
+
+**Regulile (nu amesteca fișiere între variante, datele duplicate intenționat): `personal/impeccable-vs-taste/CLAUDE.md`.**
+
 ## Profesional (`profesional/`)
 
 ### 11. `profesional/POS NOU/` — nomenclator librărie → import Bluecash50 (POS)
@@ -302,7 +357,14 @@ curatat.xlsx` (sursa de adevăr), `plu_import.csv` (fișierul final de import),
 `plu.csv` (exemplu de format primit), `imagini_decenu/` (63 coperte JPEG pentru
 editura decenu.eu). `Book1.ods` și `Import BuCon.ods` sunt istoric, deprecated.
 
-### 12. `profesional/instalatii/` — site de prezentare, Doctor Kumy Instal SRL
+### 12. `profesional/Lead-uri HVAC/standard/doctor-kumy-instal/` — site de prezentare, Doctor Kumy Instal SRL
+
+**Mutat aici pe 17 septembrie 2026** din `profesional/instalatii/` (nume vechi), ca să
+respecte convenția de nume-de-folder a celorlalte firme din `Lead-uri HVAC/`. **Rămâne
+totuși clientul real, plătitor** — nu un lead de prospectare „cadou" ca restul folderului
+și nu trece prin `build.mjs`/`build-taste.mjs` (n-are JSON în `_resurse/_date/`, deci
+generatoarele îl ignoră automat). E și în continuare **sursa template-ului** din care au
+fost derivate celelalte site-uri — nu-l atinge din greșeală când regenerezi ceva din lot.
 
 Site static de o pagină (fără framework, fără build step, fără backend) pentru
 **Doctor Kumy Instal S.R.L.** (Oradea, CUI RO22177152): instalații sanitare, termice,
@@ -313,12 +375,28 @@ autorizații ANRE/ISCIR). Fără formular de contact, intenționat: doar `tel:`,
 WhatsApp (`wa.me`) și `mailto:`.
 
 **Detalii complete (regulile de sincronizare config↔HTML, contrastele WCAG calculate,
-checklist de lansare): `profesional/instalatii/CLAUDE.md`.**
+checklist de lansare): `profesional/Lead-uri HVAC/standard/doctor-kumy-instal/CLAUDE.md`.**
 
 Fișiere: `index.html` (cele 15 secțiuni + SVG-uri inline + JSON-LD `LocalBusiness`),
 `js/config.js` (singurul loc cu datele firmei — alimentează doar `href`-uri, nu text
 vizibil), `js/main.js`, `css/styles.css` (Inter auto-hostuit, 2 subseturi de diacritice),
 `privacy.html`, `terms.html`, `favicon.svg`, `robots.txt`, `sitemap.xml`, `vercel.json`.
+Proiectul Vercel existent (`instalatii`) a rămas neschimbat la mutare — doar folderul
+local și-a schimbat calea.
+
+### 12a. `profesional/Lead-uri HVAC/taste/doctor-kumy-instal-taste/` — Doctor Kumy Instal, refăcut cu design-taste
+
+**Mutat aici pe 17 septembrie 2026** din `profesional/instalatii-taste/`, din același
+motiv ca §12 — rămâne varianta de design a clientului real, nu un lead de prospectare.
+
+Același conținut și aceleași date ca §12, design refăcut de la zero cu skill-ul
+`design-taste-frontend` (13 septembrie 2026): Vite + Tailwind v4 + Motion + Phosphor, fără
+React (textul rămâne literal în HTML). Light + dark automat, triaj interactiv în erou în loc
+de poză, sloturi marcate pentru pozele reale ale lucrărilor. `noindex` + canonical spre
+originalul §12. **Deployat 17 septembrie 2026** — live la
+https://doctor-kumy-instal-taste.vercel.app. **Nu înlocuiește §12 și nu atinge sursa
+template-ului HVAC.**
+Regulile: `profesional/Lead-uri HVAC/taste/doctor-kumy-instal-taste/CLAUDE.md`.
 
 ### 13. Petra Butincu — **trei site-uri diferite, pentru aceeași persoană**
 
@@ -327,16 +405,20 @@ cosmetic (clienți vizibili în cadre: Lumedics, Splendor Professional). **Primu
 extern real din repo** — nu demo, nu șablon.
 
 Există **trei abordări construite separat, în foldere diferite**, care nu împart
-niciun fișier și nu știu una de alta — a treia (`profesional/petra/`) a fost pornită
-tocmai fiindcă decizia dintre primele două nu s-a tranșat niciodată (vezi bifa
-nebifată din CLAUDE.md-ul site-ului cu film). Nu le amesteca; întreabă care e varianta
-pe care o duce mai departe clienta înainte să investești în vreuna.
+niciun fișier și nu știu una de alta. Nu le amesteca; întreabă care e varianta pe care
+o duce mai departe clienta înainte să investești în vreuna.
+
+**Notă:** a existat și o a patra variantă (`profesional/petra/`, „Studio Alb") —
+ștearsă din repo (2026-09-11) la cererea utilizatorului, care nu era mulțumit de ea.
+Dacă mai vezi referințe la ea prin cod vechi sau documente uitate, e istoric mort, nu
+un proiect activ; era live pe `petra-zeta.vercel.app`, care rămâne stale dacă nu e și
+oprit din Vercel.
 
 | Folder | Ce e |
 |---|---|
 | `profesional/petra-butincu-portofoliu/` | Portofoliul clasic, descris mai jos. React + Vite, temă închisă. |
 | `profesional/petra-butincu-film/` | **„CAMERA OBSCURĂ"** — site static, fără build step, cu footage generat (Higgsfield). Titlul + o cutie cu film redă singur, în buclă (`<video autoplay loop>`, `site/film.mp4`); restul paginii se derulează normal. **Nu mai e scroll-film** — a fost convertit din varianta originală full-bleed scrubată la scroll, la cererea utilizatorului (vezi „Istoric" din CLAUDE.md-ul lui). `site/frames/` (cadrele vechiului motor de canvas) rămân doar ca istoric, ignorate din git — regenerabile din `site/film.mp4`. |
-| `profesional/petra/` | **"Studio Alb"** — static, fără build step, GSAP+Lenis vendorizate local. Fundal ivoire cald, tipografie serif uriașă, deliberat opusul temelor închise ale celorlalte două. **Live (noindex): https://petra-zeta.vercel.app**. Detalii: `profesional/petra/CLAUDE.md`. |
+| `profesional/client-fotograf/` | Al treilea site (11 sept 2026), static, fără build step. Combină cerințe noi ale clientei — pagină de „shooting" cu highlight-uri + BTS în prim-plan, nume CAPS pe fond serif, paletă negru/burgundy — cu piese luate din celelalte două: coloanele parallax cu card fix din portofoliu, fundalul Ken Burns din portofoliu, filmul cinematic din CAMERA OBSCURĂ (dar redă singur în buclă, nu legat de scroll). Detalii în `profesional/client-fotograf/CLAUDE.md`. |
 
 #### `profesional/petra-butincu-portofoliu/` — portofoliul clasic
 
@@ -358,7 +440,60 @@ Fișiere: `src/config.ts` (singura sursă pentru nume/contact/Instagram), `src/d
 `scripts/build-images.mjs` (originale → WebP, `npm run poze`), `poze-fotograf/`
 (originalele, **gitignorate** — se comit doar derivatele din `src/assets/foto/`).
 
-## 14. `.claude/` — tooling Claude Code (agent + skill-uri), separat de toate aplicațiile
+### 14. `profesional/Lead-uri HVAC/` — 8 site-uri de prezentare, generate dintr-un template
+
+**8 site-uri „cadou"** (playbook `personal/primul-client/`) pentru 8 firme HVAC/instalații
+din Oradea și Bihor, generate dintr-un **template parametrizat** derivat din
+`profesional/Lead-uri HVAC/standard/doctor-kumy-instal/` (site-ul real al Doctor Kumy
+Instal — sursa template-ului, niciodată atinsă de generator, deși stă acum fizic în
+același folder — vezi §12). Fiecare firmă = un JSON în `_date/`, transformat de
+`_generator/build.mjs` într-un site complet într-un folder cu numele ei; `mesaje/*.md`
+ține mesajul de outreach gata de trimis pentru fiecare.
+
+O a 9-a firmă, Hashtag Becool, a fost scoasă din acest folder pe 12 septembrie 2026
+(rebranduită între timp în Articool, cu propriul site) — vezi nota din
+`profesional/Lead-uri HVAC/CLAUDE.md`.
+
+**Toate 8 sunt `noindex`** (pagini de prezentare pre-adopție, template comun → risc de
+conținut duplicat) și **4 din 8 sunt blocate la trimitere** — directoarele românești de
+firme (ListaFirme, PaginiAurii, daibau.ro, necesit.ro) maschează sistematic telefonul din
+spatele unui formular de lead-gen; fără număr complet, site-ul e live dar firma nu poate
+fi contactată prin el. Detalii complete, status per firmă și regulile de conținut (fără
+promisiuni neconfirmate, fără recenzii inventate): `profesional/Lead-uri HVAC/CLAUDE.md`.
+
+**Citește-l înainte să regenerezi orice site de-acolo sau să adaugi o firmă nouă** — nu
+edita direct un folder de firmă, editează `_date/<slug>.json` și rulează generatorul.
+**Excepție: `geocam-trans/`** — din 13 septembrie 2026 e site dedicat (triaj interactiv,
+casa în secțiune, animații), scos din generator (`"bespoke": true`); se editează direct.
+
+**14 septembrie 2026:** fiecare din cele 7 firme (nu și `geocam-trans/`) a primit și o
+**a doua variantă de design**, `<slug>-taste/` (ex. `furik-com-taste/`), făcută cu skill-ul
+`design-taste-frontend` — 3 direcții vizuale distincte (triaj cald / index editorial / fișă
+tehnică pe temă închisă), fiecare aplicată la 2-3 firme. Explorare paralelă, nu înlocuiește
+`<slug>/`; nimic deployat. Detalii, asignarea firmă→variantă și comenzile de regenerare:
+secțiunea „Variantele taste" din `profesional/Lead-uri HVAC/CLAUDE.md`.
+
+**15 septembrie 2026:** încă **3 firme** din documentul Drive „Epify hvak" — OK Instal Tech
+(cu cele 91 de poze reale luate de pe site-ul lor vechi Site123), Dateo Instal (calculator
+BTU) și Instalații sanitare și termice Nojorid (fără nume legal cunoscut, condus de cele 12
+recenzii de 5★) — au site-uri **dedicate, scrise de mână**, doar în `taste/<slug>-taste/`,
+nedeployate. Nu trec prin generator: pozele/galeria se pregătesc cu
+`_resurse/_generator/pregateste-bespoke.mjs`, verificarea cu `verifica-bespoke.mjs`.
+Secțiunea „Lotul „Epify hvak"" din `profesional/Lead-uri HVAC/CLAUDE.md`.
+
+### 14a. `profesional/profil-valori/` — test de valori cu radar
+
+Site static (fără framework, build sau backend): 40 de afirmații scurte, notate pe o
+scală de 5 (stânga = nu mă regăsesc, dreapta = mă regăsesc mult), iar la final un radar pe
+8 valori (Misional, Înrădăcinat, Colaborativ, Mobilizat, Implicat, Intențional, Integru,
+Vizionar) cu top 3 și print. Are și `admin.html`, pentru adăugat/editat/șters întrebări și
+schimbat ce valoare măsoară fiecare (fără backend, deci personalizarea stă local, în
+browserul administratorului). Conținutul implicit stă în `js/data.js`, echilibrul se
+verifică cu `node verifica.mjs`, iar starea testului stă în `localStorage`. Design cu
+`design-taste-frontend`, nedeployat. Regulile de scor și de formulare:
+`profesional/profil-valori/CLAUDE.md`.
+
+## 15. `.claude/` — tooling Claude Code (agent + skill-uri), separat de toate aplicațiile
 
 - Agent `Show-score` — scor FC Barcelona (Haiku 4.5 + WebSearch)
 - Skill `afaceri-locale-ro` — director de afaceri RO din OpenStreetMap → CSV
@@ -367,10 +502,15 @@ Fișiere: `src/config.ts` (singura sursă pentru nume/contact/Instagram), `src/d
 - Skill `pret-carte-ro` — caută prețul unei cărți în librăriile RO
 - Skill `skill-builder` — construiește/verifică alte skill-uri Claude Code
 - Skill `scroll-film-studio` — site-uri cu film derulat la scroll (a construit §4)
+- Skill `import-membralitate` — listă de contacte (ex. listă de SMS-uri) → Excel de import
+  în sistemul de membralitate, plus diagnosticul erorilor de cod invalid. Nu ține de niciun
+  proiect din repo. **Capcana:** `judet` și `organizatie judeteana` sunt nomenclatoare
+  diferite (`tm` e valid la primul, nu există la al doilea) — detalii în
+  `references/nomenclatoare.md` al skill-ului
 
 Flux tipic: `afaceri-locale-ro` → CSV → `website-afaceri-ro` → HTML în `rezultate/`.
 
-## 15. Nu sunt proiecte active — ignoră dacă nu ești rugat explicit de ele
+## 16. Nu sunt proiecte active — ignoră dacă nu ești rugat explicit de ele
 
 - `api/` — folder gol, rămășiță de dinainte de migrarea backend-ului la Cloudflare Worker.
 - `player.gd` — script Godot orfan (gitignored), fără legătură cu nimic din acest repo.
@@ -380,7 +520,7 @@ Flux tipic: `afaceri-locale-ro` → CSV → `website-afaceri-ro` → HTML în `r
   Config, nu cod.
 - `profesional/petra-butincu/` — folder gol, orfan (fără fișiere, doar directorul).
   Nu face parte din niciunul din cele trei proiecte Petra Butincu (§13) — nu-l
-  confunda cu `profesional/petra-butincu-film/` sau `profesional/petra/`.
+  confunda cu `profesional/petra-butincu-film/` sau `profesional/client-fotograf/`.
 
 ## Convenții
 

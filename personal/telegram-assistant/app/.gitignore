@@ -1,0 +1,9 @@
+node_modules/
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+# Cheia de acces, împachetată doar local în APK — niciodată în repo.
+android/app/src/main/res/values/token.xml
+# Modelul de recunoaștere pentru cuvântul de trezire (~68 MB, se descarcă de la alphacephei.com)
+android/app/src/main/assets/model-en/

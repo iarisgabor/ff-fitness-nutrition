@@ -1,0 +1,11 @@
+{
+  "appId": "dev.workers.iarisgabor.asistentnativ",
+  "appName": "Asistent",
+  "webDir": "../public/voce",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

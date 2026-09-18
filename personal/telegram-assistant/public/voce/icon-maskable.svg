@@ -1,0 +1,8 @@
+<!-- Varianta „maskable”: fundal pe toată suprafața, desenul strâns în zona sigură (80% centrală),
+     ca sistemul să-l poată decupa în orice formă fără să taie microfonul. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Asistent">
+  <rect width="512" height="512" fill="#0d1014"/>
+  <path d="M256 168c-20.4 0-37 16.6-37 37v74c0 20.4 16.6 37 37 37s37-16.6 37-37v-74c0-20.4-16.6-37-37-37z" fill="#4ec9a0"/>
+  <path d="M188 262v17c0 37.6 30.4 68 68 68s68-30.4 68-68v-17" fill="none" stroke="#4ec9a0" stroke-width="20" stroke-linecap="round"/>
+  <path d="M256 347v37" fill="none" stroke="#4ec9a0" stroke-width="20" stroke-linecap="round"/>
+</svg>

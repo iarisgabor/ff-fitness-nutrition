@@ -1,8 +1,10 @@
 import { getAgentByName } from 'agents';
 import { AssistantAgent } from './agent.js';
+import { VoiceSession } from './voice/session.js';
+import { ListenSession } from './voice/listen.js';
 import { verifyTelegramSecret, isAllowedUser } from './telegram.js';
 
-export { AssistantAgent };
+export { AssistantAgent, VoiceSession, ListenSession };
 
 export default {
   async fetch(request, env) {
@@ -67,6 +69,121 @@ export default {
           `Contact: ${'iaris.gabor28@gmail.com'}`,
         { status: 200, headers: { 'content-type': 'text/plain; charset=utf-8' } }
       );
+    }
+
+    // Legătura permanentă a telefonului (serviciul nativ din aplicația Android). Prin ea
+    // Worker-ul poate SUNA telefonul, fără Firebase — vezi src/voice/listen.js.
+    if (url.pathname === '/voice-listen') {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return new Response('Se așteaptă un WebSocket', { status: 426 });
+      }
+      const asteptat = (env.VOICE_ACCESS_TOKEN || '').trim();
+      if (!asteptat || url.searchParams.get('token') !== asteptat) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      // Numit pe utilizator, nu unic ca VoiceSession: telefonul are o singură legătură de
+      // ascultare, iar agentul trebuie să o găsească după nume ca să trimită prin ea.
+      const id = env.LISTEN_SESSION.idFromName(String((env.ALLOWED_TELEGRAM_USER_ID || '').trim()));
+      return env.LISTEN_SESSION.get(id).fetch(request);
+    }
+
+    // Diagnostic: e telefonul conectat pe legătura permanentă? Fără asta, singurul simptom al
+    // unei legături căzute e că notificările sosesc pe Telegram în loc de aplicație — ceea ce
+    // arată identic cu „aplicația nu e instalată" și cu „tokenul nu a ajuns la serviciu".
+    if (request.method === 'GET' && url.pathname === '/voice-listen/stare') {
+      const asteptat = (env.VOICE_ACCESS_TOKEN || '').trim();
+      if (!asteptat || url.searchParams.get('token') !== asteptat) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      const id = env.LISTEN_SESSION.idFromName(String((env.ALLOWED_TELEGRAM_USER_ID || '').trim()));
+      const conectat = await env.LISTEN_SESSION.get(id).eConectat();
+      return new Response(JSON.stringify({ conectat }), {
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+      });
+    }
+
+    // Notificări push — două rute, amândouă păzite de același token ca /voice-ws.
+    //
+    // `/voice-push/subscribe` — telefonul își lasă adresa la care poate fi găsit.
+    // `/voice-push/pending`   — service worker-ul cere textul notificării TOCMAI primite.
+    //   A doua există fiindcă trimitem semnale fără conținut (vezi src/push.js): telefonul e
+    //   trezit, apoi întreabă ce avea de spus. Textul se consumă la citire, o singură dată.
+    if (url.pathname === '/voice-push/subscribe' || url.pathname === '/voice-push/pending') {
+      const expected = (env.VOICE_ACCESS_TOKEN || '').trim();
+      if (request.method !== 'POST' || !expected || url.searchParams.get('token') !== expected) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+
+      const agent = await getAgentByName(
+        env.ASSISTANT_AGENT,
+        String((env.ALLOWED_TELEGRAM_USER_ID || '').trim())
+      );
+
+      if (url.pathname === '/voice-push/subscribe') {
+        const subscription = await request.json().catch(() => null);
+        if (!subscription || !subscription.endpoint) {
+          return new Response('Abonament invalid', { status: 400 });
+        }
+        await agent.savePushSubscription(subscription);
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { 'content-type': 'application/json; charset=utf-8' },
+        });
+      }
+
+      const pending = await agent.takePendingNotification();
+      return new Response(JSON.stringify(pending || {}), {
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+      });
+    }
+
+    // Digital Asset Links — dovada că APK-ul și site-ul ăsta aparțin aceluiași proprietar.
+    // Fără el, aplicația instalată din APK afișează bara de adrese a browserului deasupra
+    // paginii (funcționează, dar nu arată a aplicație). Android îl citește o singură dată, la
+    // instalare, de la exact această cale.
+    //
+    // Servit din Worker, nu ca fișier static: căile care încep cu punct pot fi tratate special
+    // de serverul de fișiere, iar aici nu-mi permit „poate merge".
+    //
+    // Amprenta vine din cheia cu care e semnat APK-ul (o dă PWABuilder la construire) și se
+    // pune în `TWA_FINGERPRINT` din wrangler.toml. Nu e secretă — fișierul e public prin design.
+    if (request.method === 'GET' && url.pathname === '/.well-known/assetlinks.json') {
+      const fingerprint = (env.TWA_FINGERPRINT || '').trim();
+      const packageName = (env.TWA_PACKAGE_ID || '').trim();
+      if (!fingerprint || !packageName) {
+        return new Response('[]', {
+          status: 200,
+          headers: { 'content-type': 'application/json; charset=utf-8' },
+        });
+      }
+      return new Response(
+        JSON.stringify([
+          {
+            relation: ['delegate_permission/common.handle_all_urls'],
+            target: {
+              namespace: 'android_app',
+              package_name: packageName,
+              sha256_cert_fingerprints: [fingerprint],
+            },
+          },
+        ]),
+        { status: 200, headers: { 'content-type': 'application/json; charset=utf-8' } }
+      );
+    }
+
+    // Apelul vocal (PWA-ul din public/voce/). Un WebSocket din browser nu poate purta headere
+    // proprii, deci tokenul vine prin query string — e un secret aleatoriu, transportat peste TLS,
+    // pentru un singur utilizator. Pagina statică rămâne publică (n-are secrete în ea); zidul e aici.
+    if (url.pathname === '/voice-ws') {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return new Response('Se așteaptă un WebSocket', { status: 426 });
+      }
+      const expected = (env.VOICE_ACCESS_TOKEN || '').trim();
+      if (!expected || url.searchParams.get('token') !== expected) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      // Un obiect nou per apel: două apeluri simultane nu se calcă unul pe altul pe socket.
+      const id = env.VOICE_SESSION.newUniqueId();
+      return env.VOICE_SESSION.get(id).fetch(request);
     }
 
     // Rută internă de administrare — declanșează manual agenda zilnică pentru un chat (util la

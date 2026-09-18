@@ -1,9 +1,10 @@
 # telegram-assistant
 
-Bot personal pe Telegram, pe Cloudflare Workers (Agents SDK), care înțelege cereri în
-limbaj natural și acționează — acces complet la Google Calendar: creează, caută,
-modifică și șterge evenimente. Detalii de arhitectură complete: `../../.claude/plans`
-(planul aprobat) — mai jos doar pașii operaționali.
+Asistent personal cu trei căi de acces și un singur creier: **bot de Telegram**, **apel vocal**
+printr-un PWA, și o **aplicație Android** nativă. Acționează pe Google Calendar, Planning Center
+și aerul condiționat din casă, trimite agenda zilnică, și te poate căuta el prin notificări.
+
+Mai jos doar pașii operaționali. **Harta de cod și deciziile de design: `CLAUDE.md`.**
 
 ## Instalare
 
@@ -25,8 +26,17 @@ npm install
 | `INTERNAL_ADMIN_SECRET` | generat de tine — protejează ruta internă `/internal/run-daily-agenda` |
 | `PLANNING_CENTER_APP_ID` / `PLANNING_CENTER_SECRET` | Personal Access Token din Planning Center (vezi mai jos) |
 | `ALEXA_REFRESH_TOKEN` | pus automat de `npm run alexa-login` (aer condiționat, vezi mai jos) — **dă acces la contul Amazon** |
+| `GEMINI_API_KEY` | https://aistudio.google.com/apikey — cont gratuit, fără card. Pentru apelul vocal. |
+| `VOICE_ACCESS_TOKEN` | generat de tine — poarta spre toate rutele `/voice-*` |
+| `VAPID_PRIVATE_KEY` | perechea privată a lui `VAPID_PUBLIC_KEY` din `wrangler.toml` (vezi „Notificări") |
 
-`DEFAULT_TIMEZONE`, `GOOGLE_CALENDAR_ID`, `DAILY_AGENDA_HOUR` și `ALEXA_*` (fără token) sunt în `wrangler.toml` (`[vars]`), nu secrete.
+`DEFAULT_TIMEZONE`, `GOOGLE_CALENDAR_ID`, `DAILY_AGENDA_HOUR`, `ALEXA_*` (fără token),
+`GEMINI_*`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` și `TWA_*` sunt în `wrangler.toml` (`[vars]`),
+nu secrete.
+
+> **`VOICE_ACCESS_TOKEN` apare în DOUĂ locuri** și trebuie să fie identic: ca secret pe Worker,
+> și împachetat în aplicația Android la `app/android/app/src/main/res/values/token.xml`
+> (gitignorat). **Niciodată în `public/voce/`** — folderul acela e servit public pe internet.
 
 ## Configurare Google Calendar OAuth (o singură dată)
 
@@ -169,6 +179,96 @@ curl -X POST "https://telegram-assistant.<subdomeniu>.workers.dev/internal/run-d
 
 Anulează programarea curentă și trimite imediat agenda; la final se reprogramează normal,
 pentru următoarea ocurență de `DAILY_AGENDA_HOUR`.
+
+## Apelul vocal (o singură dată)
+
+1. `wrangler secret put GEMINI_API_KEY` — cheia din https://aistudio.google.com/apikey
+   (cont gratuit, fără card).
+2. `wrangler secret put VOICE_ACCESS_TOKEN` — un șir aleatoriu ales de tine:
+   `node -e "console.log(crypto.randomUUID().replace(/-/g,''))"`
+3. `npx wrangler deploy`
+4. Pe telefon, deschide **o singură dată**: `https://<worker>/voce/?token=<VOICE_ACCESS_TOKEN>`
+   Tokenul intră în `localStorage` și dispare din adresă. Apoi „Adaugă pe ecranul principal".
+
+**Schimbarea vocii:** `GEMINI_VOICE_NAME` în `wrangler.toml` (acum `Gacrux`). Se poate proba una
+fără deploy, adăugând `&voice=<Nume>` la adresă. **Atenție:** un nume greșit NU dă eroare —
+Gemini trece tăcut pe vocea lui implicită, deci pare că schimbarea n-a avut efect.
+
+Verificare că un telefon e pe legătura permanentă:
+
+```bash
+curl "https://<worker>/voice-listen/stare?token=<VOICE_ACCESS_TOKEN>"
+# {"conectat":true}
+```
+
+## Notificări („sună-mă tu")
+
+Cheile VAPID se generează o singură dată:
+
+```bash
+node -e "
+const { generateKeyPairSync } = require('crypto');
+const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+const pub = publicKey.export({ format: 'jwk' }), priv = privateKey.export({ format: 'jwk' });
+const b = (s) => Buffer.from(s, 'base64url');
+console.log('PUBLICA :', Buffer.concat([Buffer.from([4]), b(pub.x), b(pub.y)]).toString('base64url'));
+console.log('PRIVATA :', b(priv.d).toString('base64url'));
+"
+```
+
+Publica merge în `wrangler.toml` (`VAPID_PUBLIC_KEY`) **și** în `public/voce/app.js`
+(constanta `VAPID_PUBLIC_KEY`); privata prin `wrangler secret put VAPID_PRIVATE_KEY`.
+
+Notificările se încearcă în ordinea asta: **legătura permanentă** a aplicației native →
+**Web Push** (browser/PWA) → **Telegram**, ca plasă de siguranță. Doar prima poate suna telefonul
+ca un apel adevărat; ultima garantează că mesajul nu se pierde.
+
+**Cum verifici semnătura VAPID fără telefon:** trimite spre un endpoint FCM inventat. Un **410**
+(„subscription expired") înseamnă că semnătura e bună și doar abonamentul e fals; un **401/403**
+înseamnă că semnătura e greșită.
+
+## Aplicația Android
+
+Nu are nevoie de Android Studio. Uneltele stau în `D:\android-tools` (**nu** în repo):
+
+```bash
+export JAVA_HOME=D:/android-tools/jdk21/jdk-21.0.12.1+1   # Capacitor cere JDK 21, nu 17
+export ANDROID_HOME=D:/android-tools/sdk
+
+cd app && npx cap sync android
+cd android && ./gradlew.bat assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+Licențele Android SDK se acceptă scriind amprentele direct în `sdk/licenses/` — `sdkmanager
+--licenses` așteaptă un răspuns interactiv pe care un script nu i-l poate da.
+
+Modelul pentru cuvântul de trezire (~68 MB) **nu e în repo**. Se descarcă o singură dată din
+`https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip`, se dezarhivează în
+`app/android/app/src/main/assets/model-en/`, și — obligatoriu — i se adaugă un fișier `uuid`:
+
+```bash
+node -e "require('fs').writeFileSync('uuid', require('crypto').randomUUID())"
+```
+
+Arhivele de desktop nu conțin acel fișier, iar fără el `StorageService.sync` aruncă
+`FileNotFoundException` **într-un fir de fundal**: cuvântul de trezire nu pornește niciodată și
+nimic nu se vede nicăieri.
+
+**Permisiuni de acordat pe telefon, o singură dată:**
+
+- microfon și notificări — le cere aplicația singură;
+- **„Afișare peste alte aplicații"** (Setări → Aplicații → Asistent) — **obligatorie** ca
+  „Jarvis" să deschidă aplicația direct. Fără ea primești doar o notificare de apăsat, fiindcă
+  Android interzice unui serviciu din fundal să deschidă un ecran.
+
+**Diagnostic** — singura cale care chiar lămurește ce se întâmplă în aplicația nativă. Un
+`logcat` nefiltrat e înecat în zgomot de la WebView:
+
+```bash
+adb logcat -c
+adb logcat -d -s VoiceService:V Capacitor/Plugin:V AndroidRuntime:E
+```
 
 ## Unelte viitoare (nu sunt construite acum)
 

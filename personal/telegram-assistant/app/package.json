@@ -1,0 +1,15 @@
+{
+  "name": "asistent-nativ",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Invelisul nativ Android peste PWA-ul de voce din ../public/voce",
+  "scripts": {
+    "sync": "cap sync android",
+    "build": "cap sync android && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  }
+}

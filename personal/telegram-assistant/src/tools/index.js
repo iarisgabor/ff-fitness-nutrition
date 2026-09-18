@@ -35,6 +35,12 @@ import {
   getTopScheduledPeople,
 } from './planning-center.js';
 import {
+  SCHEDULE_CALL_TOOL,
+  programeazaApel,
+  NOTIFY_NOW_TOOL,
+  trimiteNotificare,
+} from './notificari.js';
+import {
   GET_AIR_CONDITIONER_STATE_TOOL,
   getAirConditionerState,
   CONTROL_AIR_CONDITIONER_TOOL,
@@ -73,6 +79,8 @@ export const TOOL_DEFINITIONS = [
   SCHEDULE_AIR_CONDITIONER_TOOL,
   LIST_AIR_CONDITIONER_SCHEDULES_TOOL,
   CANCEL_AIR_CONDITIONER_SCHEDULE_TOOL,
+  SCHEDULE_CALL_TOOL,
+  NOTIFY_NOW_TOOL,
 ];
 
 const EXECUTORS = {
@@ -97,6 +105,8 @@ const EXECUTORS = {
   schedule_air_conditioner: scheduleAirConditioner,
   list_air_conditioner_schedules: listAirConditionerSchedules,
   cancel_air_conditioner_schedule: cancelAirConditionerSchedule,
+  programeaza_apel: programeazaApel,
+  trimite_notificare: trimiteNotificare,
 };
 
 // `agent` = instanța AssistantAgent — doar uneltele care programează ceva (schedule/listSchedules)
