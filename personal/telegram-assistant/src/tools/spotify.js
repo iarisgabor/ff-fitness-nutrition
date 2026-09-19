@@ -289,28 +289,79 @@ export async function spotifyCeCanta(env, input, agent) {
 export const SPOTIFY_REDA_TOOL = {
   name: 'spotify_reda',
   description:
-    'Pornește ceva pe Spotify: o melodie, un artist, un album sau un playlist, căutat după ' +
-    'nume. Fără „cautare", reia ce era pus pe pauză. Cere Spotify Premium și un dispozitiv ' +
-    'activ — dacă Spotify e închis pe telefon, cheamă întâi spotify_deschide_pe_telefon.',
+    'Pornește ceva pe Spotify. Trei feluri de a o chema:\n' +
+    '1. „cautari" — o LISTĂ de melodii, care se aud una după alta, în ordinea dată. Asta ' +
+    'folosești la „pune X, după aia Y, după aia Z" și la „pune-mi toate cântările de duminică" ' +
+    '(iei ordinea din get_plan_items și o dai aici întreagă, dintr-un singur apel). ' +
+    'GREȘIT: două apeluri, cu cautare: „X" și apoi cautare: „Y" — al doilea o oprește pe prima. ' +
+    'CORECT: un apel, cu cautari: ["X", "Y"].\n' +
+    '2. „cautare" — un singur lucru: o melodie, un artist, un album sau un playlist.\n' +
+    '3. niciunul — reia ce era pus pe pauză.\n' +
+    'Cu „la_coada": true, lista se adaugă DUPĂ ce cântă acum, fără să întrerupă nimic.\n' +
+    'Cere Spotify Premium și un dispozitiv activ — dacă Spotify e închis pe telefon, cheamă ' +
+    'întâi spotify_deschide_pe_telefon.',
   input_schema: {
     type: 'object',
     properties: {
       cautare: {
         type: 'string',
         description:
-          'Ce să caute, în cuvintele utilizatorului: „Bohemian Rhapsody", „Ludovico Einaudi", ' +
-          'numele unui playlist de-al lui. Lasă gol ca să reia ce era oprit.',
+          'Un singur lucru de pornit: „Bohemian Rhapsody", „Ludovico Einaudi", numele unui ' +
+          'playlist de-al lui. Lasă gol ca să reia ce era oprit. Nu-l combina cu „cautari".',
       },
       tip: {
         type: 'string',
         enum: ['melodie', 'artist', 'album', 'playlist'],
-        description: 'Ce fel de lucru se caută. Implicit „melodie".',
+        description: 'Ce fel de lucru caută „cautare". Implicit „melodie". Nu se aplică la „cautari".',
+      },
+      cautari: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Melodiile, ÎN ORDINEA în care vrea să le audă — o căutare pe element. Prima ' +
+          'pornește, restul intră în coadă după ea. TOATE într-un SINGUR apel: două apeluri ' +
+          'înseamnă că a doua melodie o întrerupe pe prima. Când știi artistul, scrie-l în ' +
+          'aceeași căutare, după titlu („Mii de laude Biserica Betel"); pentru cântări de ' +
+          'biserică folosește song_author din get_plan_items.',
+      },
+      la_coada: {
+        type: 'boolean',
+        description:
+          'true = pune melodiile la rând DUPĂ ce cântă acum, fără să întrerupi. Folosește-l ' +
+          'când îți cere ceva „după asta". Dacă nu cântă nimic, pornește oricum lista.',
       },
     },
     required: [],
     additionalProperties: false,
   },
 };
+
+/**
+ * Caută o melodie și întoarce candidații, cel mai potrivit primul.
+ *
+ * O singură interogare, cu tot ce a dat modelul (titlu, plus artistul când îl știe, lipit în
+ * aceeași căutare). Am avut aici, o vreme, două interogări paralele și o alegere făcută de noi
+ * după un indiciu de artist separat — a căzut odată cu schema imbricată (vezi 50g-ter): pe voce,
+ * modelul nu producea fiabil câmpul separat, deci indiciul lipsea oricum.
+ *
+ * Nu e o pierdere pe cât pare: căutarea liberă a lui Spotify ponderează deja numele artistului,
+ * deci „Mii de laude Biserica Betel" urcă versiunea bună singură. Ce alegeam noi din cinci face
+ * acum ranking-ul lor, care are mai multe date decât noi.
+ *
+ * `limit=5` rămâne dinadins: primul candidat se pune, restul pleacă spre model ca
+ * `alternative`, ca să aibă ce propune când omul zice „nu asta, cealaltă" — fără încă o
+ * căutare, care pe voce e un drum întreg de așteptat.
+ */
+async function cautaMelodie(env, agent, cautare, tara) {
+  const raspuns = await api(
+    env,
+    agent,
+    `/search?q=${encodeURIComponent(cautare)}&type=track&limit=5&market=${tara}`
+  ).catch(() => null);
+
+  return (raspuns?.tracks?.items || []).filter((p) => p?.uri).map((p) => descrieMelodie(p));
+}
+
 
 /**
  * Telefonul, din lista de dispozitive Spotify Connect — sau nimic.
@@ -341,7 +392,7 @@ async function telefonulDintreDispozitive(env, agent) {
 async function pornesteRedarea(env, agent, corp) {
   try {
     await api(env, agent, '/me/player/play', { method: 'PUT', body: corp });
-    return null; // a pornit pe dispozitivul activ, oricare era
+    return null; // a pornit pe dispozitivul activ, oricare era — nu știm care, și nu ne trebuie
   } catch (err) {
     if (err.code !== 'SPOTIFY_NO_DEVICE') throw err;
 
@@ -361,16 +412,188 @@ async function pornesteRedarea(env, agent, corp) {
       method: 'PUT',
       body: corp,
     });
-    return telefon.name;
+    // ID-ul, nu doar numele: cine pornește o listă are nevoie să trimită restul melodiilor
+    // FIX pe același dispozitiv (vezi adaugaInCoada). Pe unul abia trezit, „dispozitivul activ"
+    // implicit încă nu e el.
+    return { id: telefon.id, nume: telefon.name };
   }
 }
 
+/**
+ * Pune melodiile în coadă, una câte una, în ordine.
+ *
+ * SECVENȚIAL, dinadins: coada păstrează ordinea SOSIRII, iar `Promise.all` nu garantează
+ * ordinea plecării. Pentru opt melodii sunt opt drumuri scurte — se simte o clipă, dar se aude
+ * în ordinea cerută.
+ *
+ * O melodie care nu intră nu oprește restul: prima deja cântă, iar un eșec total ar fi mai rău
+ * decât o listă incompletă despre care omul află.
+ */
+async function adaugaInCoada(env, agent, uris, deviceId) {
+  const ratate = [];
+  for (const uri of uris) {
+    const adresa = `/me/player/queue?uri=${encodeURIComponent(uri)}` +
+      (deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : '');
+    try {
+      await api(env, agent, adresa, { method: 'POST' });
+    } catch (err) {
+      console.error('SPOTIFY_COADA_ESEC', uri, err.code || err.message);
+      ratate.push(uri);
+    }
+  }
+  return ratate;
+}
+
+/**
+ * Melodiile unei liste, în ordine: mai întâi din memorie, ce lipsește se caută.
+ *
+ * Memoria (tabelul piese_spotify) e verificată ÎNAINTEA oricărei căutări. Un titlu știut sare
+ * peste Spotify cu totul — de-aia repertoriul bisericii devine, după câteva duminici, instant
+ * și imposibil de greșit.
+ *
+ * NU salvăm automat ce găsim aici. Ar fi tentant („am căutat, hai să ținem minte"), dar ar
+ * cimenta exact greșelile pe care memoria trebuie să le repare: prima nimereală ar deveni
+ * adevăr permanent, și n-ai mai avea cum să afli că e greșită decât ascultând-o iar. Se scrie
+ * doar prin corectare explicită — vezi acțiunea „retine_versiunea" din spotify_controleaza.
+ */
+async function adunaLista(env, agent, cautari, tara) {
+  const titluri = cautari.map((c) => String(c || '').trim());
+  const salvate = agent ? await agent.pieseSalvate(titluri) : titluri.map(() => null);
+
+  const gasite = [];
+  const lipsa = [];
+
+  const cautate = await Promise.all(
+    cautari.map((c, i) => {
+      if (salvate[i]) return null; // știm deja versiunea, n-o mai căutăm
+      const titlu = titluri[i];
+      if (!titlu) return null;
+      return cautaMelodie(env, agent, titlu, tara);
+    })
+  );
+
+  cautari.forEach((c, i) => {
+    const titlu = titluri[i];
+    if (!titlu) return;
+
+    const stiut = salvate[i];
+    if (stiut) {
+      gasite.push({
+        cerut: titlu,
+        melodie: stiut.nume || titlu,
+        artist: stiut.artist || undefined,
+        uri: stiut.uri,
+        din_memorie: true,
+      });
+      return;
+    }
+
+    const candidati = cautate[i] || [];
+    const ales = candidati[0] || null;
+    if (!ales) {
+      lipsa.push(titlu);
+      return;
+    }
+    gasite.push({
+      cerut: titlu,
+      melodie: ales.melodie,
+      artist: ales.artist,
+      uri: ales.uri,
+      din_memorie: false,
+      // Alternativele merg la model ca să aibă ce alege dacă omul zice „nu asta, cealaltă" —
+      // fără ele ar trebui o căutare nouă, iar pe voce ăla e un drum în plus de așteptat.
+      alternative: candidati
+        .filter((x) => x.uri !== ales.uri)
+        .slice(0, 3)
+        .map((x) => `${x.melodie} — ${x.artist}`),
+    });
+  });
+
+  return { gasite, lipsa };
+}
+
 export async function spotifyReda(env, input, agent) {
+  const cautari = Array.isArray(input.cautari)
+    ? input.cautari.map((c) => String(c || '').trim()).filter(Boolean)
+    : [];
+
+  if (cautari.length > 0) {
+    const { tara } = await profil(env, agent);
+    const { gasite, lipsa } = await adunaLista(env, agent, cautari, tara);
+
+    if (gasite.length === 0) {
+      const err = new Error(`Nu am găsit pe Spotify niciuna din melodiile cerute (${lipsa.join(', ')}).`);
+      err.code = 'SPOTIFY_NOT_FOUND';
+      throw err;
+    }
+
+    const uris = gasite.map((g) => g.uri);
+    const piese = gasite.map(({ uri, ...rest }) => rest);
+
+    // Coadă = „după ce cântă acum". Dacă nu cântă nimic, coada n-are de ce să se agațe:
+    // Spotify răspunde 404, iar omul rămâne cu tăcere și un „gata" mincinos. Atunci pornim
+    // lista normal și o spunem, în loc să eșuăm pe o distincție care lui nu-i spune nimic.
+    if (input.la_coada) {
+      const acum = await api(env, agent, '/me/player').catch((err) => {
+        if (err.code === 'SPOTIFY_NO_DEVICE') return null;
+        throw err;
+      });
+
+      if (acum?.item) {
+        const ratate = await adaugaInCoada(env, agent, uris);
+        return {
+          ok: true,
+          la_coada: true,
+          dupa: descrieMelodie(acum.item)?.melodie,
+          cate: piese.length - ratate.length,
+          piese,
+          negasite: lipsa.length ? lipsa : undefined,
+        };
+      }
+    }
+
+    // PRIMA prin play, RESTUL prin coadă — nu toată lista într-un singur `uris`.
+    //
+    // Un `uris` cu mai multe melodii E acceptat de API (204, fără nicio plângere) și chiar
+    // pornește prima. Dar pe telefon s-a văzut că se oprește după ea: lista trimisă așa n-are
+    // CONTEXT în sensul Spotify — nu e album, nu e playlist — iar aplicația nu avansează prin
+    // ea. Cel mai rău fel de eșec: API-ul spune că a mers, unealta raportează „am pus trei",
+    // iar omul aude una și apoi tăcere, fără nimic de urmărit în loguri.
+    //
+    // Coada, în schimb, e exact lucrul prin care aplicația avansează singură — e același
+    // mecanism ca „următoarea". Deci punem prima melodie ca redare și pe celelalte în coada ei.
+    const unde = await pornesteRedarea(env, agent, { uris: [uris[0]] });
+
+    let ratate = [];
+    if (uris.length > 1) {
+      // Răgaz scurt: play-ul întoarce 204 în clipa în care comanda a PLECAT, nu în clipa în care
+      // telefonul a preluat-o. O coadă trimisă prea devreme se agață de contextul vechi.
+      await new Promise((gata) => setTimeout(gata, 400));
+      ratate = await adaugaInCoada(env, agent, uris.slice(1), unde?.id);
+    }
+
+    // Câte melodii au ajuns efectiv una după alta. Cu o singură linie în loguri se vede dacă
+    // problema e aici (unealta a primit una singură) sau mai sus (modelul a chemat de trei ori).
+    console.log('SPOTIFY_LISTA', 'cerute', cautari.length, 'puse', piese.length, 'ratate', ratate.length);
+
+    return {
+      ok: true,
+      la_coada: false,
+      pornit_in_loc_de_coada: input.la_coada ? true : undefined,
+      cate: piese.length - ratate.length,
+      incepe_cu: piese[0]?.melodie,
+      piese,
+      negasite: lipsa.length ? lipsa : undefined,
+      nepuse_in_coada: ratate.length ? ratate.length : undefined,
+      dispozitiv: unde?.nume || undefined,
+    };
+  }
+
   const cautare = (input.cautare || '').trim();
 
   if (!cautare) {
     const unde = await pornesteRedarea(env, agent, undefined);
-    return { ok: true, actiune: 'am reluat redarea', dispozitiv: unde || undefined };
+    return { ok: true, actiune: 'am reluat redarea', dispozitiv: unde?.nume || undefined };
   }
 
   const tipuri = { melodie: 'track', artist: 'artist', album: 'album', playlist: 'playlist' };
@@ -399,26 +622,37 @@ export async function spotifyReda(env, input, agent) {
     pornit: gasit.name,
     artist: (gasit.artists || []).map((a) => a.name).join(', ') || undefined,
     tip: input.tip || 'melodie',
-    dispozitiv: unde || undefined,
+    dispozitiv: unde?.nume || undefined,
   };
 }
 
 export const SPOTIFY_CONTROLEAZA_TOOL = {
   name: 'spotify_controleaza',
   description:
-    'Comenzi scurte pentru ce cântă acum: pauză, reluare, melodia următoare sau precedentă, ' +
-    'volum. Cere Spotify Premium.',
+    'Comenzi scurte despre ce cântă ACUM: pauză, reluare, melodia următoare sau precedentă, ' +
+    'volum — și ținut minte versiunea.\n' +
+    '„retine_versiunea" leagă titlul dat de melodia care cântă în clipa asta, ca data viitoare ' +
+    'să o pui direct, fără căutare. Cheam-o când ai greșit versiunea, ai căutat din nou și el ' +
+    'confirmă („da, asta e", „asta cântăm"). NU o chema din proprie inițiativă după o redare ' +
+    'reușită — o nimereală ținută minte devine o greșeală permanentă.\n' +
+    'Controlul redării cere Spotify Premium.',
   input_schema: {
     type: 'object',
     properties: {
       actiune: {
         type: 'string',
-        enum: ['pauza', 'reia', 'urmatoarea', 'precedenta', 'volum'],
+        enum: ['pauza', 'reia', 'urmatoarea', 'precedenta', 'volum', 'retine_versiunea', 'uita_versiunea'],
         description: 'Ce să facă.',
       },
       volum: {
         type: 'number',
         description: 'Doar pentru actiune "volum": 0-100.',
+      },
+      titlu: {
+        type: 'string',
+        description:
+          'Doar pentru "retine_versiunea" / "uita_versiunea": titlul sub care să ții minte ' +
+          'melodia — cum îi zice EL sau cum apare în Planning Center, nu numele de pe Spotify.',
       },
     },
     required: ['actiune'],
@@ -449,6 +683,50 @@ export async function spotifyControleaza(env, input, agent) {
       }
       await api(env, agent, `/me/player/volume?volume_percent=${nivel}`, { method: 'PUT' });
       return { ok: true, volum: nivel };
+    }
+    case 'retine_versiunea': {
+      const titlu = (input.titlu || '').trim();
+      if (!titlu) {
+        const err = new Error('Am nevoie de titlul sub care să țin minte melodia.');
+        err.code = 'SPOTIFY_NO_TITLE';
+        throw err;
+      }
+      if (!agent) {
+        const err = new Error('Unealta are nevoie de agent');
+        err.code = 'AGENT_REQUIRED';
+        throw err;
+      }
+
+      // Se ia din ce CÂNTĂ, nu din ce s-a discutat. Asta e toată ideea: omul corectează
+      // ascultând, nu dictând un link. „Da, asta e" se traduce în uri-ul piesei din difuzor.
+      const stare = await api(env, agent, '/me/player').catch((err) => {
+        if (err.code === 'SPOTIFY_NO_DEVICE') return null;
+        throw err;
+      });
+      if (!stare?.item) {
+        const err = new Error(
+          'Nu cântă nimic acum, deci n-am ce versiune să rețin. Pornește piesa care trebuie ' +
+            'și spune-mi atunci.'
+        );
+        err.code = 'SPOTIFY_NOTHING_PLAYING';
+        throw err;
+      }
+
+      const piesa = descrieMelodie(stare.item);
+      await agent.tinePiesa(titlu, { uri: piesa.uri, nume: piesa.melodie, artist: piesa.artist });
+      return { ok: true, retinut: titlu, melodie: piesa.melodie, artist: piesa.artist };
+    }
+    case 'uita_versiunea': {
+      const titlu = (input.titlu || '').trim();
+      if (!titlu || !agent) {
+        const err = new Error('Am nevoie de titlul pe care să-l uit.');
+        err.code = 'SPOTIFY_NO_TITLE';
+        throw err;
+      }
+      const rezultat = await agent.uitaPiesa(titlu);
+      return rezultat.ok
+        ? { ok: true, uitat: titlu, era: `${rezultat.nume} — ${rezultat.artist}` }
+        : { ok: false, motiv: rezultat.motiv };
     }
     default: {
       const err = new Error(`Acțiune necunoscută: ${input.actiune}`);

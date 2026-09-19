@@ -117,6 +117,30 @@ export class AssistantAgent extends Agent {
         la INTEGER DEFAULT (unixepoch())
       )
     `;
+    // Versiunea corectă a unei cântări, ținută minte după ce a fost corectată o dată.
+    //
+    // De ce NU stă în `fapte`: tot ce e acolo intră în FIECARE cerere către model, la preț plin
+    // (vezi comentariul din tools/memorie.js). Repertoriul unei biserici e de ordinul zecilor de
+    // cântări — l-ai plăti și când vorbești despre aerul condiționat. Aici se citește doar în
+    // clipa în care rulează spotify_reda.
+    //
+    // Și e altceva ca FORMĂ, nu doar ca loc: un fapt în limbaj natural („la «Mii de laude» e
+    // versiunea de la X") l-ar obliga pe model să-l traducă înapoi într-o căutare de fiecare
+    // dată — adică exact pasul unde greșește. Aici ținem URI-ul, care sare peste căutare cu
+    // totul: fără ambiguitate, fără cover nimerit din greșeală, fără 5xx de la /search.
+    //
+    // Cheia e titlul NORMALIZAT (vezi normalizeazaTitlu), nu cel scris: „Mii de laude",
+    // „mii de laude" și „Mii de Laude." trebuie să nimerească același rând.
+    this.sql`
+      CREATE TABLE IF NOT EXISTS piese_spotify (
+        titlu TEXT PRIMARY KEY,
+        uri TEXT NOT NULL,
+        nume TEXT,
+        artist TEXT,
+        sursa TEXT DEFAULT 'corectat',
+        creat_la INTEGER DEFAULT (unixepoch())
+      )
+    `;
     this.migreaza();
     await this.ensureDailyAgendaScheduled();
     await this.ensureMementoScheduled();
@@ -816,6 +840,94 @@ export class AssistantAgent extends Agent {
     if (randuri.length === 0) return { ok: false, sters: false, motiv: 'nu există o faptă cu id-ul ăsta' };
     this.sql`DELETE FROM fapte WHERE id = ${numar}`;
     return { ok: true, sters: true, text: randuri[0].text };
+  }
+
+  // ─── Versiunile de piese ținute minte (tabelul piese_spotify) ──────────────────────────
+
+  /**
+   * Titlul, adus la forma pe care o căutăm în tabel.
+   *
+   * Diacriticele se scot dinadins: același cântec ajunge aici o dată din gura lui (dictare
+   * vocală, cu diacritice) și o dată din Planning Center (unde sunt scrise cum s-a nimerit).
+   * „Mărire" și „Marire" trebuie să fie același rând, altfel memoria ratează exact la fluxul
+   * pentru care a fost făcută — „pune tot ce e duminică".
+   */
+  static normalizeazaTitlu(text) {
+    return String(text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9 ]+/g, ' ')
+      .replace(/s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Mapările pentru o listă de titluri, dintr-un singur drum prin SQL.
+   *
+   * Întoarce un ARRAY aliniat la intrare (`null` unde nu știm nimic), nu un Map pe titluri
+   * normalizate. Dinadins: un Map l-ar obliga pe apelant să normalizeze el cheia ca să caute în
+   * el, adică să dubleze `normalizeazaTitlu` în alt fișier. Două copii ale aceleiași
+   * normalizări se despart mai devreme sau mai târziu, iar când se despart memoria nu dă
+   * eroare — doar ratează tăcut și cântă iar versiunea greșită.
+   */
+  async pieseSalvate(titluri) {
+    const chei = (titluri || []).map((t) => AssistantAgent.normalizeazaTitlu(t));
+    if (chei.every((c) => !c)) return chei.map(() => null);
+
+    // Tabelul are zeci de rânduri, nu mii: îl citim întreg și filtrăm în JS. Un IN (...) cu
+    // număr variabil de parametri n-ar merge oricum cu template-ul `sql`.
+    const randuri = this.sql`SELECT titlu, uri, nume, artist FROM piese_spotify`;
+    const dupaTitlu = new Map(
+      randuri.map((r) => [r.titlu, { uri: r.uri, nume: r.nume, artist: r.artist }])
+    );
+    return chei.map((cheie) => {
+      if (!cheie) return null;
+      const exact = dupaTitlu.get(cheie);
+      if (exact) return exact;
+
+      // Potrivire pe conținere, ca plasă de siguranță. Căutarea care vine de la model e un
+      // text liber și poate avea artistul lipit de titlu („Mii de laude Biserica Betel"),
+      // pe când versiunea reținută e sub titlul curat, cum i-a zis EL. Fără pasul ăsta,
+      // memoria ar rata exact la fluxul pentru care a fost făcută.
+      //
+      // Se cere titlu de cel puțin 4 caractere și se ia potrivirea cea mai LUNGĂ: altfel
+      // „Aleluia" din tabel ar fura orice căutare care conține cuvântul.
+      let gasit = null;
+      let lungime = 0;
+      for (const [titlu, piesa] of dupaTitlu) {
+        if (titlu.length < 4 || titlu.length <= lungime) continue;
+        if (cheie.includes(titlu)) { gasit = piesa; lungime = titlu.length; }
+      }
+      return gasit;
+    });
+  }
+
+  /** Scrie (sau suprascrie) versiunea corectă pentru un titlu. */
+  async tinePiesa(titlu, { uri, nume, artist, sursa = 'corectat' }) {
+    const cheie = AssistantAgent.normalizeazaTitlu(titlu);
+    if (!cheie || !uri) return { ok: false, motiv: 'titlu sau uri gol' };
+    this.sql`
+      INSERT INTO piese_spotify (titlu, uri, nume, artist, sursa)
+      VALUES (${cheie}, ${uri}, ${nume || ''}, ${artist || ''}, ${sursa})
+      ON CONFLICT(titlu) DO UPDATE SET
+        uri = excluded.uri, nume = excluded.nume,
+        artist = excluded.artist, sursa = excluded.sursa
+    `;
+    return { ok: true, titlu: cheie };
+  }
+
+  async uitaPiesa(titlu) {
+    const cheie = AssistantAgent.normalizeazaTitlu(titlu);
+    const randuri = this.sql`SELECT nume, artist FROM piese_spotify WHERE titlu = ${cheie}`;
+    if (randuri.length === 0) return { ok: false, motiv: 'nu țin minte nicio versiune pentru titlul ăsta' };
+    this.sql`DELETE FROM piese_spotify WHERE titlu = ${cheie}`;
+    return { ok: true, nume: randuri[0].nume, artist: randuri[0].artist };
+  }
+
+  async pieseleStiute() {
+    const randuri = this.sql`SELECT titlu, nume, artist FROM piese_spotify ORDER BY titlu ASC`;
+    return randuri.map((r) => ({ titlu: r.titlu, nume: r.nume, artist: r.artist }));
   }
 
   /**

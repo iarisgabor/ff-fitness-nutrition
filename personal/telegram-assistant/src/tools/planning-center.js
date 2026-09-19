@@ -152,8 +152,10 @@ export async function getPlanSchedule(env, input) {
 export const GET_PLAN_ITEMS_TOOL = {
   name: 'get_plan_items',
   description:
-    'Citește ordinea de serviciu (cântări și celelalte elemente) pentru un plan. Folosește plan_id ' +
-    'obținut din find_service_plans — nu inventa niciodată un id.',
+    'Citește ordinea de serviciu (cântări și celelalte elemente) pentru un plan, în ordinea în ' +
+    'care se desfășoară. Pentru cântări întoarce și song_author (compozitorul, când e completat ' +
+    'în Planning Center) — dă-l mai departe ca „artist" către spotify_reda, ajută la nimerirea ' +
+    'versiunii corecte. Folosește plan_id obținut din find_service_plans — nu inventa niciodată un id.',
   input_schema: {
     type: 'object',
     properties: {
@@ -172,24 +174,36 @@ export async function getPlanItems(env, input) {
     `/service_types/${encodeURIComponent(input.service_type_id)}/plans/${encodeURIComponent(input.plan_id)}/items?per_page=200&include=song`
   );
 
-  // DEBUG temporar — verificăm dacă resursa Song are vreun câmp de statistici de utilizare deja
-  // calculat de PCO, care ne-ar scuti de agregarea manuală pe planuri din get_top_songs.
-  console.log('SONG_RAW_ATTRS', JSON.stringify((data.included || []).filter((inc) => inc.type === 'Song')));
-
+  // `include=song` aduce resursa Song ÎNTREAGĂ, nu doar titlul — deci autorul vine gratis, fără
+  // niciun apel în plus. Merită dus mai departe: la o cântare de închinare, titlul singur e
+  // ambiguu pe Spotify (zeci de cover-uri, variante live, instrumentale), iar autorul e singurul
+  // lucru care deosebește versiunea pe care o cântați de restul.
+  //
+  // ATENȚIE la ce înseamnă `author` în PCO: e COMPOZITORUL, nu interpretul de pe Spotify. La
+  // cântările românești cele două sunt rar aceeași persoană — compozitorul e adesea american,
+  // înregistrarea pe care o cântați e a unui grup de aici. De-aia se dă mai departe ca INDICIU
+  // (vezi `spotify_reda`, câmpul `artist`), niciodată ca filtru dur: un `artist:<compozitor>`
+  // întoarce zero rezultate exact la cântările care contează.
+  //
+  // Ambele câmpuri sunt completate cu mâna de cine a introdus cântarea în PCO, deci pot lipsi.
+  // Se omit din răspuns când sunt goale, ca modelul să nu citească „autor: (nimic)".
   const songsById = new Map(
     (data.included || [])
       .filter((inc) => inc.type === 'Song')
-      .map((inc) => [inc.id, inc.attributes?.title || ''])
+      .map((inc) => [inc.id, inc.attributes || {}])
   );
 
   const items = (data.data || [])
     .sort((a, b) => (a.attributes?.sequence ?? 0) - (b.attributes?.sequence ?? 0))
     .map((item) => {
       const songId = item.relationships?.song?.data?.id;
+      const song = songId ? songsById.get(songId) : null;
       return {
         title: item.attributes?.title || '',
         type: item.attributes?.item_type || 'item',
-        song_title: songId ? songsById.get(songId) || '' : '',
+        song_title: song?.title || '',
+        ...(song?.author ? { song_author: song.author } : {}),
+        ...(song?.ccli_number ? { song_ccli: String(song.ccli_number) } : {}),
       };
     });
 

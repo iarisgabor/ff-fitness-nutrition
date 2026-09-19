@@ -39,6 +39,7 @@ https://ff-fitness-nutrition.vercel.app.
 | bot de Telegram, Google Calendar, Planning Center, agendă zilnică, aer condiționat, Sinclair, EWPE Smart, Alexa | **personal/telegram-assistant/** → §2 + `README.md` |
 | asistent vocal, apel cu AI, Gemini Live, orb care pulsează, PWA de voce | `personal/telegram-assistant/public/voce/` + `src/voice/` → §2 |
 | aplicație Android, APK, cuvânt de trezire, „Jarvis", fundal, ecran de blocare, Capacitor, Vosk | `personal/telegram-assistant/app/` → §2 |
+| Spotify, pus muzică, cântările de duminică pe Spotify, coadă de piese, playlist | `personal/telegram-assistant/src/tools/spotify.js` → §2 |
 | notificări push, „sună-mă tu", VAPID, legătură permanentă cu telefonul | `personal/telegram-assistant/src/push.js` + `src/voice/listen.js` → §2 |
 | feedback biserică, Pulsul Duminicii, statistici duminică, slideshow pe categorie, rezumat AI feedback, predicatori, Laviniu, Marius, Beni | **personal/pulsul-duminicii/** → §3 + `README.md` |
 | ii cusute de bunica, magazin de ii, scroll-film, broderie | **personal/ia-bunicii-mele/** → §4 + `README.md` |
@@ -128,13 +129,17 @@ de la rădăcină, dar inofensiv.
 
 Asistent personal cu **trei fețe și un singur creier**: bot de Telegram (text), **apel vocal
 în timp real** printr-un PWA, și o **aplicație Android nativă** peste aceeași pagină. Creierul
-e Worker-ul: un prompt, **23 de unelte**, un istoric — indiferent pe unde vorbești cu el.
+e Worker-ul: un prompt, **41 de unelte** (plus 2 doar pentru voce — volumul și închiderea
+apelului), un istoric — indiferent pe unde vorbești cu el.
 
 Acționează pe Google Calendar, Planning Center Services și aerul condiționat din casă
 (Sinclair, prin API-ul neoficial Alexa — aparatul nu are API public), trimite agenda zilnică,
 și **te poate căuta el**: notificări programate care sună telefonul. Aplicația nativă adaugă
 ce un site nu poate face — apelul continuă când ieși din aplicație, se deschide de pe ecranul
 de blocare, și răspunde la cuvântul de trezire **„Jarvis"** (recunoscut local, offline).
+
+În apel îi poți cere și să vorbească mai încet sau mai tare, și să închidă el apelul — două unelte
+care se execută în pagină, nu pe server, fiindcă acolo trăiesc difuzorul și apelul.
 
 Cont unic, blocat pe `ALLOWED_TELEGRAM_USER_ID`; apelurile vocale cer `VOICE_ACCESS_TOKEN`.
 
@@ -152,6 +157,8 @@ Fișiere:
 - `src/tools/planning-center.js` — Planning Center Services/People
 - `src/tools/air-conditioner.js` — aer condiționat (stare, comenzi, programări)
 - `src/tools/notificari.js` — programează un apel/o notificare pe telefon
+- `src/tools/spotify.js` — Spotify: ce cântă, redare (inclusiv liste puse una după alta prin
+  coadă), control, versiuni de cântări ținute minte după corectare
 - `src/alexa.js` — client pentru API-ul neoficial Alexa (prin el merge aerul condiționat)
 - `src/push.js` — Web Push (VAPID); notificările se trimit **fără conținut**, intenționat
 - `src/voice/gemini.js` — protocolul Gemini Live (setup, unelte, reluarea sesiunii)

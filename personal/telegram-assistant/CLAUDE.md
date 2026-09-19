@@ -5,14 +5,16 @@ Asistent personal cu **trei fețe, un singur creier**:
 | Cale | Ce e |
 |---|---|
 | **Telegram** | bot text, prin webhook. Prima și cea mai veche. |
-| **Voce (web)** | PWA la `/voce/` — apel în timp real prin Gemini Live. |
+| **Voce (web)** | PWA la `/voce/` — apel în timp real prin Gemini Live. Poate și să-și regleze volumul și să închidă apelul la cerere (unelte doar pe voce). |
 | **Voce (Android)** | aplicație nativă (Capacitor) peste aceeași pagină: fundal, cuvânt de trezire „Jarvis", te poate suna. |
 
 Se numește **Jarvis** — în prompt, în interfață, pe ecranul telefonului și ca nume al aplicației
 (a fost „Asistent" până pe 18 septembrie 2026). „Jarvis" era oricum deja cuvântul de trezire.
 
 Creierul e Worker-ul: un singur prompt (`src/prompt.js`), un singur set de **41 de unelte**
-(`src/tools/index.js`), un singur istoric (Durable Object cu SQLite). Gemini Live e doar urechi
+(`src/tools/index.js`) plus **2 doar pentru voce** (`src/voice/unelte-client.js`: volumul și
+închiderea apelului — se execută în pagină, nu pe agent), un singur istoric (Durable Object cu
+SQLite). Gemini Live e doar urechi
 și gură; Claude e cel care gândește pe calea Telegram.
 
 Cont unic: orice mesaj care nu vine de la `ALLOWED_TELEGRAM_USER_ID` e ignorat complet, iar
@@ -23,7 +25,9 @@ apelurile vocale cer `VOICE_ACCESS_TOKEN`.
 
 ## Stare
 
-Botul de Telegram și calea vocală **merg în producție**. Aplicația Android e construită și
+Botul de Telegram și calea vocală **merg în producție**. Uneltele care rulează în pagină (volum,
+închiderea apelului — 19 septembrie 2026) sunt **încercate pe telefon și merg**: „vorbește mai
+încet" / „mai tare" / „dă la maxim" și „închide apelul". Aplicația Android e construită și
 instalată pe telefonul utilizatorului (Galaxy S23 Ultra), nesemnată pentru magazin (build
 `debug`). `HANDOFF-VOCE.md` e documentul de lucru din ziua construirii — **istoric**; ce
 contează e aici.
@@ -37,7 +41,8 @@ Lucruri neterminate, notate ca atare:
   `GMAIL_NOT_CONFIGURED`.
 - Serviciul nativ nu pornește la bootul telefonului — **și rămâne așa, deliberat** (regula 64).
   Nu e un TODO.
-- Loguri de diagnostic rămase: `VOICE_AUDIO_IN`, `VOICE_SETUP`, plus `TOOL_CALL` din
+- Loguri de diagnostic rămase: `VOICE_AUDIO_IN`, `VOICE_SETUP`, `VOICE_UNEALTA_CLIENT` /
+  `_GATA` (uneltele din pagină — **nu le scoate**, vezi regula 71), plus `TOOL_CALL` din
   `tools/index.js` (regula 14).
 
 ## Unde te duci
@@ -59,6 +64,7 @@ Lucruri neterminate, notate ca atare:
 | WhatsApp: citirea notificărilor, pe telefon | `app/android/.../WhatsAppListener.java` |
 | Web Push (VAPID, semnare, trimitere) | `src/push.js` |
 | **protocol Gemini Live** (setup, scheme, reluare sesiune) | `src/voice/gemini.js` |
+| **unelte care rulează în pagină** (volum, închiderea apelului) | `src/voice/unelte-client.js` |
 | **DO-ul unui apel** (releu audio, unelte, reconectare) | `src/voice/session.js` |
 | **legătura permanentă** prin care telefonul poate fi sunat | `src/voice/listen.js` |
 | PWA-ul: microfon, redare, reconectare, orb | `public/voce/app.js` |
@@ -169,7 +175,8 @@ ecran complet — care se deschide singură **doar pe ecran blocat**.
     browser (dispare Worker-ul). **Un deploy repornește Worker-ul și taie toate apelurile active.**
 27. **Un nume de voce greșit NU dă eroare** — Gemini trece tăcut pe vocea lui implicită. Verificat
     cu un nume inventat. Dacă vocea „nu s-a schimbat", prima suspectă e o greșeală de tipar în
-    `GEMINI_VOICE_NAME`. Cele 30 acceptate sunt testate; acum e **Gacrux**.
+    `GEMINI_VOICE_NAME`. Cele 30 acceptate sunt testate; acum e **Charon** (masculină, gravă).
+    Gacrux, dinainte, e gravă dar e voce de femeie — „grav" nu înseamnă „bărbătesc".
 28. **Nu verifica ce voce e activă dintr-o singură mostră** — estimarea înălțimii variază ±20 Hz
     între generări. Compară mai multe, sau cere o voce depărtată ca înălțime.
 29. **Cheia Gemini călătorește în query string**, deci apare în mesajul oricărei erori de rețea.
@@ -438,6 +445,68 @@ ecran complet — care se deschide singură **doar pe ecran blocat**.
     de copiere. Un `SPOTIFY_REFRESH_TOKEN` pus totuși ca secret are prioritate — de-aia
     uneltele primesc `agent` ca al treilea argument și îl cer de la el doar dacă secretul
     lipsește.
+50g. **O listă se pune cu PRIMA prin `play` și RESTUL prin `POST /me/player/queue` — NU cu
+    tot `uris: [...]` deodată.** Am încercat întâi varianta evidentă, cu toată lista într-un
+    singur `play`. API-ul o acceptă fără o vorbă (204) și chiar pornește prima melodie — dar pe
+    telefon se oprește după ea. O listă trimisă așa n-are CONTEXT în sensul Spotify (nu e album,
+    nu e playlist), iar aplicația nu avansează prin ea.
+    Cel mai rău fel de eșec, fiindcă minte de două ori: API-ul spune că a mers, unealta
+    raportează „am pus trei", iar omul aude una și apoi tăcere — și n-are ce urmări în loguri,
+    fiindcă nimic n-a dat eroare. De-aia există acum linia `SPOTIFY_LISTA`: spune câte melodii a
+    primit unealta, ca să se vadă dintr-o privire dacă problema e în transport sau mai sus, în
+    câte apeluri a făcut modelul.
+    Coada e exact mecanismul prin care aplicația avansează singură — același lucru ca
+    „următoarea". Între `play` și prima adăugare în coadă e o pauză de 400 ms: `play` întoarce
+    204 când comanda a PLECAT, nu când telefonul a preluat-o, iar o coadă trimisă prea devreme
+    se agață de contextul vechi.
+50g-ter. **Schema uneltelor rămâne cu TIPURI SIMPLE, din cauza vocii.** `cautari` a fost întâi
+    un array de OBIECTE (`{titlu, artist}`), ca să putem ține indiciul de artist separat de
+    cheia de memorie. Pe Telegram mergea. Pe voce, nu: simptomul a fost „pune două melodii" →
+    prima pornește, iar după cinci secunde a doua o ÎNLOCUIEȘTE. Cinci secunde nu e o adăugare
+    în coadă (aia e sub o secundă) — e durata unui AL DOILEA tur de unealtă. Gemini Live nu
+    producea array-ul imbricat și cădea înapoi pe `cautare` singular, chemat de două ori.
+    Morala, care se aplică oricărei unelte noi: Telegram (Claude) iartă scheme complicate,
+    vocea (Gemini) nu. Un array de șiruri e plătit o dată, în precizie; un array de obiecte se
+    plătește la fiecare apel vocal, în apeluri ratate care NU dau eroare nicăieri.
+    Indiciul de artist se scrie acum în aceeași căutare („Mii de laude Biserica Betel") —
+    căutarea liberă a lui Spotify ponderează oricum numele artistului. Iar `pieseSalvate()`
+    potrivește exact, apoi pe conținere (cea mai lungă potrivire câștigă), fiindcă versiunea
+    reținută stă sub titlul curat, iar căutarea poate veni cu artistul lipit.
+50g-0. **Player-ul NU e atins de blocajul de scriere din 50b-bis** — acela lovește API-ul de
+    CONȚINUT (playlisturi, bibliotecă). Dovada că player-ul merge o ai deja în
+    `spotify_controleaza`: `urmatoarea` e POST, `pauza` e PUT, și funcționează amândouă.
+    Corolar: dacă vreodată o rută de player întoarce 403 sec, euristica din `api()`
+    („non-GET + Forbidden = scriere blocată") o va eticheta GREȘIT ca limită a platformei, cu
+    un mesaj care spune că nu se poate rezolva. Verifică motivul real înainte să-l crezi.
+50g-bis. **Coada (`POST /me/player/queue`) cere ca ceva să cânte DEJA.** Pe tăcere răspunde 404,
+    iar omul ar rămâne cu un „gata" mincinos și zero sunet. `spotifyReda` verifică întâi
+    `/me/player` și, dacă nu cântă nimic, pornește lista normal și o spune prin
+    `pornit_in_loc_de_coada`. Piesele se pun în coadă SECVENȚIAL — `Promise.all` nu
+    garantează ordinea sosirii, iar coada o păstrează exact pe aceea.
+50h. **`author` din Planning Center e COMPOZITORUL, nu interpretul de pe Spotify.** La cântările
+    românești cele două sunt rar aceeași persoană: compozitorul e adesea american, înregistrarea
+    pe care o cântați e a unui grup de aici. De-aia se dă ca INDICIU (`cautari[].artist`, folosit
+    de `alegeCandidat`), niciodată ca `artist:` în interogare — un filtru dur întoarce ZERO
+    exact la cântările care contează. `cautaMelodie` trimite două interogări în paralel,
+    titlul curat și titlul + indiciul ca text liber, și le reunește.
+50i. **Versiunile corectate stau în tabelul `piese_spotify`, NU în `fapte`.** Două motive, și
+    amândouă contează. Costul: tot ce intră în `fapte` ajunge în fiecare cerere către model, la
+    preț plin — un repertoriu de biserică s-ar plăti și când se vorbește despre aerul
+    condiționat. Forma: un fapt în limbaj natural („la «Mii de laude» e versiunea de la X") l-ar
+    obliga pe model să-l traducă înapoi într-o căutare de fiecare dată, adică exact pasul unde
+    greșește. Tabelul ține URI-ul, care sare peste căutare cu totul.
+50i-bis. **Nu se salvează automat ce găsește căutarea.** E tentant („tot am căutat"), dar ar
+    cimenta prima nimereală ca adevăr permanent, imposibil de aflat greșit altfel decât
+    ascultând-o iar. Se scrie DOAR prin `spotify_controleaza` cu `retine_versiunea`, după
+    confirmarea omului, și ia uri-ul piesei care cântă în clipa aia — corecția se face
+    ascultând, nu dictând un link.
+50i-ter. **Cheia tabelului e titlul normalizat, iar normalizarea trăiește într-un SINGUR loc**
+    (`AssistantAgent.normalizeazaTitlu`). De-aia `pieseSalvate()` întoarce un array aliniat la
+    intrare, nu un Map pe titluri normalizate: un Map l-ar obliga pe apelant să normalizeze el
+    cheia, adică să dubleze funcția în `spotify.js`. Două copii se despart mai devreme sau mai
+    târziu, iar când se despart memoria nu dă eroare — doar ratează tăcut și cântă iar versiunea
+    greșită. Diacriticele se scot dinadins: același cântec vine o dată din voce (cu diacritice)
+    și o dată din Planning Center (cum s-a nimerit).
 
 ### Interfața vocală
 
@@ -564,6 +633,49 @@ ecran complet — care se deschide singură **doar pe ecran blocat**.
     evidentă:** o listă albă pe `/voce/` ar dezactiva cache-ul complet în APK, unde coaja e
     servită din rădăcina lui `https://localhost`.
 
+### Unelte care se execută în pagină
+
+67. **Volumul și închiderea apelului NU pot trece prin agent** — se întâmplă în pagină, în lanțul
+    Web Audio și în `endCall`. De-aia există a doua familie de unelte, `src/voice/unelte-client.js`:
+    `VoiceSession.ruleazaUnealtaClient()` le trimite pe socket spre client și **așteaptă răspunsul
+    lui** (termen scurt, 4 s — nu e nicio rețea la mijloc). Nu se pun în `TOOL_DEFINITIONS`: pe
+    Telegram n-ar avea ce să execute, iar o unealtă care nu poate reuși e mai rea decât una care nu
+    există. **Pagina trebuie să răspundă la FIECARE cerere, și pe calea de eroare** — altfel
+    modelul tace până la termen, în mijlocul propoziției.
+68. **Nivelul volumului stă în PAGINĂ, nu în Worker** — fiindcă `/voice-ws` cheamă
+    `newUniqueId()` la fiecare conectare: o reconectare la mijlocul apelului creează un DO nou,
+    care ar porni iar de la 100%. Contextul audio, în schimb, se creează o singură dată (în
+    `startCall`), deci nivelul supraviețuiește reconectării, dar **pornește mereu de la maxim la un
+    apel nou** — intenționat: Jarvis te poate suna el, iar un nivel memorat de aseară ar însemna un
+    apel pierdut dimineață. De-aia nu stă în `localStorage`.
+69. **Nodul de gain stă DUPĂ analizorul orbului.** Invers, orbul ar reacționa la cât de tare îl
+    AUZI, nu la cât de tare VORBEȘTE — la volum mic ar părea înțepenit deși totul merge. Procentul
+    se transformă în amplificare logaritmic (`gainDinNivel`), fiindcă 50% liniar nu se aude „pe
+    jumătate", și se aplică pe o rampă de 80 ms, fiindcă un salt de gain se aude ca un poc.
+70. **`inchide_apelul` nu închide pe loc.** Uneltele se cheamă înainte (sau în mijlocul) replicii,
+    deci un `endCall()` imediat ar reteza exact formula de încheiere cerută în prompt. Se așteaptă
+    golirea cozii de redare, cu o pauză minimă de 1,5 s (în clipa apelului, „la revedere" poate să
+    nu fi ajuns încă) și un plafon de 12 s. **Închiderea o face pagina, nu Worker-ul**: dacă
+    Worker-ul ar închide socketul, pentru pagină ar arăta identic cu o legătură căzută — deci ar
+    porni reconectarea, nu închiderea.
+
+71. **O greșeală de nume într-un ceas din pagină nu dă NICIO eroare vizibilă.** Prima versiune a
+    închiderii chema `redaInCurs()` — funcție care nu există; cea adevărată e `maiAreDeSpus()`.
+    Efectul: callback-ul de `setInterval` arunca `ReferenceError` la fiecare 250 ms, apelul nu se
+    închidea niciodată, iar pe telefon nu există consolă în care s-o vezi. Mai rău, **unealta îi
+    răspunsese deja modelului cu `{ok:true}`**, deci Jarvis spunea liniștit „am închis" — iar
+    utilizatorul vedea un asistent care minte, nu un bug. Două concluzii, ambele aplicate:
+    - ceasul are acum `try/catch`, iar pe eroare **închide oricum** — el a cerut închiderea, o
+      verificare stricată n-are voie să țină apelul deschis;
+    - uneltele de client se loghează (`VOICE_UNEALTA_CLIENT` / `_GATA` în `wrangler tail`). Fără
+      ele, „unealta a reușit" și „modelul nici n-a chemat-o" arată identic: tăcere. Exact logul ăsta
+      a lămurit vina în două minute, după ce ghicitul a dat greș.
+72. **Descrierea unei unelte scrisă ca listă de interdicții o face să nu fie chemată.** Prima
+    versiune a lui `inchide_apelul` începea cu „Cheam-o DOAR când…", „nu din proprie inițiativă",
+    „dacă nu ești sigur, întreabă" — iar modelul a răspuns pe dos: spunea că a închis, fără s-o
+    cheme. Acum acțiunea e pe primul loc, cu o singură pază la final, plus regula din prompt care
+    închide capcana: **a spune că ai închis nu închide nimic**.
+
 ## Cum adaugi o unealtă nouă
 
 **Trei** pași obligatorii, nu doi:
@@ -583,6 +695,13 @@ ecran complet — care se deschide singură **doar pe ecran blocat**.
 automat și în voce.
 
 Excepții:
+- o unealtă care se execută **în pagină** (volum, închidere) nu trece prin pașii 1-2 de mai sus:
+  definiția merge în `src/voice/unelte-client.js` (`UNELTE_CLIENT`), regulile în
+  `VOICE_PROMPT_ADDENDUM` din `src/voice/gemini.js` (nu în `prompt.js` — pe Telegram n-ar avea
+  sens), iar execuția în `case 'unealta_client'` din `public/voce/app.js`. Pasul 3 (numele
+  românesc în `NUME_UNELTE`) rămâne obligatoriu. Fiindcă atingi `public/voce/`, se aplică **și
+  regula 53**: ridică `VERSIUNE` din `sw.js` și fă APK nou, altfel schimbarea nu ajunge nici în
+  browser (cache vechi), nici pe telefon (fișiere împachetate). Vezi regulile 67-72;
 - o unealtă care **programează** ceva primește agentul ca al treilea argument și are nevoie de o
   metodă-callback pe `AssistantAgent` (`runScheduledAirConditioner`, `runScheduledNotification`);
 - schema trebuie să treacă prin `toGeminiSchema` — Gemini acceptă doar subsetul OpenAPI. Tipuri
@@ -607,7 +726,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Uneltele Android sunt în `D:\android-tools` (nu în repo): JDK 21 în `jdk21/`, SDK în `sdk/`.
 Înainte de build: `JAVA_HOME` spre JDK **21** (Capacitor cere 21, nu 17 — „invalid source
-release: 21"), `ANDROID_HOME` spre `sdk`.
+release: 21"), `ANDROID_HOME` spre `sdk`. **Calea e cu tot cu subfolderul de versiune** —
+`D:\android-tools\jdk21\jdk-21.0.12.1+1`, nu `D:\android-tools\jdk21`; altfel Gradle spune doar
+„JAVA_HOME is set to an invalid directory".
 
 Diagnostic pe telefon — **singura cale care chiar lămurește** ce se întâmplă în aplicația nativă:
 
