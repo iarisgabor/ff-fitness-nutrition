@@ -17,11 +17,23 @@ const els = {
   diag: document.getElementById('diag'),
   mut: document.getElementById('mut'),
   transcript: document.getElementById('transcript'),
-  panou: document.getElementById('panou'),
-  comuta: document.getElementById('comuta'),
   auto: document.getElementById('auto'),
   textForm: document.getElementById('text-form'),
   textInput: document.getElementById('text-input'),
+  // Orbul e butonul: atingi cercul, nu o pastilă cu scris pe ea.
+  orbButon: document.getElementById('orb-buton'),
+  // Comenzile stau într-un sertar pe marginea din dreapta. În mod normal ecranul e gol.
+  maner: document.getElementById('maner'),
+  meniu: document.getElementById('meniu'),
+  voal: document.getElementById('voal'),
+  inchideMeniu: document.getElementById('inchide-meniu'),
+  whatsapp: document.getElementById('whatsapp'),
+  microfonAcces: document.getElementById('microfon-acces'),
+  // Ce s-a vorbit ÎNAINTE de apelul ăsta, încărcat din istoricul agentului. Container separat de
+  // #transcript, nu o listă comună: granița dintre „înainte" și „acum" e chiar granița dintre
+  // cele două cutii, deci nu se poate dezordona niciodată.
+  istoric: document.getElementById('istoric'),
+  separatorAcum: document.getElementById('separator-acum'),
 };
 
 let socket = null;
@@ -36,12 +48,31 @@ let micAnalyser = null;
 let botAnalyser = null;
 let inCall = false;
 let mut = false;
-// Un apel uitat deschis costa bani (Gemini se plateste la minut) si tine microfonul ocupat,
-// deci si cuvantul de trezire oprit. Dupa atata liniste din ambele parti, se inchide singur
-// si aplicatia se intoarce in veghe - de unde "Jarvis" il poate chema inapoi.
-const LINISTE_MAXIMA_MS = 3 * 60 * 1000;
+// Apelul se închide singur când nu se mai vorbește. Nu e o comoditate: Gemini se plătește la
+// minut, iar cât ține apelul microfonul e al lui, deci cuvântul de trezire e oprit. Închis, se
+// întoarce în veghe — de unde „Jarvis" îl cheamă înapoi într-o secundă. Asta face ca pragul să
+// poată fi scurt: nu pierzi nimic, doar reiei.
+const LINISTE_MAXIMA_MS = 7000;
+// Prima liniște e mai lungă. Apelul tocmai s-a deschis, poate din buzunar, la un „Jarvis" —
+// șapte secunde până să apuci să spui ceva ar închide apelul înainte să înceapă.
+const LINISTE_INITIALA_MS = 20000;
+// Cât lucrează o unealtă NU e liniște, e așteptare: nimeni nu vorbește, dar apelul e în plină
+// treabă. Fără excepția asta, orice căutare mai lentă de șapte secunde ar tăia apelul exact
+// când asistentul era pe cale să răspundă.
+const LINISTE_CU_UNEALTA_MS = 60000;
+// Peste ce nivel socotim că se vorbește. Transcrierea vine cu întârziere și în rafale; fără o
+// măsurare locală, o frază lungă și liniștită ar putea încăpea între două semne de viață.
+const PRAG_VOCE = 0.035;
 let ultimaActivitate = 0;
+let aVorbitCineva = false;
+// CÂND a început ultima unealtă, nu DACĂ una e în curs. Diferența a costat un apel tăiat în
+// mijlocul unei căutări pe net: steagul boolean se ștergea la prima transcriere primită, iar
+// transcrierea replicii „o clipă, caut" sosește DUPĂ ce unealta a pornit. Fereastra revenea
+// astfel la șapte secunde exact în timpul căutării. O oră de ceas nu se poate șterge din
+// greșeală — expiră singură.
+let ultimaUnealta = 0;
 let ceasLiniste = null;
+let vadBuffer = null;
 // Reconectare pe partea de browser: acoperă ce Worker-ul nu poate acoperi singur (deploy,
 // repornirea sesiunii, rețea pierdută). `inchidereVoita` deosebește „a închis utilizatorul"
 // de „a căzut legătura" — fără ea, apăsarea pe Închide ar declanșa imediat o reconectare.
@@ -50,6 +81,68 @@ let reconectariClient = 0;
 let inchidereVoita = false;
 let micGrafGata = false;
 let lastBubble = null;
+// Istoricul se încarcă la PRIMA deschidere a sertarului, nu la pornirea aplicației: sertarul se
+// deschide mult mai des ca să apeși Mute decât ca să citești ce s-a vorbit.
+let istoricIncarcat = false;
+// Ceasul care scoate orbul din „lucrează" dacă nu vine niciun semn de la server. Vezi iesiDinLucru.
+let ceasUnealta = null;
+
+// Numele uneltelor, în românește. AL DOILEA PAS când adaugi o unealtă (primul e
+// src/tools/index.js): fără o intrare aici, ecranul arată numele ei de cod, adică singurul loc
+// din toată interfața unde utilizatorul vede cod.
+const NUME_UNELTE = {
+  create_calendar_event: 'pun în calendar',
+  find_calendar_events: 'mă uit în calendar',
+  update_calendar_event: 'schimb în calendar',
+  delete_calendar_event: 'șterg din calendar',
+  list_service_types: 'mă uit în Planning Center',
+  find_service_plans: 'caut programul de duminică',
+  get_plan_schedule: 'văd cine e programat',
+  get_plan_items: 'mă uit peste program',
+  search_people: 'caut persoana',
+  update_team_member_status: 'schimb în echipă',
+  list_teams: 'mă uit la echipe',
+  list_team_positions: 'mă uit la poziții',
+  sign_up_for_position: 'te înscriu',
+  remove_from_schedule: 'te scot din program',
+  get_top_songs: 'mă uit la cântări',
+  get_top_scheduled_people: 'mă uit la cine slujește',
+  get_air_conditioner_state: 'întreb aerul condiționat',
+  control_air_conditioner: 'dau comanda la aer',
+  schedule_air_conditioner: 'programez aerul',
+  list_air_conditioner_schedules: 'mă uit la programările aerului',
+  cancel_air_conditioner_schedule: 'anulez programarea aerului',
+  programeaza_apel: 'îmi pun ceas',
+  trimite_notificare: 'îți trimit o notificare',
+  cauta_pe_net: 'caut pe internet',
+  citeste_mesaje_whatsapp: 'mă uit pe WhatsApp',
+  trimite_mesaj_whatsapp: 'trimit pe WhatsApp',
+  spotify_ce_canta: 'întreb ce cântă',
+  spotify_reda: 'pun muzica',
+  spotify_controleaza: 'schimb la muzică',
+  spotify_creeaza_playlist: 'fac playlistul',
+  spotify_deschide_pe_telefon: 'deschid Spotify',
+  suna_pe_telefon: 'dau telefon',
+  tine_minte: 'țin minte',
+  ce_tii_minte: 'mă uit la ce știu',
+  uita: 'uit',
+  ce_ai_facut: 'mă uit ce am făcut',
+  refa_actiunea: 'refac',
+  cauta_emailuri: 'caut pe mail',
+  rezumat_inbox: 'mă uit pe mail',
+  citeste_email: 'citesc emailul',
+  creeaza_ciorna: 'scriu ciorna',
+};
+
+function descrieUnelte(names) {
+  const traduse = (names || []).map((n) => NUME_UNELTE[n]).filter(Boolean);
+  // O unealtă necunoscută (server mai nou decât aplicația) primește o formulare neutră, nu una
+  // ghicită din numele ei. Aceeași regulă ca în prompt: mai bine „ceva" decât o explicație
+  // inventată care trimite omul să caute unde nu e.
+  if (traduse.length === 0) return 'verific ceva';
+  if (traduse.length === 1) return traduse[0];
+  return `${traduse.slice(0, -1).join(', ')} și ${traduse[traduse.length - 1]}`;
+}
 
 // Diagnostic vizibil pe ecran: pe telefon nu există consolă, iar „nu aud nimic" are cel puțin
 // trei cauze diferite (audio care nu ajunge / context audio suspendat / microfon la altă rată).
@@ -67,7 +160,7 @@ function updateDiag() {
 // ecranul principal să nu mai aibă nevoie de el în adresă.
 
 // Tokenul deja salvat, fără nicio întrebare. Pornirea automată nu are voie să deschidă un
-// dialog la lansare — dacă nu există token, așteaptă apăsarea pe „Sună".
+// dialog la lansare — dacă nu există token, așteaptă atingerea orbului.
 function getTokenSalvat() {
   try {
     return localStorage.getItem(TOKEN_KEY) || '';
@@ -97,25 +190,70 @@ function setStatus(text, state) {
 // transcriere: un raspuns lung fara pauze n-ar trimite transcriere destul de des.
 function semnDeViata() {
   ultimaActivitate = Date.now();
+  aVorbitCineva = true;
+}
+
+// Microfonul, măsurat local, în fiecare verificare. Ramura asta e ieftină (un RMS peste 512 de
+// eșantioane) și e singura care știe în timp real dacă omul chiar vorbește — serverul află abia
+// când termină fraza.
+function seVorbesteAcum() {
+  if (!micAnalyser || mut) return false;
+  if (!vadBuffer || vadBuffer.length !== micAnalyser.fftSize) {
+    vadBuffer = new Uint8Array(micAnalyser.fftSize);
+  }
+  micAnalyser.getByteTimeDomainData(vadBuffer);
+  let suma = 0;
+  for (let i = 0; i < vadBuffer.length; i += 1) {
+    const v = (vadBuffer[i] - 128) / 128;
+    suma += v * v;
+  }
+  return Math.sqrt(suma / vadBuffer.length) > PRAG_VOCE;
+}
+
+// Blocurile de la Gemini SOSESC mult înaintea momentului în care se aud: se programează în
+// coadă, iar `playCursor` e ora la care se termină ce e programat. Un răspuns de treizeci de
+// secunde poate ajunge tot în două — fără verificarea asta, ceasul ar socoti restul drept
+// liniște și ar tăia apelul exact în timp ce Jarvis vorbește.
+function maiAreDeSpus() {
+  return !!playContext && playCursor > playContext.currentTime + 0.05;
+}
+
+function ragazLiniste() {
+  if (Date.now() - ultimaUnealta < LINISTE_CU_UNEALTA_MS) return LINISTE_CU_UNEALTA_MS;
+  return aVorbitCineva ? LINISTE_MAXIMA_MS : LINISTE_INITIALA_MS;
 }
 
 function pornesteCeasulDeLiniste() {
-  semnDeViata();
+  ultimaActivitate = Date.now();
+  aVorbitCineva = false;
+  ultimaUnealta = 0;
   clearInterval(ceasLiniste);
+  // Verificat des (nu la 15 secunde, ca înainte): cu un prag de șapte secunde, un ceas rar ar
+  // însemna că apelul se închide oriunde între 7 și 22 de secunde, adică imprevizibil.
   ceasLiniste = setInterval(() => {
     if (!inCall) return;
-    if (Date.now() - ultimaActivitate < LINISTE_MAXIMA_MS) return;
-    note('Am închis apelul — nu s-a mai vorbit de câteva minute.');
+    if (seVorbesteAcum() || maiAreDeSpus()) semnDeViata();
+    if (Date.now() - ultimaActivitate < ragazLiniste()) return;
+    note('Am închis apelul — nu s-a mai vorbit.');
     endCall();
-  }, 15000);
+  }, 400);
 }
 
 function setCallState(active) {
+  // Garda nu e un moft: `setCallState(false)` se cheamă și pe drumuri care nu sunt sfârșitul
+  // unui apel — la lipsa cheii de acces (fără niciun `true` înainte). Fără ea, telefonul ar
+  // bâzâi „apel încheiat" pentru apeluri care n-au existat.
+  const schimbare = active !== inCall;
   inCall = active;
   els.call.dataset.active = active ? 'true' : 'false';
-  els.call.textContent = active ? 'Închide' : 'Sună';
+  els.call.textContent = active ? 'Închide apelul' : 'Sună';
   els.mut.disabled = !active;
+  els.orbButon.setAttribute('aria-label', active ? 'Închide apelul' : 'Sună');
+  // Orbul se întoarce mic și cenușiu de îndată ce apelul s-a terminat, fără să aștepte nimic —
+  // e singurul indiciu de pe ecran că nu mai ești în legătură.
+  if (!active) Orb.opreste();
   if (!active) setMut(false); // fiecare apel începe cu microfonul pornit
+  if (schimbare) vibra(active ? 'inceput' : 'sfarsit');
 }
 
 // Microfon oprit = asistentul nu te mai aude. Nu oprește apelul și nu-l oprește pe el din
@@ -139,6 +277,38 @@ function setMut(valoare) {
     if (valoare) setStatus('Microfon oprit — nu te aude.', '');
     else setStatus('Te ascult.', 'live');
   }
+}
+
+// ─── Starea „lucrează" a orbului ───────────────────────────────────────────────────────────
+//
+// Între întrebare și răspuns e tăcere, iar orbul arăta identic cu unul care aștepta să vorbești.
+// Acum se retrage puțin și devine chihlimbariu cât lucrează uneltele.
+//
+// Ieșirea are TREI căi, și toate trei sunt necesare:
+//   1. `tools_gata` de la server — cea exactă;
+//   2. prima vorbă a asistentului (vezi `case 'transcript'`) — cea care se întâmplă de fapt;
+//   3. ceasul de mai jos — plasa, pentru drumurile pe care niciun mesaj nu mai ajunge:
+//      reconectare pe socket nou, Durable Object evacuat, un deploy la mijlocul apelului, sau o
+//      aplicație mai nouă decât Worker-ul. Fără ea, orbul ar rămâne blocat în „lucrează" cu
+//      apelul deschis — iar orbul e singurul indicator de stare de pe ecran, deci omul ar crede
+//      că a murit apelul și ar închide.
+//
+// 60 de secunde, nu 30: plafonul real al serverului pentru o unealtă e 55 s (căutarea pe net,
+// `TERMENE_SPECIALE` din voice/session.js). Un ceas mai scurt ar minți exact în mijlocul unei
+// căutări legitime.
+const PLAFON_UNEALTA_MS = 60000;
+
+function intraInLucru() {
+  if (!inCall) return;
+  Orb.stare('lucreaza');
+  clearTimeout(ceasUnealta);
+  ceasUnealta = setTimeout(iesiDinLucru, PLAFON_UNEALTA_MS);
+}
+
+function iesiDinLucru() {
+  clearTimeout(ceasUnealta);
+  ceasUnealta = null;
+  if (inCall) Orb.stare('activ');
 }
 
 // Transcrierea vine în fragmente; le lipim în aceeași bulă cât timp vorbește același rol.
@@ -254,6 +424,7 @@ async function startCall() {
   }
 
   setCallState(true);
+  Orb.stare('conectare');
   setStatus('Pornesc microfonul…', 'busy');
   inchidereVoita = false;
   reconectariClient = 0;
@@ -298,12 +469,38 @@ async function startCall() {
     // endCall întâi, ca să nu rămână contextul de redare deschis degeaba; abia apoi mesajul,
     // fiindcă endCall pune el statusul „Închis.".
     endCall(false);
-    setStatus('Nu am acces la microfon.', 'error');
+
+    // `err.name` nu se arunca la gunoi degeaba: „Nu am acces la microfon" acoperea trei situații
+    // complet diferite, cu trei rezolvări diferite, și nu spunea niciuna. Mai rău, refuzul de
+    // permisiune e o FUNDĂTURĂ — odată respinsă, cererea nu mai deschide niciun dialog, deci
+    // reapăsarea orbului repetă la nesfârșit același mesaj.
+    const nume = err && err.name ? err.name : '';
+    if (nume === 'NotAllowedError' || nume === 'SecurityError') {
+      setStatus(
+        window.Capacitor
+          ? 'Ai refuzat microfonul. Deschide sertarul ca să dai acces.'
+          : 'Ai refuzat microfonul. Dă-i voie din lacătul de lângă adresă, apoi reîncarcă.',
+        'error'
+      );
+      arataAccesulLaMicrofon(false);
+    } else if (nume === 'NotFoundError' || nume === 'OverconstrainedError') {
+      setStatus('Nu găsesc niciun microfon pe dispozitivul ăsta.', 'error');
+    } else if (nume === 'NotReadableError' || nume === 'AbortError') {
+      setStatus('Microfonul e folosit de altceva. Închide cealaltă aplicație și încearcă din nou.', 'error');
+    } else {
+      // Necunoscut: spunem ce a spus browserul, nu ce bănuim noi. O cauză inventată trimite omul
+      // să repare ce nu e stricat.
+      setStatus(`Nu am acces la microfon (${nume || 'motiv necunoscut'}).`, 'error');
+    }
     return;
   }
 
   // Două contexte, fiindcă ratele diferă: 16 kHz la captură, 24 kHz la redare. Rata cerută e
   // doar o sugestie — dacă browserul o ignoră, worklet-ul reeșantionează el (vezi capture-worklet.js).
+  // Dacă microfonul fusese refuzat și omul a dat acces între timp din Setări, linia din sertar
+  // trebuie să înceteze să mai ceară ceva. Aici e singurul loc care ȘTIE sigur că merge.
+  arataAccesulLaMicrofon(true);
+
   micContext = new AudioContext({ sampleRate: INPUT_SAMPLE_RATE });
   await micContext.resume().catch(() => {});
 
@@ -431,19 +628,46 @@ async function reconecteazaClient(token) {
 function handleServerMessage(message) {
   switch (message.type) {
     case 'status':
-      if (message.status === 'ready') setStatus('Te ascult.', 'live');
+      if (message.status === 'ready') {
+        setStatus('Te ascult.', 'live');
+        // Și după o reconectare: acolo orbul a trecut pe „conectare", iar `Orb.conecteaza` (care
+        // îl pune pe „activ") se cheamă o singură dată, la începutul apelului.
+        if (inCall) Orb.stare('activ');
+      }
       else if (message.status === 'connecting') setStatus('Mă conectez…', 'busy');
       else if (message.status === 'turn_complete') lastBubble = null;
       // Reconectare: apelul NU s-a terminat. Worker-ul reface legătura cu handle-ul de reluare,
-      // iar microfonul continuă să înregistreze — ce spui între timp nu se pierde.
-      else if (message.status === 'reconnecting') setStatus('Refac legătura…', 'busy');
+      // iar microfonul continuă să înregistreze — ce spui între timp nu se pierde. Și nu e
+      // liniște: dacă am lăsa ceasul să curgă, apelul s-ar închide exact în timpul reparației.
+      else if (message.status === 'reconnecting') {
+        setStatus('Refac legătura…', 'busy');
+        semnDeViata();
+        // Se reface legătura, nu se mai lucrează la nimic: orbul trebuie să arate ce se întâmplă
+        // ACUM, altfel ar rămâne chihlimbariu pe un apel care se repară.
+        iesiDinLucru();
+        if (inCall) Orb.stare('conectare');
+      }
       break;
     case 'transcript':
       semnDeViata();
+      // Gemini vorbește adesea în timp ce uneltele încă lucrează („o clipă, mă uit"). Un orb
+      // care nu reacționează la voce exact atunci arată stricat, deci prima vorbă a
+      // asistentului scoate din „lucrează" — asta e ieșirea obișnuită, nu excepția.
+      if (message.role === 'assistant') iesiDinLucru();
       appendTranscript(message.role, message.text);
       break;
-    case 'tools':
-      note(`Verific: ${message.names.join(', ')}`);
+    case 'tools': {
+      // Cât lucrează o unealtă, ceasul de liniște primește un răgaz mai lung (vezi ragazLiniste).
+      ultimaUnealta = Date.now();
+      semnDeViata();
+      const ce = descrieUnelte(message.names);
+      setStatus(`${ce.charAt(0).toUpperCase()}${ce.slice(1)}…`, 'busy');
+      note(ce);
+      intraInLucru();
+      break;
+    }
+    case 'tools_gata':
+      iesiDinLucru();
       break;
     case 'interrupted':
       stopPlayback();
@@ -474,6 +698,8 @@ function endCall(tellServer = true) {
 
   clearInterval(ceasLiniste);
   ceasLiniste = null;
+  clearTimeout(ceasUnealta);
+  ceasUnealta = null;
   tineApelulInFundal(false);
   Orb.opreste();
   micAnalyser = null;
@@ -494,37 +720,131 @@ function endCall(tellServer = true) {
   }
 
   setCallState(false);
-  setStatus('Închis.', '');
+  setStatus('Atinge cercul ca să vorbim.', '');
   lastBubble = null;
 }
 
-// Panoul de transcriere: ascuns, rămâne doar orbul pe tot ecranul. Alegerea se ține minte, ca
-// să nu trebuiască apăsat la fiecare apel.
-const PANOU_KEY = 'voce.panou';
+// ─── Sertarul cu comenzi ───────────────────────────────────────────────────────────────
+//
+// Ecranul rămâne gol: doar orbul. Tot ce e buton (microfon, transcriere, scris, închide) stă
+// într-un sertar pe marginea din dreapta, care se deschide de pe mâner sau cu o tragere de
+// deget dinspre margine. Nu se ține minte deschis — starea normală a aplicației e închis.
 
-function setPanou(deschis) {
-  els.panou.dataset.deschis = deschis ? 'true' : 'false';
-  els.comuta.setAttribute('aria-pressed', deschis ? 'true' : 'false');
-  try {
-    localStorage.setItem(PANOU_KEY, deschis ? '1' : '0');
-  } catch {
-    /* localStorage poate lipsi în navigare privată */
+function setMeniu(deschis) {
+  els.meniu.dataset.deschis = deschis ? 'true' : 'false';
+  els.meniu.setAttribute('aria-hidden', deschis ? 'false' : 'true');
+  els.voal.dataset.deschis = deschis ? 'true' : 'false';
+  els.maner.setAttribute('aria-expanded', deschis ? 'true' : 'false');
+
+  if (deschis && !istoricIncarcat) {
+    istoricIncarcat = true;
+    incarcaIstoricPeEcran();
   }
 }
 
-els.comuta.addEventListener('click', () => {
-  setPanou(els.panou.dataset.deschis !== 'true');
+// ─── Ce s-a vorbit înainte ─────────────────────────────────────────────────────────────
+//
+// Transcrierea trăia doar în DOM, deci dispărea la fiecare reîncărcare a paginii — aplicația
+// părea amnezică deși creierul nu e: tot ce se spune, în apel sau pe Telegram, e în SQL-ul
+// agentului. Aici se aduce înapoi pe ecran.
+//
+// E ACELAȘI istoric cu cel din Telegram (un singur agent, regula 24), deci în sertar apar și
+// conversațiile scrise. De-aia mesajele de pe Telegram se și marchează: altfel ar părea că
+// apelul de acum conține lucruri care nu s-au spus niciodată cu voce.
+
+async function incarcaIstoricPeEcran() {
+  if (!els.istoric) return;
+
+  const token = getTokenSalvat() || (await cheieDinAplicatie());
+  if (!token) return;
+
+  try {
+    const raspuns = await fetch(
+      `https://${gazdaServer()}/voice-history?token=${encodeURIComponent(token)}&limit=40`
+    );
+    if (!raspuns.ok) throw new Error(`istoric ${raspuns.status}`);
+
+    const { mesaje } = await raspuns.json();
+    // Fără istoric, cutia rămâne ascunsă cu totul: un „nimic încă" ar fi un rând care ocupă loc
+    // ca să nu spună nimic. La prima conversație, sertarul arată doar apelul de acum.
+    if (!mesaje || mesaje.length === 0) return;
+
+    els.istoric.hidden = false;
+    if (els.separatorAcum) els.separatorAcum.hidden = false;
+    els.istoric.innerHTML = '';
+    for (const m of mesaje) {
+      const bula = document.createElement('p');
+      bula.className = 'bubble';
+      bula.dataset.role = m.role;
+      if (m.canal) bula.dataset.canal = m.canal;
+      bula.textContent = m.text;
+      // Eticheta e text, nu doar o culoare de chenar: „pe Telegram" se citește și de cineva
+      // care n-ar distinge nuanțele (același principiu ca tăietura de pe microfonul oprit).
+      if (m.canal === 'telegram') {
+        const eticheta = document.createElement('span');
+        eticheta.className = 'canal';
+        eticheta.textContent = 'pe Telegram';
+        bula.appendChild(eticheta);
+      }
+      els.istoric.appendChild(bula);
+    }
+    // Sertarul se deschide pe ce s-a vorbit ultima dată, nu pe începutul de acum o săptămână.
+    els.istoric.scrollTop = els.istoric.scrollHeight;
+  } catch (err) {
+    // Un rând discret ÎN container, niciodată pe linia de status: acolo stau erorile apelului,
+    // iar un istoric nereușit n-are voie să acopere „Te ascult.".
+    els.istoric.hidden = false;
+    els.istoric.innerHTML = '<p class="note">Nu am putut încărca ce s-a vorbit înainte.</p>';
+  }
+}
+
+els.maner.addEventListener('click', () => setMeniu(true));
+els.inchideMeniu.addEventListener('click', () => setMeniu(false));
+els.voal.addEventListener('click', () => setMeniu(false));
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') setMeniu(false);
 });
 
-try {
-  if (localStorage.getItem(PANOU_KEY) === '0') setPanou(false);
-} catch {
-  /* rămâne deschis, valoarea implicită */
-}
+// Tragere dinspre marginea din dreapta: gestul pe care îl încearcă oricine, înainte să caute
+// un buton. Doar pe orizontală și doar dacă pornește din ultimii 28 de pixeli — altfel ar
+// prinde și derulările obișnuite din transcriere.
+let atingereX = null;
+let atingereY = null;
+document.addEventListener(
+  'touchstart',
+  (ev) => {
+    const t = ev.touches[0];
+    atingereX = window.innerWidth - t.clientX < 28 ? t.clientX : null;
+    atingereY = t.clientY;
+  },
+  { passive: true }
+);
+document.addEventListener(
+  'touchmove',
+  (ev) => {
+    if (atingereX === null) return;
+    const t = ev.touches[0];
+    const dx = atingereX - t.clientX;
+    const dy = Math.abs(atingereY - t.clientY);
+    if (dx > 40 && dy < 50) {
+      setMeniu(true);
+      atingereX = null;
+    }
+  },
+  { passive: true }
+);
 
 els.mut.addEventListener('click', () => setMut(!mut));
 
 els.call.addEventListener('click', () => {
+  if (inCall) endCall();
+  else startCall();
+  setMeniu(false);
+});
+
+// Orbul ESTE butonul de apel: mic și cenușiu îl atingi ca să sune, mare și colorat îl atingi
+// ca să închizi. (Pe telefon mai e o cale, fără atingere deloc: „Jarvis" — vezi mai jos.)
+els.orbButon.addEventListener('click', () => {
   if (inCall) endCall();
   else startCall();
 });
@@ -557,7 +877,7 @@ function cheieVapid(base64url) {
 async function pregatesteNotificari(registration, token) {
   if (!('PushManager' in window) || !VAPID_PUBLIC_KEY) return;
 
-  // Permisiunea se cere DUPĂ ce utilizatorul a apăsat „Sună" — nu la încărcarea paginii.
+  // Permisiunea se cere DUPĂ ce apelul a pornit — nu la încărcarea paginii.
   // Cerută din senin, la intrare, e reflexul tuturor să o refuze, iar Android nu mai întreabă
   // a doua oară.
   if (Notification.permission === 'denied') return;
@@ -728,6 +1048,92 @@ async function pornesteVeghea() {
   }
 }
 
+// ─── WhatsApp (doar în aplicația nativă) ─────────────────────────────────────────────────
+//
+// Citirea și trimiterea se fac ÎN TELEFON, prin notificări (vezi WhatsAppListener.java). Aici
+// nu e nimic din toate astea — doar comutatorul care duce la Setări, fiindcă accesul la
+// notificări nu poate fi cerut printr-un dialog, ci doar acordat manual.
+
+async function pregatesteWhatsapp() {
+  const plugin = pluginApel();
+  if (!plugin || !plugin.stareWhatsapp) return; // pe web, linia rămâne ascunsă
+  els.whatsapp.hidden = false;
+  try {
+    const stare = await plugin.stareWhatsapp();
+    const areAcces = !!stare?.acces;
+    // Când merge, e o simplă informație — inertă, fără nimic de apăsat. Devine apăsabilă doar
+    // când lipsește accesul, fiindcă atunci chiar are unde să te ducă (Setări).
+    els.whatsapp.disabled = areAcces;
+    els.whatsapp.textContent = areAcces
+      ? 'WhatsApp — integrat'
+      : 'WhatsApp — atinge ca să dai acces la notificări';
+  } catch {
+    /* pluginul e mai vechi decât pagina; linia rămâne pe „dă acces" */
+    els.whatsapp.disabled = false;
+    els.whatsapp.textContent = 'WhatsApp — atinge ca să dai acces la notificări';
+  }
+}
+
+els.whatsapp.addEventListener('click', async () => {
+  const plugin = pluginApel();
+  if (!plugin || !plugin.cereAccesWhatsapp) return;
+  // Starea se reverifică la revenirea în aplicație (evenimentul 'resume' de mai jos) — de aici
+  // nu avem cum ști ce a apăsat omul în Setări.
+  await plugin.cereAccesWhatsapp().catch(() => {});
+});
+
+pregatesteWhatsapp();
+
+// ─── Microfonul refuzat ──────────────────────────────────────────────────────────────────
+//
+// Odată refuzată, permisiunea de microfon NU se mai poate cere printr-un dialog: Android (ca și
+// browserul) întoarce refuzul instant, fără să întrebe pe nimeni. Deci apăsarea orbului repetă
+// la nesfârșit același mesaj și nu există nicio cale înainte — exact situația de la accesul la
+// notificări (regula 49), și se rezolvă la fel: o linie care duce în Setări.
+//
+// Pe web nu există unde duce (fiecare browser își ține permisiunile în alt loc), deci acolo
+// linia rămâne ascunsă, iar textul de status spune ce e de apăsat.
+
+function arataAccesulLaMicrofon(areAcces) {
+  if (!els.microfonAcces) return;
+  const plugin = pluginApel();
+  if (!plugin || !plugin.deschideSetarileAplicatiei) return; // pe web sau pe un APK vechi
+
+  // Linia apare DOAR după un refuz. Spre deosebire de cea de WhatsApp — unde cerința a fost
+  // „vreau să știu că e integrat" — nimeni n-a cerut să vadă în sertar că microfonul merge;
+  // un rând care spune că totul e în regulă e doar zgomot.
+  if (areAcces && els.microfonAcces.hidden) return;
+
+  els.microfonAcces.hidden = false;
+  els.microfonAcces.disabled = areAcces;
+  els.microfonAcces.textContent = areAcces
+    ? 'Microfon — are acces'
+    : 'Microfon — atinge ca să dai acces din Setări';
+}
+
+if (els.microfonAcces) {
+  els.microfonAcces.addEventListener('click', async () => {
+    const plugin = pluginApel();
+    if (!plugin || !plugin.deschideSetarileAplicatiei) return;
+    await plugin.deschideSetarileAplicatiei().catch(() => {});
+  });
+}
+
+// ─── Haptic ──────────────────────────────────────────────────────────────────────────────
+//
+// Confirmarea că apelul chiar a pornit, când telefonul e în buzunar sau în suport, în mașină.
+// Două tipare diferite, nu unul: un bâzâit identic ar spune că S-A ÎNTÂMPLAT ceva, nu CE s-a
+// întâmplat — iar tot rostul lui e să știi starea fără să te uiți la ecran.
+function vibra(tip) {
+  const plugin = pluginApel();
+  if (plugin && plugin.vibra) {
+    plugin.vibra({ tip }).catch(() => {});
+    return;
+  }
+  // Retragere pe web (absentă tăcut pe iOS, unde `navigator.vibrate` nu există).
+  if (navigator.vibrate) navigator.vibrate(tip === 'inceput' ? 40 : [25, 60, 25]);
+}
+
 // Deschisă de „Jarvis" sau de un apel de pe ecranul de blocare → sună direct, fără apăsare.
 async function deschisaPentruApel() {
   const plugin = pluginApel();
@@ -744,6 +1150,7 @@ if (window.Capacitor) {
   // Revenirea în aplicație după ce „Jarvis" a deschis-o din fundal: steagul se citește și
   // atunci, nu doar la pornirea la rece.
   document.addEventListener('resume', async () => {
+    pregatesteWhatsapp();
     if (!inCall && (await deschisaPentruApel())) startCall();
   });
 }

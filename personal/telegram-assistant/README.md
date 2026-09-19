@@ -22,6 +22,8 @@ npm install
 | `ANTHROPIC_API_KEY` | consola Anthropic |
 | `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET` | Google Cloud Console → Credentials → OAuth client ID (tip Desktop app) — **separat** de `GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET` din `worker/` |
 | `GOOGLE_CALENDAR_REFRESH_TOKEN` | OAuth 2.0 Playground (vezi mai jos) |
+| `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | developer.spotify.com → Create app (vezi mai jos) |
+| `SPOTIFY_REFRESH_TOKEN` | ruta `/spotify/auth` a Worker-ului (vezi mai jos) |
 | `ALLOWED_TELEGRAM_USER_ID` | ID-ul tău numeric de Telegram (ex. via `@userinfobot`) |
 | `INTERNAL_ADMIN_SECRET` | generat de tine — protejează ruta internă `/internal/run-daily-agenda` |
 | `PLANNING_CENTER_APP_ID` / `PLANNING_CENTER_SECRET` | Personal Access Token din Planning Center (vezi mai jos) |
@@ -54,6 +56,50 @@ nu secrete.
    pe care vrei să-l folosești pentru calendar → consimte.
 6. **Exchange authorization code for tokens** → copiază `refresh_token` →
    `wrangler secret put GOOGLE_CALENDAR_REFRESH_TOKEN`.
+
+## Configurare Gmail — citire + ciorne (o singură dată)
+
+Jarvis poate **citi** mailul și poate **scrie ciorne**. Nu poate trimite, și asta nu e o setare
+care se poate schimba din greșeală: nu există nicio unealtă care să cheme `messages/send` (vezi
+regula 61 din `CLAUDE.md`).
+
+> **Fă pașii ăștia ÎNAINTE de a te baza pe funcție.** `gmail.readonly` e un scope **restricted**,
+> o categorie peste `calendar.events` (care e doar *sensitive*). Dacă ecranul de consimțământ e
+> în modul **Testing**, refresh tokenurile expiră în **7 zile** — deci autorizează, și
+> verifică peste o săptămână că încă merge, înainte să te obișnuiești cu ea.
+
+1. Google Cloud Console (același proiect) → **APIs & Services → Library** → activează **Gmail API**.
+2. **OAuth consent screen** → adaugă scope-urile `https://www.googleapis.com/auth/gmail.readonly`
+   și `https://www.googleapis.com/auth/gmail.compose`.
+3. **Credentials** → poți refolosi clientul Web creat pentru Calendar (are deja
+   `https://developers.google.com/oauthplayground` la redirect URIs).
+4. [OAuth 2.0 Playground](https://developers.google.com/oauthplayground) → ⚙️ → "Use your own
+   OAuth credentials" → Client ID/Secret → selectează **doar cele două scope-uri de Gmail** →
+   **Authorize APIs** → **Exchange authorization code for tokens** → copiază `refresh_token`.
+5. ```bash
+   wrangler secret put GMAIL_CLIENT_ID       # aceeași valoare ca la Calendar
+   wrangler secret put GMAIL_CLIENT_SECRET   # aceeași valoare ca la Calendar
+   wrangler secret put GMAIL_REFRESH_TOKEN   # cel NOU, de la pasul 4
+   ```
+   `GMAIL_FROM_ADDRESS` e deja în `[vars]` din `wrangler.toml`.
+
+**De ce un refresh token separat și nu cel de Calendar, reautorizat cu scope-uri în plus:** un
+403 de Gmail (API neactivat, scope neacordat) golește cache-ul de token și, dacă tokenul ar fi
+comun, ar cădea și calendarul. În plus, reautorizarea ar însemna înlocuirea unui secret care
+funcționează — dacă iese prost, pierzi calendarul; așa, Gmail se adaugă și se testează cu
+calendarul neatins.
+
+**Prima verificare, înainte de orice altceva:** trimite pe Telegram „ce am necitit azi?" și
+uită-te în `wrangler tail`. Linia trebuie să fie `TOOL_CALL rezumat_inbox (conținut
+neînregistrat)`. Dacă vezi corpuri de email în log, oprește-te — logurile Cloudflare nu se mai
+pot retrage.
+
+**Verificarea că nu se poate trimite** (de rulat oricând, mai ales după ce cineva atinge
+`src/tools/gmail.js`) — trebuie să întoarcă zero rezultate:
+
+```bash
+grep -rn "messages/send" src/
+```
 
 ## Configurare Planning Center API (o singură dată)
 
@@ -109,6 +155,58 @@ redeploy dacă id-urile nu s-au schimbat.
 **Securitate:** `ALEXA_REFRESH_TOKEN` = acces la contul Amazon. Stă doar ca Wrangler secret.
 Revocare: amazon.com → Account → *Login & security* / *Manage Your Content and Devices →
 Devices* → dezînregistrează dispozitivul „ioBroker Alexa2".
+
+## Spotify (o singură dată)
+
+**Ce NU mai merge, și nu din vina codului:** crearea de playlisturi și orice altă SCRIERE. Din
+15 mai 2025, Spotify permite scrierea doar aplicațiilor în „Extended Quota", care cere firmă
+înregistrată și 250.000 de utilizatori lunari. O aplicație personală primește 403 pe
+`POST /users/:id/playlists`, chiar și în contul propriu, chiar și cu Premium. Unealta
+`spotify_creeaza_playlist` alege totuși piesele și le întoarce cu linkuri, ca să le adaugi
+manual — vezi regula 50b-bis din CLAUDE.md.
+
+Ce merge: **căutarea** și **controlul redării** (pornit/pauză/următoarea/volum) — ultimul cere
+Premium și un Spotify deschis undeva.
+
+1. [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) → **Create app**.
+   Nume: orice (ex. „Jarvis"). La **Redirect URI** pune EXACT:
+
+   ```
+   https://telegram-assistant.iarisgabor.workers.dev/spotify/callback
+   ```
+
+   Bifează **Web API**. Salvează, apoi copiază Client ID și Client Secret.
+
+2. Pune-le ca secrete și fă deploy:
+
+   ```bash
+   npx wrangler secret put SPOTIFY_CLIENT_ID
+   npx wrangler secret put SPOTIFY_CLIENT_SECRET
+   npx wrangler deploy
+   ```
+
+3. Deschide în browser (`<VOICE_ACCESS_TOKEN>` e cheia de acces vocal, aceeași care stă în
+   `app/android/app/src/main/res/values/token.xml`):
+
+   ```
+   https://telegram-assistant.iarisgabor.workers.dev/spotify/auth?token=<VOICE_ACCESS_TOKEN>
+   ```
+
+   Apeși **Agree** în pagina Spotify. Atât — refresh token-ul se salvează singur, iar pagina de
+   întoarcere îți spune doar că e gata. Nu ai nimic de copiat.
+
+Dacă vrei vreodată să reautorizezi (ai schimbat contul, ai retras accesul din Spotify), reiei
+pasul 3; noul token îl înlocuiește pe cel vechi.
+
+**Redarea are nevoie de un Spotify deschis undeva** (telefon, calculator, boxă). Dacă nu e
+niciunul, uneltele întorc „niciun dispozitiv activ", iar asistentul îl poate deschide singur
+pe telefon (`spotify_deschide_pe_telefon`).
+
+> **Dacă adaugi vreodată un scope nou** în lista din `src/index.js`: scope-urile se fixează în
+> clipa autorizării, deci refresh token-ul vechi NU îl va avea niciodată. Trebuie redeschis
+> `/spotify/auth?token=...` o dată. Un scope lipsă se vede abia ca un 403 la prima cerere care
+> are nevoie de el — de exemplu `user-read-private`, fără care `/me` întoarce răspuns fără
+> `product` și `country`, iar un cont Premium arată identic cu unul gratuit.
 
 ## Deploy și înregistrare webhook
 
@@ -227,6 +325,20 @@ ca un apel adevărat; ultima garantează că mesajul nu se pierde.
 („subscription expired") înseamnă că semnătura e bună și doar abonamentul e fals; un **401/403**
 înseamnă că semnătura e greșită.
 
+## Apeluri telefonice prin voce („sună-l pe tata")
+
+Nu cere niciun secret și nicio configurare pe server — apelul îl dă telefonul, prin unealta
+`suna_pe_telefon`. Cere însă **două permisiuni Android**, pe care aplicația le cere singură la
+prima pornire după instalare:
+
+- `CALL_PHONE` — apelul pleacă singur. **Fără ea nu e o eroare:** se deschide tastatura cu
+  numărul scris și apeși tu, iar asistentul spune asta explicit, în loc să pretindă că a sunat.
+- `READ_CONTACTS` — căutarea numelui în agendă. Căutarea se face **pe telefon**; spre server
+  pleacă doar numele rostit, iar înapoi vine doar contactul ales. Fără ea, îi poți da doar numere.
+
+Dacă le-ai refuzat din greșeală: Setări → Aplicații → Jarvis → Permisiuni. Restul asistentului
+funcționează întreg fără ele.
+
 ## Aplicația Android
 
 Nu are nevoie de Android Studio. Uneltele stau în `D:\android-tools` (**nu** în repo):
@@ -272,6 +384,9 @@ adb logcat -d -s VoiceService:V Capacitor/Plugin:V AndroidRuntime:E
 
 ## Unelte viitoare (nu sunt construite acum)
 
-- `send_email` — portabil aproape identic din `worker/index.js` (`getGmailAccessToken`/`sendGmailEmail`).
-- `create_reminder` — folosește `this.schedule(...)` pe `AssistantAgent`, fără o clasă `Agent` nouă.
 - `find_free_slot` — același helper OAuth, folosind `find_calendar_events` (deja construit) ca bază.
+
+**Trimiterea de emailuri nu e pe lista asta, și nu din lipsă de timp.** Jarvis scrie ciorne
+(`creeaza_ciorna`), butonul „Trimite" rămâne al omului — vezi regula 61 din `CLAUDE.md`.
+`create_reminder` a fost construit între timp, sub altă formă: mementourile automate înainte de
+fiecare eveniment din calendar (regula 65) plus `programeaza_apel` pentru cele cerute anume.

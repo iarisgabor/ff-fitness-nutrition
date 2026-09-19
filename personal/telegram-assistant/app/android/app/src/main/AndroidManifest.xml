@@ -36,6 +36,19 @@
             android:exported="false"
             android:foregroundServiceType="microphone|mediaPlayback" />
 
+        <!-- WhatsApp, prin notificări (vezi WhatsAppListener.java). Android pornește singur
+             serviciul odată ce i se dă „Acces la notificări" din Setări — permisiunea nu poate
+             fi cerută printr-un dialog, e prea sensibilă pentru asta. -->
+        <service
+            android:name=".WhatsAppListener"
+            android:exported="true"
+            android:label="Jarvis — mesaje"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -47,6 +60,15 @@
         </provider>
     </application>
 
+    <!-- De la Android 11, o aplicație nu mai vede ce altele sunt instalate decât dacă le
+         numește. Fără asta, intenția către WhatsApp (mesaj nou, pregătit) nu găsește nimic și
+         s-ar deschide browserul în locul lui. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <package android:name="com.spotify.music" />
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -54,6 +76,11 @@
     <!-- Microfonul îi aparține acum APLICAȚIEI, nu browserului. Asta e diferența de fond față
          de varianta TWA: acolo captura rula în procesul Chrome, de-aia murea la ieșire. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Apeluri date prin voce („sună-l pe tata"). CALL_PHONE porneste apelul singur; fara ea se
+         deschide doar tastatura cu numarul scris, si apesi tu. READ_CONTACTS e pentru cautarea
+         numelui in agenda — cautarea se face PE TELEFON, agenda nu pleaca spre server. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -72,5 +99,9 @@
          direct în vorbă. Se acordă o singură dată, manual, din Setări. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Confirmarea tactilă la pornirea și închiderea unui apel (VoicePlugin.vibra). Permisiune
+         normală: se acordă la instalare, fără dialog și fără cerere la rulare. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
 </manifest>

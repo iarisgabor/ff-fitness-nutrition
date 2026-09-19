@@ -1,6 +1,6 @@
 {
   "appId": "dev.workers.iarisgabor.asistentnativ",
-  "appName": "Asistent",
+  "appName": "Jarvis",
   "webDir": "../public/voce",
   "android": {
     "allowMixedContent": false

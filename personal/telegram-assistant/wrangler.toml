@@ -38,6 +38,12 @@ directory = "./public"
 DEFAULT_TIMEZONE = "Europe/Bucharest"
 GOOGLE_CALENDAR_ID = "primary"
 DAILY_AGENDA_HOUR = "20"
+# Cu câte minute înainte de un eveniment sună mementoul pe telefon (src/agent.js). Doar pentru
+# evenimentele cu oră — cele „toată ziua" rămân în agenda de seara.
+MEMENTO_MINUTE = "30"
+# Adresa de pe care se scriu ciornele de email (src/tools/gmail.js). Nu e secretă — e chiar
+# adresa contului autorizat, iar Gmail o pune oricum singur dacă lipsește.
+GMAIL_FROM_ADDRESS = "iaris.gabor28@gmail.com"
 # Aer condiționat prin API-ul neoficial Alexa (src/alexa.js). Contul Amazon e în regiunea NA,
 # deci API-ul e pe na-api-alexa.amazon.de, chiar dacă logarea s-a făcut pe amazon.de.
 # Id-urile aparatului „AC" (skill EWPE Smart Home) vin din getSmarthomeDevicesV2 — vezi README.
@@ -82,5 +88,13 @@ TWA_FINGERPRINT = "B0:1C:96:C1:2E:0E:83:E3:E3:6B:B3:75:F8:CD:0F:B6:09:E0:D9:99:A
 #   wrangler secret put ALEXA_REFRESH_TOKEN      (aer condiționat — acces la contul Amazon, vezi README)
 #   wrangler secret put GEMINI_API_KEY           (apel vocal — Google AI Studio)
 #   wrangler secret put VOICE_ACCESS_TOKEN       (apel vocal — șir aleatoriu, îl știe doar PWA-ul)
+#   wrangler secret put SPOTIFY_CLIENT_ID      (Spotify — developer.spotify.com, vezi README)
+#   wrangler secret put SPOTIFY_CLIENT_SECRET
+#   wrangler secret put SPOTIFY_REFRESH_TOKEN   (din ruta /spotify/auth a Worker-ului)
 #   wrangler secret put ELEVENLABS_API_KEY       (opțional — vocale în Telegram, vezi src/speech.js)
 #   wrangler secret put ELEVENLABS_VOICE_ID      (opțional — aceeași)
+#   wrangler secret put GMAIL_CLIENT_ID          (Gmail — citire + ciorne, vezi README)
+#   wrangler secret put GMAIL_CLIENT_SECRET
+#   wrangler secret put GMAIL_REFRESH_TOKEN      (refresh token PROPRIU, cu scope-urile de Gmail —
+#                                                 separat de cel de Calendar, dinadins: un 403 de
+#                                                 Gmail n-are voie să doboare calendarul)

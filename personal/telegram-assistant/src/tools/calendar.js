@@ -292,9 +292,67 @@ export const DELETE_CALENDAR_EVENT_TOOL = {
   },
 };
 
+/**
+ * Un singur eveniment, resursa întreagă așa cum o dă Google.
+ *
+ * Două locuri o folosesc, pentru același motiv: adevărul despre un eveniment se află doar
+ * întrebând, în clipa în care contează.
+ *  - `deleteCalendarEvent` — ca să existe ce reface, dacă ștergerea a fost o greșeală;
+ *  - mementourile din agent.js — ca să nu anunțe un eveniment mutat sau șters între timp.
+ *
+ * Întoarce `null` la 404/410 (nu există sau a fost șters), fiindcă amândoi apelanții tratează
+ * absența ca pe un răspuns, nu ca pe o defecțiune.
+ */
+export async function getCalendarEvent(env, eventId) {
+  const accessToken = await getGoogleCalendarAccessToken(env);
+  const calendarId = encodeURIComponent(env.GOOGLE_CALENDAR_ID || 'primary');
+
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(eventId)}`,
+    { headers: { authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (res.status === 404 || res.status === 410) return null;
+
+  if (!res.ok) {
+    let detail = '';
+    try { detail = await res.text(); } catch (err) { /* ignore */ }
+    const err = new Error(`Calendar event get failed (${res.status}): ${detail}`);
+    if (res.status === 401 || res.status === 403) cachedAccessToken = null;
+    err.code = res.status === 401 || res.status === 403 ? 'GOOGLE_AUTH_FAILED' : 'CALENDAR_LIST_FAILED';
+    throw err;
+  }
+
+  return res.json();
+}
+
+// Câmpurile pe care Google le dă înapoi la citire dar le REFUZĂ (sau le rescrie singur) la
+// recreare. Restul resursei se păstrează întreagă: orice listă de câmpuri „importante" aleasă cu
+// mâna pierde tăcut exact lucrul la care ținea omul — un invitat, o recurență, o notificare.
+const CAMPURI_NEREFOLOSIBILE = [
+  'id', 'etag', 'iCalUID', 'sequence', 'htmlLink', 'created', 'updated', 'creator', 'organizer',
+  'hangoutLink', 'conferenceData', 'eventType',
+];
+
+function curataPentruRefacere(eveniment) {
+  if (!eveniment || typeof eveniment !== 'object') return null;
+  const copie = { ...eveniment };
+  for (const camp of CAMPURI_NEREFOLOSIBILE) delete copie[camp];
+  return copie;
+}
+
 export async function deleteCalendarEvent(env, input) {
   const accessToken = await getGoogleCalendarAccessToken(env);
   const calendarId = encodeURIComponent(env.GOOGLE_CALENDAR_ID || 'primary');
+
+  // Citit ÎNAINTE de ștergere: după, nu mai există de unde. Dacă citirea eșuează, ștergerea merge
+  // înainte — omul a cerut o ștergere, nu o copie de siguranță — dar atunci nu e nimic de refăcut.
+  let salvat = null;
+  try {
+    salvat = curataPentruRefacere(await getCalendarEvent(env, input.event_id));
+  } catch (err) {
+    console.error('CALENDAR_BACKUP_ESUAT', String(err?.message || err));
+  }
 
   const res = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(input.event_id)}`,
@@ -315,24 +373,62 @@ export async function deleteCalendarEvent(env, input) {
     throw err;
   }
 
-  return { ok: true };
+  // `sters` nu e pentru model (n-are ce face cu resursa brută), ci pentru jurnal — executeTool o
+  // ia de aici și o pune în `date_refacere`. Vezi tools/jurnal.js.
+  return { ok: true, sters: salvat };
 }
 
-// Folosit de agenda zilnică programată (agent.js) — citește evenimentele dintr-o zi
-// calendaristică (YYYY-MM-DD), interpretată în DEFAULT_TIMEZONE.
-export async function listEventsForDate(env, isoDate) {
+/**
+ * Recreează un eveniment din ce s-a salvat la ștergere. Folosit de unealta `refa_actiunea`.
+ *
+ * Evenimentul nou are ID NOU — e o copie fidelă, nu o înviere. Consecința de spus omului: o
+ * instanță ștearsă dintr-o serie recurentă revine ca eveniment de sine stătător.
+ */
+export async function recreateCalendarEvent(env, resursa) {
+  const accessToken = await getGoogleCalendarAccessToken(env);
+  const calendarId = encodeURIComponent(env.GOOGLE_CALENDAR_ID || 'primary');
+
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`,
+    {
+      method: 'POST',
+      headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify(resursa),
+    }
+  );
+
+  if (!res.ok) {
+    let detail = '';
+    try { detail = await res.text(); } catch (err) { /* ignore */ }
+    const err = new Error(`Calendar event recreate failed (${res.status}): ${detail}`);
+    if (res.status === 401 || res.status === 403) cachedAccessToken = null;
+    err.code = res.status === 401 || res.status === 403 ? 'GOOGLE_AUTH_FAILED' : 'CALENDAR_INSERT_FAILED';
+    throw err;
+  }
+
+  const data = await res.json();
+  return { ok: true, id: data.id, htmlLink: data.htmlLink };
+}
+
+/**
+ * Evenimentele dintr-un interval oarecare, dat ca `Date`-uri reale.
+ *
+ * Există ca funcție separată (și nu ca a doua variantă de `listEventsForDate`) fiindcă
+ * mementourile din agent.js mătură o fereastră care trece peste miezul nopții: la 23:50, „în
+ * următoarele 55 de minute" înseamnă două zile calendaristice. O funcție „pe o zi" ar fi cerut
+ * două apeluri și o îmbinare, de fiecare dată.
+ *
+ * Întoarce și `id`, și `location` — de care agenda zilnică n-are nevoie, dar mementoul are:
+ * id-ul ca să lege alarma de eveniment, locația ca să scrie unde e.
+ */
+export async function listEventsBetween(env, start, end) {
   const accessToken = await getGoogleCalendarAccessToken(env);
   const timeZone = env.DEFAULT_TIMEZONE || 'Europe/Bucharest';
   const calendarId = encodeURIComponent(env.GOOGLE_CALENDAR_ID || 'primary');
 
-  // events.list cere timeMin/timeMax cu offset explicit (spre deosebire de events.insert, care
-  // acceptă oră locală "naivă" + câmp timeZone separat) — de-aia convertim explicit în UTC aici.
-  const timeMin = localDateTimeToUtc(isoDate, '00:00:00', timeZone);
-  const timeMax = localDateTimeToUtc(isoDate, '23:59:59', timeZone);
-
   const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`);
-  url.searchParams.set('timeMin', timeMin.toISOString());
-  url.searchParams.set('timeMax', timeMax.toISOString());
+  url.searchParams.set('timeMin', start.toISOString());
+  url.searchParams.set('timeMax', end.toISOString());
   url.searchParams.set('singleEvents', 'true');
   url.searchParams.set('orderBy', 'startTime');
   url.searchParams.set('timeZone', timeZone);
@@ -352,9 +448,25 @@ export async function listEventsForDate(env, isoDate) {
 
   const data = await res.json();
   return (data.items || []).map((item) => ({
+    id: item.id,
     title: item.summary || '(fără titlu)',
     start: item.start?.dateTime || item.start?.date,
     end: item.end?.dateTime || item.end?.date,
+    location: item.location || '',
     allDay: !item.start?.dateTime,
   }));
+}
+
+// Folosit de agenda zilnică programată (agent.js) — citește evenimentele dintr-o zi
+// calendaristică (YYYY-MM-DD), interpretată în DEFAULT_TIMEZONE.
+export async function listEventsForDate(env, isoDate) {
+  const timeZone = env.DEFAULT_TIMEZONE || 'Europe/Bucharest';
+
+  // events.list cere timeMin/timeMax cu offset explicit (spre deosebire de events.insert, care
+  // acceptă oră locală "naivă" + câmp timeZone separat) — de-aia convertim explicit în UTC aici.
+  return listEventsBetween(
+    env,
+    localDateTimeToUtc(isoDate, '00:00:00', timeZone),
+    localDateTimeToUtc(isoDate, '23:59:59', timeZone)
+  );
 }

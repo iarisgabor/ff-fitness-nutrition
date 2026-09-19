@@ -32,6 +32,14 @@ const MAX_RECONECTARI = 5;
 // Câte mesaje din istoric se pun în context la începutul apelului. Audio-ul consumă repede
 // fereastra de context, deci nu exagerăm — 20 e cât ține și bucla de pe Telegram.
 const ISTORIC_VOCE = 20;
+// Cât lăsăm o unealtă să lucreze înainte să-i spunem modelului că nu a mers. Fără plafon, o
+// cerere blocată (Planning Center lent, Alexa care nu răspunde) ține apelul mut la nesfârșit:
+// modelul așteaptă rezultatul și nu mai zice nimic, iar omul crede că a căzut legătura.
+const TIMP_MAXIM_UNEALTA_MS = 25000;
+// Căutarea pe net face mai multe interogări și citește pagini — 25 de secunde o taie exact
+// când era pe cale să răspundă. Are termenul ei, ceva mai larg decât plafonul din unealtă
+// (35 s), ca să apuce să întoarcă EA eroarea, cu mesajul ei, în loc să fie retezată aici.
+const TERMENE_SPECIALE = { cauta_pe_net: 55000 };
 
 function base64FromArrayBuffer(buffer) {
   const bytes = new Uint8Array(buffer);
@@ -49,6 +57,20 @@ function arrayBufferFromBase64(base64) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
+}
+
+// Un termen peste o promisiune. Eroarea spune numele uneltei: modelul o citește și o poate
+// explica omului („Planning Center nu răspunde"), în loc de un „a eșuat" fără subiect.
+function cuTermen(promisiune, nume, ms = TIMP_MAXIM_UNEALTA_MS) {
+  return Promise.race([
+    promisiune,
+    new Promise((_, respinge) =>
+      setTimeout(
+        () => respinge(new Error(`${nume} nu a răspuns în ${Math.round(ms / 1000)} secunde.`)),
+        ms
+      )
+    ),
+  ]);
 }
 
 export class VoiceSession extends DurableObject {
@@ -70,6 +92,11 @@ export class VoiceSession extends DurableObject {
     this.reconectari = 0;
     this.reconectare = false;
     this.istoricIncarcat = false;
+    // `null` = încă necerută. După prima cerere rămâne un string (eventual gol) pentru tot
+    // apelul: faptele nu se schimbă la mijlocul unei conversații, iar o reconectare are altceva
+    // mai bun de făcut decât încă un drum până la agent, exact în secunda în care omul așteaptă
+    // să se repare legătura.
+    this.memorie = null;
   }
 
   async fetch(request) {
@@ -156,8 +183,7 @@ export class VoiceSession extends DurableObject {
       // asta mesajul nu ajunge niciodată în istoric: următorul apel ar ține minte doar ce a
       // răspuns asistentul, fără să știe la ce.
       this.ctx.waitUntil(
-        this.getAgent()
-          .then((agent) => agent.saveVoiceTranscript('user', message.text))
+        this.cuAgent((agent) => agent.saveVoiceTranscript('user', message.text), 'text')
           .catch((err) => console.error('VOICE_TEXT_SAVE_ERROR', redactKey(err)))
       );
       return;
@@ -186,6 +212,11 @@ export class VoiceSession extends DurableObject {
       this.shutdown(CLOSE_CONFIG, 'lipsește cheia');
       return;
     }
+
+    // Memoria se cere ÎNAINTE de a deschide socketul, nu între deschidere și `setup`: acolo
+    // orice await e timp în care Gemini așteaptă primul mesaj, iar un agent care răspunde greu
+    // ar întârzia tot apelul.
+    await this.incarcaMemorie();
 
     // În Workers NU există constructorul `new WebSocket(url)` pentru ieșire — conexiunea se
     // deschide cu fetch + Upgrade, iar socket-ul vine pe `response.webSocket`.
@@ -234,6 +265,7 @@ export class VoiceSession extends DurableObject {
         buildSetupMessage(this.env, {
           voiceName: this.voiceName,
           resumeHandle: this.resumeHandle,
+          memorie: this.memorie,
         })
       )
     );
@@ -391,8 +423,7 @@ export class VoiceSession extends DurableObject {
     const responses = await Promise.all(
       calls.map(async (call) => {
         try {
-          const agent = await this.getAgent();
-          const result = await agent.runVoiceTool(call.name, call.args || {});
+          const result = await this.ruleazaUnealta(call.name, call.args || {});
           return buildFunctionResponse(call, result);
         } catch (err) {
           console.error('VOICE_TOOL_ERROR', call.name, redactKey(err));
@@ -403,6 +434,44 @@ export class VoiceSession extends DurableObject {
     );
 
     this.toGemini(buildToolResponseMessage(responses));
+
+    // Capătul de ieșire pentru starea „lucrează" a orbului. Fără el, ecranul ar afla că uneltele
+    // s-au terminat doar când începe Gemini să vorbească — sau, dacă unealta a eșuat tăcut,
+    // deloc. Un client vechi (APK neactualizat) ignoră tipul ăsta de mesaj fără eroare.
+    this.toClient({ type: 'tools_gata', names: calls.map((c) => c.name) });
+  }
+
+  /**
+   * O unealtă, executată prin RPC pe agent, cu DOUĂ plase de siguranță — amândouă puse după ce
+   * s-a întâmplat asta în producție: la jumătatea unui apel, TOATE uneltele au început să
+   * răspundă cu eroare („nu pot să văd în Planning Center", „nu pot face notificarea"), iar
+   * închiderea și redeschiderea apelului a reparat totul.
+   *
+   * Explicația e că nu uneltele cădeau, ci puntea către agent: stub-ul obținut cu
+   * `getAgentByName` e un obiect de I/O legat de contextul cererii în care a fost creat. Un
+   * apel vocal trăiește minute întregi, iar apelurile de unelte vin din evenimente de socket,
+   * în alt context — de unde „Cannot perform I/O on behalf of a different request". Punctul
+   * comun explică de ce picau deodată și unelte care n-au nicio legătură între ele.
+   *
+   * De-aia: la prima eroare aruncăm stub-ul și încercăm o singură dată cu unul proaspăt. Dacă
+   * și a doua încercare eșuează, atunci chiar unealta e de vină și modelul primește eroarea ei.
+   */
+  async ruleazaUnealta(name, args) {
+    const termen = TERMENE_SPECIALE[name] || TIMP_MAXIM_UNEALTA_MS;
+    return this.cuAgent((agent) => cuTermen(agent.runVoiceTool(name, args), name, termen), name);
+  }
+
+  // Tiparul de mai sus, pentru TOT ce atinge agentul — nu doar uneltele. Salvarea transcrierii
+  // și încărcarea istoricului treceau prin același stub și cădeau la fel de tăcut; acolo se
+  // pierdea memoria apelului, ceea ce se observă abia a doua zi.
+  async cuAgent(actiune, eticheta) {
+    try {
+      return await actiune(await this.getAgent());
+    } catch (err) {
+      console.error('VOICE_AGENT_RETRY', eticheta, redactKey(err));
+      // Stub nou, din contextul de ACUM. E singurul lucru care se schimbă la reîncercare.
+      return actiune(await this.getAgent(true));
+    }
   }
 
   // Conversațiile anterioare, puse în context la începutul apelului. Fără asta, fiecare apel ar
@@ -410,8 +479,7 @@ export class VoiceSession extends DurableObject {
   async incarcaIstoric() {
     this.istoricIncarcat = true;
     try {
-      const agent = await this.getAgent();
-      const rows = await agent.getRecentHistory(ISTORIC_VOCE);
+      const rows = await this.cuAgent((agent) => agent.getRecentHistory(ISTORIC_VOCE), 'istoric');
       const mesaj = buildHistoryMessage(rows);
       if (mesaj) {
         this.toGemini(mesaj);
@@ -423,9 +491,31 @@ export class VoiceSession extends DurableObject {
     }
   }
 
+  // Ce ține minte Jarvis despre om (fapte + rezumatul conversațiilor vechi). Merge în
+  // `systemInstruction`, nu ca o tură de conversație lângă istoric, și asta contează:
+  // `contextWindowCompression` taie coada veche a contextului într-un apel lung, deci o tură ar
+  // putea dispărea pe la minutul 20 — exact când o conversație lungă are mai multă nevoie de ea.
+  // `systemInstruction` nu se comprimă niciodată.
+  //
+  // Limită acceptată: o faptă reținută ÎN TIMPUL apelului nu ajunge în systemInstruction-ul
+  // apelului curent. Nu se simte — faptul e oricum în conversația din fața lui; la următorul
+  // apel apare.
+  async incarcaMemorie() {
+    if (this.memorie !== null) return this.memorie;
+    try {
+      this.memorie = await this.cuAgent((agent) => agent.textMemorie(), 'memorie');
+    } catch (err) {
+      // Ca și istoricul: memoria e un plus, nu o condiție de pornire a apelului.
+      console.error('VOICE_MEMORIE_EROARE', redactKey(err));
+      this.memorie = '';
+    }
+    return this.memorie;
+  }
+
   // Stub-ul agentului existent, pe ACELAȘI nume ca în Telegram (chat id-ul utilizatorului
   // autorizat) — așa conversația vocală și cea scrisă împart istoricul și starea.
-  async getAgent() {
+  async getAgent(proaspat = false) {
+    if (proaspat) this.agentStub = null;
     if (!this.agentStub) {
       const name = String((this.env.ALLOWED_TELEGRAM_USER_ID || '').trim());
       this.agentStub = await getAgentByName(this.env.ASSISTANT_AGENT, name);
@@ -441,9 +531,10 @@ export class VoiceSession extends DurableObject {
     if (!user && !assistant) return;
 
     try {
-      const agent = await this.getAgent();
-      if (user) await agent.saveVoiceTranscript('user', user);
-      if (assistant) await agent.saveVoiceTranscript('assistant', assistant);
+      await this.cuAgent(async (agent) => {
+        if (user) await agent.saveVoiceTranscript('user', user);
+        if (assistant) await agent.saveVoiceTranscript('assistant', assistant);
+      }, 'transcriere');
     } catch (err) {
       // Istoricul e util, nu esențial — o eroare aici nu întrerupe apelul.
       console.error('VOICE_TRANSCRIPT_SAVE_ERROR', redactKey(err));

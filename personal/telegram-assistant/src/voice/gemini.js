@@ -141,9 +141,14 @@ export function buildSetupMessage(env, options = {}) {
   const setup = {
     model: model.startsWith('models/') ? model : `models/${model}`,
     generationConfig,
+    // Memoria e un `part` separat, ca la Claude un bloc de system separat (vezi anthropic.js) —
+    // aici nu din motive de cache (nu există cache de prompt), ci fiindcă e alt fel de conținut:
+    // promptul e cine ești, memoria e ce știi. `options.memorie` poate lipsi (apel fără agent
+    // disponibil), și atunci partea nu se adaugă deloc.
     systemInstruction: {
       parts: [
         { text: `${buildSystemPrompt(env)}${VOICE_PROMPT_ADDENDUM}\n\n${buildDateContext(env)}` },
+        ...(options.memorie ? [{ text: options.memorie }] : []),
       ],
     },
     tools: [{ functionDeclarations: toFunctionDeclarations() }],

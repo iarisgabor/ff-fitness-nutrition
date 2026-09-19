@@ -3,7 +3,7 @@
 //
 // Ridică VERSIUNE la fiecare schimbare din public/voce/, altfel telefonul rămâne cu varianta veche.
 
-const VERSIUNE = 'voce-v11';
+const VERSIUNE = 'voce-v17';
 const COAJA = [
   './',
   './index.html',
@@ -62,7 +62,7 @@ async function ceruteDeAfisat() {
 self.addEventListener('push', (event) => {
   event.waitUntil(
     ceruteDeAfisat().then((date) =>
-      self.registration.showNotification(date?.titlu || 'Asistent', {
+      self.registration.showNotification(date?.titlu || 'Jarvis', {
         body: date?.text || 'Te caut. Deschide ca să vorbim.',
         //  = poza mare din notificare (color).  = silueta din bara de stare, unde
         // Android păstrează DOAR canalul alfa — o imagine cu fundal iese ca un pătrat gri.
@@ -90,11 +90,36 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Rutele Worker-ului. Răspunsurile lor NU au voie în cache: tokenul de acces călătorește în
+// adresă (pagina nu poate pune headere pe un WebSocket, iar restul rutelor au urmat aceeași
+// formă), deci cheia de cache ar conține chiar cheia de acces, salvată pe disc. Iar `/voice-history`
+// întoarce conversație — exact ce promite comentariul din capul fișierului că nu se stochează.
+//
+// Lista crește odată cu src/index.js. Excepția veche pentru `/voice-ws` n-a fost niciodată o
+// regulă, ci un petic: handler-ul de mai jos prindea ORICE GET.
+const RUTE_SERVER = [
+  '/voice-ws',
+  '/voice-history',
+  '/voice-listen',
+  '/voice-push/',
+  '/whatsapp/',
+  '/spotify/',
+  '/internal/',
+  '/telegram-webhook',
+];
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Apelul propriu-zis nu trece niciodată prin cache.
-  if (event.request.method !== 'GET' || url.pathname === '/voice-ws') return;
+  if (event.request.method !== 'GET') return;
+
+  // În aplicația nativă pagina e servită la https://localhost, deci TOT ce merge spre Worker e
+  // cross-origin. ATENȚIE la soluția care pare evidentă: o listă albă pe `/voce/` ar dezactiva
+  // cache-ul complet în APK, fiindcă acolo coaja e servită din RĂDĂCINA lui localhost
+  // (`webDir: "../public/voce"` din capacitor.config.json).
+  if (url.origin !== self.location.origin) return;
+
+  if (RUTE_SERVER.some((cale) => url.pathname.startsWith(cale))) return;
 
   // Rețeaua întâi (ca o modificare să se vadă imediat), cache doar ca plasă de siguranță.
   event.respondWith(
