@@ -38,6 +38,7 @@ https://ff-fitness-nutrition.vercel.app.
 | API, backend, Stripe, plăți, Gmail, rate limiting, cache | `personal/ff-fitness/worker/index.js` → §1 + `architecture.md` §2 |
 | bot de Telegram, Google Calendar, Planning Center, agendă zilnică | **personal/telegram-assistant/** → §2 + `README.md` |
 | feedback biserică, Pulsul Duminicii, statistici duminică, slideshow pe categorie, rezumat AI feedback | **personal/pulsul-duminicii/** → §3 + `README.md` |
+| program duminică, plan întâlnire, slide-uri/PPT predică, conturi predicatori, BisericaLogos | **personal/pulsul-duminicii/** → §3 (`src/program.js`, `src/session.js`) |
 | ii cusute de bunica, magazin de ii, scroll-film, broderie | **personal/ia-bunicii-mele/** → §4 + `README.md` |
 | ia desenată punct cu punct, silueta cămășii, altiță/încreț/râuri/poale | `personal/ia-bunicii-mele/js/pattern.js` |
 | filmul de la scroll, canvas, camera care urmărește acul | `personal/ia-bunicii-mele/js/film.js` |
@@ -161,10 +162,15 @@ Fișiere:
 - `src/home.html` — pagina Acasă (statistici generale)
 - `src/days.html`, `src/day.html` — lista de duminici și pagina unei duminici (slideshow/dashboard pe categorie)
 - `src/categories.html`, `src/category.html` — analiză pe categorie în timp, cu interval selectabil (1/3/6/12 luni, tot, sau custom)
+- `src/session.js`, `src/accounts.js`, `src/login.html`, `src/admin-accounts.html` — conturi: `BisericaLogos` (parolă = secret `ADMIN_PASSWORD`) + predicatori în D1
+- `src/program.js`, `src/programTemplate.js`, `src/program-list.html`, `src/program-edit.html` — Program duminică (D1) cu resurse urcate (R2 privat)
+- `migrations/` — schema D1
 
 Live la fiecare vizită, fără cron — „automatizarea" cerută (update lunea) e implicită.
-Link neafișat public, fără parolă (`AUTH_MODE = "none"`) — conținutul include uneori
-nume și reflecții personale ale membrilor, deci linkul nu se distribuie public.
+Acces cu conturi (`AUTH_MODE = "accounts"`, din 2026-09-24): contul general vede Analiză +
+Program; un predicator vede doar statisticile lui (`/eu`) și programul duminicilor
+următoare, unde poate completa partea de predică și urca slide-uri. Setup D1/R2 + secret:
+`README.md`, secțiunea „Program duminică + conturi".
 
 ### 4. `personal/ia-bunicii-mele/` — magazin online de ii cusute de mână
 

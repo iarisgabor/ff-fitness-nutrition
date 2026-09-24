@@ -63,39 +63,71 @@ function initThemeToggle(){
   btn.addEventListener('click', () => setTheme(isDarkNow() ? 'light' : 'dark'));
 }
 
-// activeKey: 'home' | 'days' | 'day' | 'categories' | 'category'. topbarText: ex. "36 răspunsuri · 17 mai–6 sept 2026".
+// activeKey: 'home' | 'days' | 'day' | 'categories' | 'category' | 'preachers' | 'preacher'
+//            | 'program' | 'me' | 'accounts'. topbarText: ex. "36 răspunsuri · 17 mai–6 sept 2026".
+// PULS_USER e definit de render.js chiar înaintea acestui fișier (null pe /login).
+const ANALYSIS_KEYS = ['home','days','day','categories','category','preachers','preacher'];
 function initNav(activeKey, topbarText){
   const root = document.getElementById('topbar-root');
   if(!root) return;
+  const user = (typeof PULS_USER !== 'undefined') ? PULS_USER : null;
+  const isPreacher = user && user.role === 'preacher';
+  const canLogout = user && !user.legacy; // în AUTH_MODE none/password nu există sesiune de închis
+  const tab = (href, active, long, short) =>
+    `<a class="nav-tab${active?' active':''}" href="${href}"${active?' aria-current="page"':''}><span class="long">${long}</span><span class="short">${short}</span></a>`;
+  const item = (href, active, label) => `<a class="menu-item${active?' active':''}" href="${href}">${label}</a>`;
+
+  let tabs = '', menu = '';
+  if (isPreacher) {
+    tabs = tab('/eu', activeKey==='me', 'Statisticile mele', 'Statistici') + tab('/program', activeKey==='program', 'Program duminică', 'Program');
+    menu = `
+      <div class="menu-user">${esc(user.displayName)}<span>predicator</span></div>
+      ${item('/eu', activeKey==='me', 'Statisticile mele')}
+      ${item('/program', activeKey==='program', 'Program duminică')}
+      <div class="menu-sep"></div>
+      ${item('/cont', activeKey==='account', 'Schimbă parola')}
+      ${item('/logout', false, 'Ieșire')}`;
+  } else if (user) {
+    tabs = tab('/', ANALYSIS_KEYS.includes(activeKey), 'Analiză', 'Analiză') + tab('/program', activeKey==='program', 'Program duminică', 'Program');
+    menu = `
+      ${canLogout ? `<div class="menu-user">${esc(user.displayName)}<span>cont general</span></div>` : ''}
+      <div class="menu-label">Analiză</div>
+      ${item('/', activeKey==='home', 'Acasă — statistici generale')}
+      ${item('/zile', activeKey==='days'||activeKey==='day', 'Răspunsuri pe zile')}
+      ${item('/categorii', activeKey==='categories'||activeKey==='category', 'Analiză pe categorii')}
+      ${item('/predicatori', activeKey==='preachers'||activeKey==='preacher', 'Predicatori')}
+      <div class="menu-sep"></div>
+      ${item('/program', activeKey==='program', 'Program duminică')}
+      ${canLogout ? item('/admin/conturi', activeKey==='accounts', 'Conturi predicatori') : ''}
+      ${canLogout ? item('/logout', false, 'Ieșire') : ''}`;
+  }
+
   root.innerHTML = `
     <div class="topbar-inner">
-      <a href="/" class="brand">
+      <a href="${isPreacher ? '/eu' : '/'}" class="brand" aria-label="Pulsul Duminicii">
         <svg class="brand-mark" viewBox="0 0 26 26" fill="none"><path d="M1 13H7L10 4L16 22L19 13H25" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <div class="brand-name">PULSUL&nbsp;DUMINICII</div>
       </a>
+      ${tabs ? `<nav class="nav-tabs" aria-label="Secțiuni">${tabs}</nav>` : ''}
       <div class="topbar-right">
-        <div class="topbar-meta"><span class="live-dot"></span><span>${esc(topbarText||'')}</span></div>
+        ${topbarText ? `<div class="topbar-meta"><span class="live-dot"></span><span>${esc(topbarText)}</span></div>` : ''}
         <button class="theme-btn" id="theme-btn" aria-label="Comută light/dark">
           <svg class="icon-light" viewBox="0 0 20 20"><circle cx="10" cy="10" r="4"/><path d="M10 1v2M10 17v2M2.5 10h2M15.5 10h2M4.5 4.5l1.4 1.4M14.1 14.1l1.4 1.4M15.5 4.5l-1.4 1.4M5.9 14.1l-1.4 1.4"/></svg>
           <svg class="icon-dark" viewBox="0 0 20 20"><path d="M16 11.5A6.5 6.5 0 018.5 4 6.5 6.5 0 1016 11.5z"/></svg>
         </button>
-        <div style="position:relative;">
+        ${menu ? `<div style="position:relative;">
           <button class="menu-btn" id="menu-btn" aria-label="Meniu" aria-expanded="false">
             <svg viewBox="0 0 20 20"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
           </button>
-          <div class="menu-panel" id="menu-panel">
-            <a class="menu-item${activeKey==='home'?' active':''}" href="/">Acasă — statistici generale</a>
-            <a class="menu-item${activeKey==='days'||activeKey==='day'?' active':''}" href="/zile">Răspunsuri pe zile</a>
-            <a class="menu-item${activeKey==='categories'||activeKey==='category'?' active':''}" href="/categorii">Analiză pe categorii</a>
-            <a class="menu-item${activeKey==='preachers'||activeKey==='preacher'?' active':''}" href="/predicatori">Predicatori</a>
-          </div>
-        </div>
+          <div class="menu-panel" id="menu-panel">${menu}</div>
+        </div>` : ''}
       </div>
     </div>
   `;
   initThemeToggle();
   const btn = document.getElementById('menu-btn');
   const panel = document.getElementById('menu-panel');
+  if (!btn || !panel) return;
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     const open = panel.classList.toggle('open');
@@ -107,4 +139,44 @@ function initNav(activeKey, topbarText){
       btn.setAttribute('aria-expanded', 'false');
     }
   });
+}
+
+// fetch JSON către API-ul site-ului; aruncă Error cu mesajul serverului la eșec.
+async function api(method, url, body, opts){
+  const init = { method, headers: {}, credentials: 'same-origin' };
+  if (body instanceof Blob) {
+    init.body = body;
+    init.headers['content-type'] = body.type || 'application/octet-stream';
+  } else if (body !== undefined) {
+    init.body = JSON.stringify(body);
+    init.headers['content-type'] = 'application/json';
+  }
+  const res = await fetch(url, init);
+  let data = null;
+  try { data = await res.json(); } catch(e){}
+  if (res.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); throw new Error('Sesiune expirată.'); }
+  if (!res.ok) throw new Error((data && data.error) || `Eroare ${res.status}`);
+  return data;
+}
+
+// Mesaj scurt jos pe ecran (salvat / eroare).
+function toast(message, isError){
+  let el = document.getElementById('toast');
+  if (!el) { el = document.createElement('div'); el.id = 'toast'; el.setAttribute('role','status'); document.body.appendChild(el); }
+  el.textContent = message;
+  el.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = ''; }, isError ? 5000 : 2200);
+}
+
+// "2026-09-27" -> "duminică, 27 septembrie 2026"
+function formatSlugLong(slug){
+  const [y,m,d] = slug.split('-').map(Number);
+  return `${d} ${MONTHS_RO_FULL[m-1]} ${y}`;
+}
+function formatDuration(sec){
+  sec = Math.max(0, Math.round(sec||0));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  if (h) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${m}:${String(s).padStart(2,'0')}`;
 }

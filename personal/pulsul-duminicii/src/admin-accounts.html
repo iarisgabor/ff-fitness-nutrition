@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pulsul Duminicii — conturi predicatori</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+__SHARED_CSS__
+
+.page-head{padding:40px 0 0;}
+.page-head h1{font-size:clamp(24px,3vw,32px); font-weight:700;}
+.page-head .sub{margin-top:6px; font-size:13.5px; color:var(--text-3); max-width:70ch; line-height:1.5;}
+.notice{margin:20px 0; padding:16px 18px; border-radius:12px; border:1px dashed var(--border); background:var(--surface-2); font-size:13px; color:var(--text-2); line-height:1.5;}
+
+.layout{display:grid; grid-template-columns: 1fr 380px; gap:18px; margin-top:26px; align-items:start;}
+@media (max-width:900px){ .layout{grid-template-columns:1fr;} }
+.card h3{font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); margin-bottom:14px;}
+.acc-list{display:flex; flex-direction:column;}
+.acc-row{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:14px 0; border-bottom:1px solid var(--border);}
+.acc-row:last-child{border-bottom:none;}
+.acc-name{font-weight:700; font-size:14.5px;}
+.acc-meta{font-size:12.5px; color:var(--text-3); margin-top:3px;}
+.acc-meta code{font-family:'IBM Plex Mono'; color:var(--text-2);}
+.acc-actions{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+.acc-form{display:flex; flex-direction:column; gap:12px;}
+.pw-row{display:flex; gap:8px;}
+.pw-row .input{flex:1;}
+.empty-state{padding:24px 0; color:var(--text-3); font-size:14px;}
+.missing{margin-top:14px; font-size:12.5px; color:var(--text-3); line-height:1.6;}
+.missing b{color:var(--text-2);}
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar-root"></div>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>Conturi predicatori</h1>
+    <p class="sub">Fiecare predicator intră cu contul lui și vede doar statisticile lui, plus programul duminicilor care urmează. Parola o setezi tu aici și i-o dai personal; după aceea și-o poate schimba singur.</p>
+  </div>
+
+  <div id="notice-wrap"></div>
+
+  <div class="layout">
+    <div class="card pad">
+      <h3>Conturi existente</h3>
+      <div class="acc-list" id="acc-list"></div>
+      <div class="missing" id="missing"></div>
+    </div>
+
+    <form class="card pad acc-form" id="new-form">
+      <h3 style="margin-bottom:2px;">Cont nou</h3>
+      <label class="field"><span>Predicator (din Calendar predicare)</span>
+        <select class="input" name="preacher_name" id="preacher-select" required></select>
+      </label>
+      <label class="field"><span>Nume de utilizator</span>
+        <input class="input" name="username" id="username" required autocomplete="off" autocapitalize="none" spellcheck="false" pattern="[A-Za-z0-9._\-]{3,40}" title="3–40 caractere: litere, cifre, punct, cratimă">
+      </label>
+      <label class="field"><span>Parolă (minim 8 caractere)</span>
+        <span class="pw-row">
+          <input class="input" name="password" id="password" required minlength="8" autocomplete="new-password">
+          <button class="btn" type="button" id="gen-pw">Generează</button>
+        </span>
+      </label>
+      <button class="btn primary" type="submit">Creează contul</button>
+    </form>
+  </div>
+
+  <div style="height:60px;"></div>
+</div>
+
+<script>
+__SHARED_JS__
+</script>
+<script>
+(function(){
+  const PAYLOAD = __PULS_DATA_JSON__;
+  let accounts = PAYLOAD.accounts;
+  initNav('accounts', '');
+
+  const notices = [];
+  if (!PAYLOAD.dbReady) notices.push('Baza de date (Cloudflare D1) nu e configurată încă — vezi README.');
+  if (PAYLOAD.scheduleError) notices.push(PAYLOAD.scheduleError);
+  document.getElementById('notice-wrap').innerHTML = notices.map(n => `<div class="notice">${esc(n)}</div>`).join('');
+
+  // Parolă ușor de dictat: fără caractere care se confundă (0/O, 1/l/I).
+  function generatePassword(){
+    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    return [...bytes].map(b => chars[b % chars.length]).join('');
+  }
+  function slugify(name){
+    return name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+  }
+  const norm = (n) => slugify(n || '');
+  // Aceeași regulă ca preacherSlug() din src/preachers.js -> link spre /predicatori/:slug
+  const preacherSlug = (n) => slugify(n || '').replace(/\./g, '-');
+
+  function render(){
+    const list = document.getElementById('acc-list');
+    list.innerHTML = accounts.length ? accounts.map(a => `
+      <div class="acc-row" data-id="${a.id}">
+        <div>
+          <div class="acc-name">${esc(a.display_name)}</div>
+          <div class="acc-meta">utilizator <code>${esc(a.username)}</code>${norm(a.preacher_name) !== norm(a.display_name) ? ` · în calendar: ${esc(a.preacher_name)}` : ''}</div>
+        </div>
+        <div class="acc-actions">
+          <a class="btn small" href="/predicatori/${esc(a.preacher_name.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''))}">Statistici</a>
+          <button class="btn small" data-reset="${a.id}">Resetează parola</button>
+          <button class="btn small danger" data-delete="${a.id}">Șterge</button>
+        </div>
+      </div>`).join('') : '<div class="empty-state">Niciun cont încă.</div>';
+
+    const withAccount = new Set(accounts.map(a => norm(a.preacher_name)));
+    const free = PAYLOAD.preachers.filter(p => !withAccount.has(norm(p)));
+    const select = document.getElementById('preacher-select');
+    select.innerHTML = free.length
+      ? '<option value="">— alege —</option>' + free.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')
+      : '<option value="">toți predicatorii din calendar au deja cont</option>';
+    document.getElementById('missing').innerHTML = free.length
+      ? `Fără cont încă: <b>${free.map(esc).join(', ')}</b>`
+      : '';
+  }
+  render();
+
+  const form = document.getElementById('new-form');
+  document.getElementById('preacher-select').addEventListener('change', (e) => {
+    if (e.target.value) document.getElementById('username').value = slugify(e.target.value);
+  });
+  document.getElementById('gen-pw').addEventListener('click', () => {
+    document.getElementById('password').value = generatePassword();
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const btn = form.querySelector('[type=submit]');
+    btn.disabled = true;
+    try {
+      const res = await api('POST', '/api/conturi', {
+        preacher_name: fd.get('preacher_name'), display_name: fd.get('preacher_name'),
+        username: fd.get('username'), password: fd.get('password'),
+      });
+      accounts = res.accounts;
+      render();
+      alert(`Cont creat.\n\nUtilizator: ${fd.get('username')}\nParolă: ${fd.get('password')}\n\nTrimite-i-le predicatorului personal. Parola nu se mai poate vedea după ce închizi acest mesaj.`);
+      form.reset();
+    } catch (err) { toast(err.message, true); }
+    btn.disabled = false;
+  });
+
+  document.getElementById('acc-list').addEventListener('click', async (e) => {
+    const reset = e.target.closest('[data-reset]');
+    const del = e.target.closest('[data-delete]');
+    if (reset) {
+      const acc = accounts.find(a => a.id === Number(reset.dataset.reset));
+      const pw = prompt(`Parolă nouă pentru ${acc.display_name} (minim 8 caractere). Va fi delogat de pe toate dispozitivele.`, generatePassword());
+      if (!pw) return;
+      try {
+        accounts = (await api('PATCH', `/api/conturi/${acc.id}`, { password: pw })).accounts;
+        render();
+        alert(`Parola lui ${acc.display_name} a fost schimbată.\n\nUtilizator: ${acc.username}\nParolă nouă: ${pw}`);
+      } catch (err) { toast(err.message, true); }
+    }
+    if (del) {
+      const acc = accounts.find(a => a.id === Number(del.dataset.delete));
+      if (!confirm(`Ștergi contul lui ${acc.display_name}? Programul și resursele urcate de el rămân.`)) return;
+      try { accounts = (await api('DELETE', `/api/conturi/${acc.id}`)).accounts; render(); toast('Cont șters.'); }
+      catch (err) { toast(err.message, true); }
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,8 +1,11 @@
 # CLAUDE.md — pulsul-duminicii
 
-Site live de statistici pentru feedback-ul de duminică al bisericii. Un singur Cloudflare
-Worker: la fiecare vizită citește Google Sheet-ul din spatele formularului „Evaluare
-întâlnire duminică", agregă și randează HTML. **Nu există frontend separat, nici build
+Site live de statistici pentru feedback-ul de duminică al bisericii, plus **programul de
+duminică** (editor în stilul Planning Center, cu resurse urcate) și **conturi**: contul general
+`BisericaLogos` vede tot (Analiză + Program), fiecare predicator își vede doar statisticile
+și duminicile care urmează. Un singur Cloudflare Worker: la fiecare vizită citește Google
+Sheet-ul din spatele formularului „Evaluare întâlnire duminică", agregă și randează HTML;
+programul stă în D1, fișierele în R2, sesiunile în KV. **Nu există frontend separat, nici build
 step, nici cron** — automatizarea cerută (raport proaspăt lunea) e implicită, fiindcă
 totul e live.
 
@@ -22,7 +25,19 @@ Designul e evoluat din raportul static făcut manual o singură dată:
 | `/categorii` — index + matrice de corelații | `renderCategoriesIndex()` | `src/categories.html` |
 | `/categorii/:cheie` — o categorie în timp, interval selectabil | `renderCategoryDetail()` | `src/category.html` |
 | `/predicatori` — index predicatori + comparație pe dimensiuni | `renderPreachersIndex()` | `src/predicatori.html` |
-| `/predicatori/:slug` — un predicator: notă la Predică, trend, comparație vs restul, citate | `renderPreacherDetail()` | `src/predicator.html` |
+| `/predicatori/:slug` — un predicator: notă la Predică, trend, comparație vs restul, prezență, duminici următoare, citate | `renderPreacherDetail()` | `src/predicator.html` |
+| `/eu` — același conținut, pentru predicatorul logat (`self: true`) | `renderMe()` | `src/predicator.html` |
+| `/login`, `/logout`, `/cont` (predicatorul își schimbă parola) | `renderLogin()` | `src/login.html` |
+| `/program` — lista duminicilor (următoare + trecute) + „Duminică nouă" | `renderProgramList()` | `src/program-list.html` |
+| `/program/:data` — editorul unei duminici (rânduri, panou lateral, resurse) | `renderProgramEdit()` | `src/program-edit.html` |
+| `/admin/conturi` — conturile predicatorilor | `renderAccounts()` | `src/admin-accounts.html` |
+| `/api/program/...`, `/api/resurse/:id` — JSON, folosit de editor | `handleProgramApi()` | — |
+| `/api/conturi/...`, `/api/parola` — JSON | `handleAccountsApi()` | — |
+| `/resurse/:id` — descărcarea unui fișier din R2, după verificarea accesului | `serveResource()` | — |
+
+**Cine vede ce** (gardă în `src/index.js`): `admin` — tot. `preacher` — `/eu`, `/cont`, `/program`,
+`/program/:data`, `/resurse/:id` și `/zile/:slug` **doar** pentru duminicile lui din calendar;
+orice altă pagină de Analiză îl redirecționează la `/eu`.
 
 Slug de zi = `YYYY-MM-DD`; cheie de categorie = `q1`,`q2`,`q3`,`q5`…`q8` (vezi `config.js`);
 slug de predicator = numele normalizat (`src/preachers.js:preacherSlug`, ex. „Beni Oz" → `beni-oz`).
@@ -33,6 +48,11 @@ slug de predicator = numele normalizat (`src/preachers.js:preacherSlug`, ex. „
 |---|---|
 | rutare, headere, handler `scheduled()` (neactivat) | `src/index.js` |
 | poarta de acces (`AUTH_MODE`) | `src/auth.js` |
+| parole (PBKDF2), sesiuni în KV, limită de login, verificare Origin | `src/session.js` |
+| conturile predicatorilor (D1 `users`) | `src/accounts.js` |
+| **permisiunile pe program** + CRUD duminici/elemente/resurse + R2 | `src/program.js` |
+| șablonul unei duminici noi (INTRO/WORSHIP/PREDICA/ÎNCHEIERE) | `src/programTemplate.js` |
+| schema D1 | `migrations/0001_program.sql` |
 | **maparea coloană-Sheet → categorie** (Sheet de feedback) | `src/config.js` |
 | rânduri brute → răspunsuri + toate agregatele | `src/transform.js` |
 | **al DOILEA Sheet — „Calendar predicare"**: coloane → schedule, slug de nume | `src/preachers.js` (mapare în `config.js`, `PREACHER_COLUMNS`/`PREACHERS_SHEET_RANGE`) |
@@ -40,14 +60,18 @@ slug de predicator = numele normalizat (`src/preachers.js:preacherSlug`, ex. „
 | auth Google prin service account (JWT semnat cu `crypto.subtle`) — comun ambelor Sheet-uri | `src/sheets.js` |
 | rezumat AI per duminică | `src/aiSummary.js` |
 | analiză AI de tendință per categorie | `src/aiTrendSummary.js` |
-| CSS + JS comune tuturor paginilor | `src/shared.css`, `src/shared.txt` |
-| `AUTH_MODE`, `GOOGLE_SHEET_ID`, binding KV | `wrangler.toml` |
+| CSS + JS comune tuturor paginilor (nav pe roluri: `initNav`, `api()`, `toast()`) | `src/shared.css`, `src/shared.txt` |
+| `AUTH_MODE`, `ADMIN_USERNAME`, `GOOGLE_SHEET_ID`, binding-uri KV/D1/R2 | `wrangler.toml` |
 
 ## Cum se leagă șabloanele
 
 `.html`, `.css` și `.txt` din `src/` sunt importate **ca text brut** (regula `[[rules]]`
 type `Text` din `wrangler.toml`), nu servite static. `render.js` înlocuiește trei markere
-în fiecare șablon: `__SHARED_CSS__`, `__SHARED_JS__`, `__PULS_DATA_JSON__`.
+în fiecare șablon: `__SHARED_CSS__`, `__SHARED_JS__`, `__PULS_DATA_JSON__` — prin
+`fillPage()`, care folosește funcție ca al doilea argument la `replace()` (un text de la membri
+cu `$&` sau `$'` ar fi fost altfel interpretat ca tipar de înlocuire). Înaintea lui
+`__SHARED_JS__` se injectează `const PULS_USER = {...}` (rol, nume) — de aici știe `initNav`
+ce meniu să arate.
 
 `shared.txt` **nu e un modul ES** — se injectează brut la începutul fiecărui `<script>`,
 deci variabilele lui sunt globale în pagină. Extensia e `.txt` doar ca să intre în regula
@@ -81,9 +105,19 @@ de import ca text.
 9. **Token-ul Google se cache-uiește în KV 50 min** (față de 3600s reali) — service account,
    fără OAuth interactiv și fără refresh token, spre deosebire de Gmail/Calendar din
    celelalte proiecte.
-10. **Link neafișat public, fără parolă** (`AUTH_MODE = "none"`, decizie explicită) +
-    `x-robots-tag: noindex`. Conținutul include nume și reflecții personale — **nu
-    distribui linkul public**.
+10. **Acces cu conturi** (`AUTH_MODE = "accounts"`, schimbat 2026-09-24 din `"none"`) +
+    `x-robots-tag: noindex`. Conținutul include nume și reflecții personale.
+    - Contul general (`ADMIN_USERNAME`, implicit `BisericaLogos`) **nu stă în D1**: parola e
+      secretul `ADMIN_PASSWORD`, comparată în timp constant. Sesiunea de admin ține o
+      amprentă a parolei — schimbarea secretului delogează toate sesiunile de admin.
+    - Predicatorii sunt în D1 (`users`), parole PBKDF2-SHA256 100k iterații (plafonul
+      Workers). Resetarea de către admin crește `session_gen` → predicatorul e delogat peste tot;
+      schimbarea propriei parole nu (ar deloga și sesiunea din care o schimbă).
+    - Sesiuni în KV (`session:<token>`, 30 zile), cookie `HttpOnly; Secure; SameSite=Lax`.
+      Orice POST/PATCH/PUT/DELETE trebuie să aibă `Origin` = site-ul (`isSameOrigin`).
+    - Login blocat 15 min după 10 încercări greșite de pe același IP (`login_fail:<ip>` în KV).
+    - `AUTH_MODE = "none"`/`"password"` încă merg, dar atunci **toată lumea e admin** (inclusiv
+      pe editorul de program) — doar pentru teste locale.
 11. **`scheduled()` e scris dar neactivat** (fără `[triggers]` în `wrangler.toml`).
     Dacă cineva vrea refresh strict programat lunea: adaugă cronul și, opțional, scoate
     fetch-ul live din `fetch()`. Ambele seam-uri (acces + refresh) sunt intenționat izolate.
@@ -106,12 +140,31 @@ de import ca text.
     depind deloc de acest Sheet.
 16. **`/zile/:slug` arată predicatorul zilei** (dacă există o potrivire de dată în calendar),
     cu link spre `/predicatori/:slug` — cules din `getSchedule()`, nu din Sheet-ul de feedback.
+17. **Permisiunile pe program se verifică pe server, în `src/program.js`** — pagina doar ascunde
+    butoanele. Predicatorul (potrivire prin `preacherSlug()`, deci „Beni I" ≠ „Beni Oz"):
+    - vede toate duminicile următoare + doar duminicile lui trecute;
+    - la duminica lui: editează/adaugă/șterge elemente **doar în secțiunea PREDICA** (secțiunea
+      = cel mai apropiat rând `header` de deasupra al cărui titlu conține „predic") și urcă
+      resurse oriunde în acea duminică;
+    - în orice duminică: editează elementele unde câmpul „Cine" e exact numele lui.
+    - Nu poate: crea/șterge duminici, reordona, schimba predicatorul/prezența/notițele generale.
+18. **Resursele: bucket R2 privat, servit doar prin `/resurse/:id`** după aceeași verificare
+    de vizibilitate. Extensii permise listate în `program.js` (fără html/svg/js — n-au voie să
+    ruleze cod pe domeniul nostru); plus `content-security-policy: sandbox` și `nosniff` la
+    descărcare. Max 50 MB, urcare ca body brut (nu multipart) ca să curgă direct în R2.
+    Fără R2 configurat, urcarea răspunde 503 și merg doar linkurile.
+19. **Prezența se trece manual** în Program duminică (câmp doar pentru admin) — nu vine din
+    Sheet. Statisticile predicatorului compară media duminicilor lui cu a celorlalte.
+20. **Șablonul duminicii noi e `src/programTemplate.js`**, copiat după planul standard din
+    Planning Center. „Copie după o duminică" copiază rândurile (nu resursele) și mută pe
+    predicatorul nou elementele care erau pe numele celui vechi.
 
 ## Comenzi
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # completează cu valori reale sau de test
+cp .dev.vars.example .dev.vars   # completează cu valori reale sau de test (inclusiv ADMIN_PASSWORD)
+npx wrangler d1 migrations apply DB --local
 npm run dev
 npx wrangler deploy
 npx wrangler tail
@@ -124,8 +177,12 @@ npx wrangler tail
 `butmarius@gmail.com`; service account-ul trebuie adăugat Viewer de cineva cu drept de
 editare pe el). KV: `PULSUL_KV`.
 
-Secrete: `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`,
-`SITE_PASSWORD` (doar la `AUTH_MODE = "password"`), `ANTHROPIC_API_KEY` (opțional).
+D1: `DB` (baza `pulsul-duminicii`, migrații în `migrations/`). R2: `RESURSE` (bucket
+`pulsul-resurse`).
+
+Secrete: `ADMIN_PASSWORD` (parola contului general), `GOOGLE_SERVICE_ACCOUNT_EMAIL`,
+`GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, `SITE_PASSWORD` (doar la `AUTH_MODE = "password"`),
+`ANTHROPIC_API_KEY` (opțional).
 
 ## Model
 

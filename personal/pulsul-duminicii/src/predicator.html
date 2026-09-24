@@ -33,6 +33,22 @@ __SHARED_CSS__
 .quote-list{display:flex; flex-direction:column; gap:14px;}
 .quote-item{padding:14px 16px; border-radius:10px; background:var(--surface-2); font-size:13.5px; line-height:1.55; color:var(--text);}
 .quote-item .q-when{font-size:11px; color:var(--text-3); font-family:'IBM Plex Mono'; margin-bottom:6px;}
+
+.link-list{display:flex; flex-direction:column; gap:8px;}
+.link-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 16px; text-decoration:none; color:inherit;}
+a.link-row:hover{border-color:color-mix(in srgb, var(--accent-mark) 50%, var(--border));}
+.link-row .l-main{font-weight:700; font-size:14px;}
+.link-row .l-sub{font-size:12.5px; color:var(--text-3); margin-top:3px;}
+.link-row .l-side{font-size:12.5px; color:var(--text-3); white-space:nowrap;}
+.link-row.dashed{border-style:dashed; box-shadow:none; background:transparent;}
+.att-bars{display:flex; flex-direction:column; gap:10px;}
+.att-row{display:grid; grid-template-columns:150px 1fr 64px; gap:14px; align-items:center; font-size:13px;}
+.att-row .bar-track{height:16px;}
+.att-row .dim-val{font-size:13px;}
+@media (max-width:560px){ .att-row{grid-template-columns:96px 1fr 48px; gap:10px;} }
+.chip-links{display:flex; gap:8px; flex-wrap:wrap;}
+.chip-links a{text-decoration:none;}
+.chip-links a:hover{border-color:var(--accent-mark);}
 </style>
 </head>
 <body>
@@ -51,6 +67,12 @@ __SHARED_CSS__
   <div id="notice-wrap"></div>
 
   <div id="p-kpis" class="kpi-grid" style="margin-top:24px;"></div>
+
+  <div class="section-block" id="upcoming-wrap" hidden>
+    <h3 id="upcoming-title">Duminicile următoare</h3>
+    <p class="section-sub" id="upcoming-sub"></p>
+    <div class="link-list" id="upcoming-list"></div>
+  </div>
 
   <div class="section-block" id="trend-wrap">
     <h3>Nota la Predică, în timp</h3>
@@ -71,10 +93,22 @@ __SHARED_CSS__
     </div>
   </div>
 
+  <div class="section-block" id="attendance-wrap">
+    <h3>Prezența</h3>
+    <p class="section-sub">Numărul de participanți, trecut după fiecare întâlnire în Program duminică.</p>
+    <div class="card pad" id="attendance-card"></div>
+  </div>
+
   <div class="section-block" id="quotes-wrap">
     <h3>Ce au scris oamenii despre Predică, în duminicile lui</h3>
     <div class="quote-list" id="quote-list"></div>
     <div class="empty-state" id="quotes-empty" hidden>Niciun comentariu liber la Predică, în duminicile lui, până acum.</div>
+  </div>
+
+  <div class="section-block" id="days-wrap" hidden>
+    <h3>Feedback-ul complet, pe fiecare duminică</h3>
+    <p class="section-sub">Toate categoriile și comentariile din acea zi.</p>
+    <div class="chip-links" id="days-links"></div>
   </div>
 
   <div style="height:60px;"></div>
@@ -88,8 +122,10 @@ __SHARED_JS__
   const PAYLOAD = __PULS_DATA_JSON__;
   const { name, sundayCount, avgOverall, q5Series, comparison, quotes } = PAYLOAD;
   const META = PAYLOAD.meta || {};
+  const SELF = !!PAYLOAD.self; // /eu — predicatorul își vede propriile statistici
+  const his = SELF ? 'tale' : 'lui';
 
-  initNav('preacher', `${META.totalResponses||0} răspunsuri · ${META.dateRangeLabel||''}`);
+  initNav(SELF ? 'me' : 'preacher', `${META.totalResponses||0} răspunsuri · ${META.dateRangeLabel||''}`);
 
   if (META.stale) {
     const banner = document.getElementById('stale-banner');
@@ -97,9 +133,16 @@ __SHARED_JS__
     banner.textContent = 'Date posibil neactualizate — nu am reușit să citim Sheet-ul live la ultima încercare; se arată ultima versiune bună cunoscută.';
   }
 
-  document.title = `Pulsul Duminicii — ${name}`;
-  document.getElementById('p-title').textContent = name;
+  document.title = SELF ? 'Pulsul Duminicii — statisticile mele' : `Pulsul Duminicii — ${name}`;
+  document.getElementById('p-title').textContent = SELF ? `Salut, ${name}` : name;
   document.getElementById('p-sub').textContent = `${sundayCount} ${sundayCount===1?'duminică':'duminici'} cu feedback`;
+  if (SELF) {
+    document.querySelector('.back-link').remove();
+    // titlurile secțiunilor sunt scrise la persoana a III-a pentru admin
+    document.querySelectorAll('.section-block h3, .section-sub, .empty-state').forEach(el => {
+      el.textContent = el.textContent.replace(/duminicile lui/g, 'duminicile tale').replace(/prezența lui/g, 'prezența ta');
+    });
+  }
 
   const notices = [];
   if (PAYLOAD.scheduleError) notices.push(PAYLOAD.scheduleError);
@@ -114,6 +157,15 @@ __SHARED_JS__
   const kpis = [
     { tag: 'Medie la Predică', val: q5 && q5.theirAvg != null ? q5.theirAvg.toFixed(2) : '–', sub: q5 ? `${q5.theirN} note` : '' },
     { tag: 'Duminici cu feedback', val: String(sundayCount), sub: 'suprapuse cu calendarul de predicare' },
+    (() => {
+      const a = PAYLOAD.attendance || {};
+      if (a.theirAvg == null) return { tag: 'Prezență medie', val: '–', sub: 'necompletată încă în Program duminică' };
+      const d = a.restAvg != null ? a.theirAvg - a.restAvg : null;
+      return {
+        tag: 'Prezență medie', val: String(Math.round(a.theirAvg)),
+        sub: d != null ? `<span class="delta ${d>=0?'up':'down'}">${d>=0?'+':''}${Math.round(d)} față de restul duminicilor</span>` : `din ${a.perSunday.length} ${a.perSunday.length===1?'duminică':'duminici'}`,
+      };
+    })(),
     {
       tag: 'Medie compozită (toate dimensiunile)', val: avgOverall != null ? avgOverall.toFixed(2) : '–',
       sub: deltaOverall != null
@@ -175,7 +227,7 @@ __SHARED_JS__
   renderTrend(q5Series);
 
   // ---- tabel comparativ pe dimensiuni ----
-  const thead = '<thead><tr><th>Dimensiune</th><th>Duminicile lui</th><th>Restul duminicilor</th><th>Diferență</th></tr></thead>';
+  const thead = `<thead><tr><th>Dimensiune</th><th>Duminicile ${his}</th><th>Restul duminicilor</th><th>Diferență</th></tr></thead>`;
   const tbody = '<tbody>' + (comparison||[]).map(row => {
     const theirTxt = row.theirAvg != null ? row.theirAvg.toFixed(2) : '–';
     const restTxt = row.restAvg != null ? row.restAvg.toFixed(2) : '–';
@@ -187,6 +239,57 @@ __SHARED_JS__
     return `<tr><td>${esc(row.label)}</td><td>${theirTxt}</td><td>${restTxt}</td><td class="delta-cell ${deltaClass}">${deltaTxt}</td></tr>`;
   }).join('') + '</tbody>';
   document.getElementById('comparison-table').innerHTML = thead + tbody;
+
+  // ---- duminicile următoare (din Program duminică + calendar) ----
+  const upcoming = PAYLOAD.upcoming || [];
+  if (upcoming.length) {
+    document.getElementById('upcoming-wrap').hidden = false;
+    document.getElementById('upcoming-title').textContent = SELF ? 'Duminicile în care predici' : `Duminicile următoare în care predică`;
+    document.getElementById('upcoming-sub').textContent = SELF
+      ? 'Deschide programul ca să completezi partea de predică și să urci slide-urile.'
+      : 'Din Program duminică și din Calendar predicare.';
+    document.getElementById('upcoming-list').innerHTML = upcoming.map(u => u.planned ? `
+      <a class="card link-row" href="/program/${u.date}">
+        <div><div class="l-main">${formatSlugLong(u.date)}</div>
+        <div class="l-sub">program pregătit${u.totalSec ? ' · ' + formatDuration(u.totalSec) : ''}</div></div>
+        <div class="l-side">${u.resourceCount ? '📎 ' + u.resourceCount + ' · ' : ''}deschide ›</div>
+      </a>` : `
+      <div class="card link-row dashed">
+        <div><div class="l-main">${formatSlugLong(u.date)}</div>
+        <div class="l-sub">în calendar · programul nu e creat încă</div></div>
+      </div>`).join('');
+  }
+
+  // ---- prezența ----
+  (function renderAttendance(){
+    const a = PAYLOAD.attendance || {};
+    const card = document.getElementById('attendance-card');
+    if (a.theirAvg == null) {
+      card.innerHTML = `<p class="section-sub" style="margin:0;">Încă nu e trecută prezența la nicio duminică în care ${SELF ? 'ai predicat' : 'a predicat'}. Se completează din Program duminică, după fiecare întâlnire.</p>`;
+      return;
+    }
+    const max = Math.max(a.theirAvg || 0, a.restAvg || 0, ...a.perSunday.map(p => p.attendance)) || 1;
+    const bar = (label, val, cls) => `
+      <div class="att-row"><span>${label}</span>
+        <div class="bar-track"><div class="bar-fill ${cls||''}" style="width:${(val/max*100).toFixed(1)}%"></div></div>
+        <span class="dim-val">${Math.round(val)}</span></div>`;
+    let html = '<div class="att-bars">';
+    html += bar(`Media duminicilor ${his}`, a.theirAvg, 'accent2');
+    if (a.restAvg != null) html += bar('Media celorlalte', a.restAvg);
+    html += '</div>';
+    if (a.perSunday.length) {
+      html += '<div class="att-bars" style="margin-top:18px; padding-top:16px; border-top:1px solid var(--border);">' +
+        a.perSunday.slice().reverse().map(p => bar(p.date.split('-').reverse().join('.'), p.attendance, 'accent2')).join('') + '</div>';
+    }
+    card.innerHTML = html;
+  })();
+
+  // ---- linkuri spre feedback-ul complet al fiecărei duminici ----
+  const fdays = (PAYLOAD.feedbackDates || []).slice().sort().reverse();
+  if (fdays.length) {
+    document.getElementById('days-wrap').hidden = false;
+    document.getElementById('days-links').innerHTML = fdays.map(d => `<a class="chip name" href="/zile/${d}">${d.split('-').reverse().join('.')}</a>`).join('');
+  }
 
   // ---- citate libere, doar la Predică ----
   const quoteList = document.getElementById('quote-list');

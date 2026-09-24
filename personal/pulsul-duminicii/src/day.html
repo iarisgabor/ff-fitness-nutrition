@@ -129,9 +129,16 @@ __SHARED_JS__
   document.getElementById('day-title').textContent = `${dd} ${MONTHS_RO_FULL[mm-1]} ${yyyy}`;
   document.getElementById('day-sub').textContent = `${items.length} ${items.length===1?'răspuns':'răspunsuri'}`;
 
+  // Un predicator ajunge aici doar pentru duminicile lui — linkurile duc înapoi la /eu.
+  const asPreacher = PULS_USER && PULS_USER.role === 'preacher';
+  if (asPreacher) {
+    const back = document.querySelector('.back-link');
+    back.href = '/eu';
+    back.innerHTML = '&larr; statisticile mele';
+  }
   if (preacher) {
     document.getElementById('day-preacher').innerHTML =
-      `<a href="/predicatori/${esc(preacher.slug)}" class="chip name">Predică: ${esc(preacher.name)}</a>`;
+      `<a href="${asPreacher ? '/eu' : `/predicatori/${esc(preacher.slug)}`}" class="chip name">Predică: ${esc(preacher.name)}</a>`;
   }
 
   const nav = document.getElementById('day-nav');
@@ -139,6 +146,7 @@ __SHARED_JS__
     <a href="${META.prevSlug?`/zile/${META.prevSlug}`:'#'}" class="${META.prevSlug?'':'disabled'}" title="Duminica anterioară">&larr;</a>
     <a href="${META.nextSlug?`/zile/${META.nextSlug}`:'#'}" class="${META.nextSlug?'':'disabled'}" title="Duminica următoare">&rarr;</a>
   `;
+  if (asPreacher) nav.hidden = true;
 
   // ---- mini dashboard de sus: medie zi, comparație cu media generală, top/slab ----
   const ratings = items.flatMap(r => dimLabels.map(d => Number(r[d.key]?.r)).filter(v => v >= 1 && v <= 5));

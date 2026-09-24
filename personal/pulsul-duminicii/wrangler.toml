@@ -10,10 +10,14 @@ globs = ["**/*.html", "**/*.css", "**/*.txt"]
 fallthrough = true
 
 [vars]
-# "none" = link neafișat public, fără parolă (alegerea actuală, explicită).
+# "accounts" = login cu cont (implicit): ADMIN_USERNAME vede tot, predicatorii
+# (creați din /admin/conturi) își văd statisticile și programul.
+# "none" = fără parolă, toată lumea e admin (doar pentru teste locale).
 # "password" = Basic Auth cu SITE_PASSWORD. "access" = Cloudflare Access (nimic
 # de configurat aici, doar în dashboard Zero Trust).
-AUTH_MODE = "none"
+AUTH_MODE = "accounts"
+# Contul general. Parola lui NU stă aici — e secretul ADMIN_PASSWORD.
+ADMIN_USERNAME = "BisericaLogos"
 GOOGLE_SHEET_ID = "1NIRVF-Dfxbu3BweApf9eWhMW80ZLeXw6RGPAVAQieic"
 # "Calendar predicare" — cine predică în fiecare duminică, Sheet SEPARAT de cel
 # de mai sus. Service account-ul trebuie adăugat Viewer și pe acesta (vezi README).
@@ -26,7 +30,25 @@ PREACHERS_SHEET_ID = "1LVHzHB4z_dGm5v9xsnp_i2NotgUVGnBdmzpv3XsWpN0"
 binding = "PULSUL_KV"
 id = "f6570857beb34a71a17142234f3b7e7a"
 
+# Program duminică + conturi predicatori. Creează o singură dată:
+#   npx wrangler d1 create pulsul-duminicii
+# pune database_id-ul rezultat mai jos, apoi:
+#   npx wrangler d1 migrations apply DB --remote
+[[d1_databases]]
+binding = "DB"
+database_name = "pulsul-duminicii"
+database_id = "COMPLETEAZA-DUPA-wrangler-d1-create"
+migrations_dir = "migrations"
+
+# Fișierele urcate la program (PPT, PDF, slide-uri). Bucket PRIVAT — se descarcă
+# doar prin Worker, după login. R2 trebuie activat o dată din dashboard, apoi:
+#   npx wrangler r2 bucket create pulsul-resurse
+[[r2_buckets]]
+binding = "RESURSE"
+bucket_name = "pulsul-resurse"
+
 # Secrete — NICIODATĂ aici, doar prin:
+#   wrangler secret put ADMIN_PASSWORD           (parola contului BisericaLogos)
 #   wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL
 #   wrangler secret put GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
 #   wrangler secret put SITE_PASSWORD          (doar dacă AUTH_MODE = "password")

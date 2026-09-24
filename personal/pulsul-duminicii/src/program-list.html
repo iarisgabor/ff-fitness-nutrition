@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pulsul Duminicii — program duminică</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+__SHARED_CSS__
+
+.page-head{padding:40px 0 0; display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+.page-head h1{font-size:clamp(24px,3vw,32px); font-weight:700;}
+.page-head .sub{margin-top:6px; font-size:13.5px; color:var(--text-3);}
+
+.new-card{margin-top:22px; padding:22px;}
+.new-card h3{font-size:15px; font-weight:700; margin-bottom:14px;}
+.new-grid{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; align-items:end;}
+.new-actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+@media (max-width:860px){ .new-grid{grid-template-columns:1fr 1fr;} }
+@media (max-width:520px){ .new-grid{grid-template-columns:1fr;} }
+
+.list-block{margin:34px 0;}
+.list-block h2{font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin-bottom:12px;}
+.sunday-list{display:flex; flex-direction:column; gap:10px;}
+.sunday-row{
+  display:grid; grid-template-columns:74px 1fr auto; align-items:center; gap:18px;
+  padding:14px 18px; text-decoration:none; color:inherit;
+  transition:border-color .12s, transform .12s;
+}
+a.sunday-row:hover{border-color:color-mix(in srgb, var(--accent-mark) 50%, var(--border));}
+.sunday-date{text-align:center; line-height:1;}
+.sunday-date .d{font-family:'Sora'; font-weight:800; font-size:26px;}
+.sunday-date .m{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); margin-top:4px;}
+.sunday-main{min-width:0;}
+.sunday-main .title{font-weight:700; font-size:15px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.sunday-main .meta{font-size:12.5px; color:var(--text-3); margin-top:4px; display:flex; gap:14px; flex-wrap:wrap;}
+.sunday-side{display:flex; align-items:center; gap:10px; color:var(--text-3); font-size:12.5px; white-space:nowrap;}
+.pill{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; background:color-mix(in srgb, var(--accent-mark) 16%, var(--surface-2)); color:var(--accent-mark); border:1px solid color-mix(in srgb, var(--accent-mark) 35%, var(--border));}
+.pill.next{background:color-mix(in srgb, var(--accent2-mark) 14%, var(--surface-2)); color:var(--accent2-mark); border-color:color-mix(in srgb, var(--accent2-mark) 35%, var(--border));}
+.sunday-row.unplanned{border-style:dashed; box-shadow:none; background:transparent;}
+.sunday-row.unplanned .title{color:var(--text-2);}
+.empty-state{padding:30px 0; color:var(--text-3); font-size:14px;}
+.notice{margin:20px 0; padding:16px 18px; border-radius:12px; border:1px dashed var(--border); background:var(--surface-2); font-size:13px; color:var(--text-2); line-height:1.5;}
+@media (max-width:560px){
+  .sunday-row{grid-template-columns:56px 1fr; gap:12px; padding:12px 14px;}
+  .sunday-side{grid-column:2; justify-content:flex-start;}
+  .sunday-date .d{font-size:22px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar-root"></div>
+
+<div class="wrap">
+  <div class="page-head">
+    <div>
+      <h1>Program duminică</h1>
+      <p class="sub" id="head-sub"></p>
+    </div>
+    <button class="btn primary" id="new-btn" hidden>+ Duminică nouă</button>
+  </div>
+
+  <form class="card new-card" id="new-form" hidden>
+    <h3>Duminică nouă</h3>
+    <div class="new-grid">
+      <label class="field"><span>Data</span><input class="input" type="date" name="date" required></label>
+      <label class="field"><span>Predicator</span><input class="input" name="preacher_name" list="preacher-list" autocomplete="off" placeholder="din calendar sau scris de mână"></label>
+      <label class="field"><span>Ora de început</span><input class="input" type="time" name="start_time" value="10:00"></label>
+      <label class="field"><span>Pornește de la</span><select class="input" name="from" id="from-select"></select></label>
+    </div>
+    <datalist id="preacher-list"></datalist>
+    <div class="new-actions">
+      <button class="btn primary" type="submit">Creează programul</button>
+      <button class="btn" type="button" id="new-cancel">Renunță</button>
+    </div>
+  </form>
+
+  <div id="notice-wrap"></div>
+
+  <div class="list-block">
+    <h2 id="upcoming-title">Următoarele duminici</h2>
+    <div class="sunday-list" id="upcoming"></div>
+  </div>
+
+  <div class="list-block" id="past-block" hidden>
+    <h2 id="past-title">Duminici trecute</h2>
+    <div class="sunday-list" id="past"></div>
+  </div>
+
+  <div style="height:60px;"></div>
+</div>
+
+<script>
+__SHARED_JS__
+</script>
+<script>
+(function(){
+  const PAYLOAD = __PULS_DATA_JSON__;
+  const isAdmin = PULS_USER && PULS_USER.role === 'admin';
+  initNav('program', '');
+
+  document.getElementById('head-sub').textContent = isAdmin
+    ? 'Pregătiți aici fiecare duminică: ordinea, cântările, cine ce face și resursele (slide-uri, PPT, PDF).'
+    : 'Duminicile care urmează. La duminicile tale poți completa partea de predică și urca slide-uri.';
+
+  const MONTHS_UP = MONTHS_RO;
+  function dateBlock(slug){
+    const [, m, d] = slug.split('-').map(Number);
+    return `<div class="sunday-date"><div class="d">${d}</div><div class="m">${MONTHS_UP[m-1]}</div></div>`;
+  }
+
+  function row(s, isNext){
+    const bits = [];
+    bits.push(s.preacher_name ? `Predică: ${esc(s.preacher_name)}` : 'Predicator necompletat');
+    bits.push(`începe ${esc(s.start_time || '10:00')}`);
+    if (s.total_sec) bits.push(`durată ${formatDuration(s.total_sec)}`);
+    const side = [];
+    if (s.resource_count) side.push(`📎 ${s.resource_count}`);
+    if (s.isPast && s.attendance != null) side.push(`${s.attendance} prezenți`);
+    else if (s.isPast && isAdmin) side.push('prezență necompletată');
+    return `
+      <a class="card sunday-row" href="/program/${s.date}">
+        ${dateBlock(s.date)}
+        <div class="sunday-main">
+          <div class="title">${formatSlugLong(s.date)}
+            ${isNext ? '<span class="pill next">următoarea</span>' : ''}
+            ${s.mine ? '<span class="pill">predici tu</span>' : ''}
+          </div>
+          <div class="meta">${bits.map(b => `<span>${b}</span>`).join('')}</div>
+        </div>
+        <div class="sunday-side">${side.join(' · ')} <span aria-hidden="true">›</span></div>
+      </a>`;
+  }
+
+  function unplannedRow(u){
+    return `
+      <div class="card sunday-row unplanned">
+        ${dateBlock(u.date)}
+        <div class="sunday-main">
+          <div class="title">${formatSlugLong(u.date)}</div>
+          <div class="meta"><span>Predică: ${esc(u.speaker)} (din calendar)</span><span>fără program încă</span></div>
+        </div>
+        <div class="sunday-side">${isAdmin ? `<button class="btn small" data-create="${u.date}" data-preacher="${esc(u.speaker)}">Creează</button>` : ''}</div>
+      </div>`;
+  }
+
+  if (!PAYLOAD.dbReady) {
+    document.getElementById('notice-wrap').innerHTML = '<div class="notice">Baza de date a programului (Cloudflare D1) nu e configurată încă — vezi README, secțiunea „Program duminică".</div>';
+  }
+
+  const upcoming = PAYLOAD.sundays.filter(s => !s.isPast);
+  const past = PAYLOAD.sundays.filter(s => s.isPast).reverse();
+  const plannedUpcoming = upcoming.map(s => ({ kind: 'planned', date: s.date, s }))
+    .concat(PAYLOAD.unplanned.map(u => ({ kind: 'unplanned', date: u.date, u })))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  document.getElementById('upcoming').innerHTML = plannedUpcoming.length
+    ? plannedUpcoming.map((x, i) => x.kind === 'planned' ? row(x.s, i === 0) : unplannedRow(x.u)).join('')
+    : `<div class="empty-state">${isAdmin ? 'Nicio duminică pregătită încă. Apasă „+ Duminică nouă".' : 'Nicio duminică pregătită încă.'}</div>`;
+
+  if (past.length) {
+    document.getElementById('past-block').hidden = false;
+    if (!isAdmin) document.getElementById('past-title').textContent = 'Duminicile tale trecute';
+    document.getElementById('past').innerHTML = past.map(s => row(s, false)).join('');
+  }
+
+  if (!isAdmin) return;
+
+  // ---- creare duminică (doar contul general) ----
+  const form = document.getElementById('new-form');
+  const newBtn = document.getElementById('new-btn');
+  newBtn.hidden = false;
+  const scheduleByDate = Object.fromEntries(PAYLOAD.schedule.map(s => [s.date, s.speaker]));
+  document.getElementById('preacher-list').innerHTML = [...new Set(PAYLOAD.schedule.map(s => s.speaker))]
+    .map(n => `<option value="${esc(n)}">`).join('');
+  document.getElementById('from-select').innerHTML = '<option value="template">Șablonul standard</option>' +
+    PAYLOAD.copySources.map(c => `<option value="${c.date}">Copie după ${c.date.split('-').reverse().join('.')}${c.preacher_name ? ' — ' + esc(c.preacher_name) : ''}</option>`).join('');
+
+  function fillPreacher(){
+    const p = scheduleByDate[form.date.value];
+    if (p) form.preacher_name.value = p;
+  }
+  form.date.addEventListener('change', fillPreacher);
+
+  newBtn.addEventListener('click', () => {
+    form.hidden = false;
+    newBtn.hidden = true;
+    if (!form.date.value && PAYLOAD.nextFreeSunday) { form.date.value = PAYLOAD.nextFreeSunday; fillPreacher(); }
+    form.date.focus();
+  });
+  document.getElementById('new-cancel').addEventListener('click', () => { form.hidden = true; newBtn.hidden = false; });
+
+  async function create(body, btn){
+    if (btn) btn.disabled = true;
+    try {
+      await api('POST', '/api/program', body);
+      location.href = '/program/' + body.date;
+    } catch (err) {
+      toast(err.message, true);
+      if (btn) btn.disabled = false;
+    }
+  }
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    create({ date: fd.get('date'), preacher_name: fd.get('preacher_name'), start_time: fd.get('start_time'), from: fd.get('from') },
+      form.querySelector('[type=submit]'));
+  });
+  document.getElementById('upcoming').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-create]');
+    if (b) create({ date: b.dataset.create, preacher_name: b.dataset.preacher, from: 'template' }, b);
+  });
+})();
+</script>
+</body>
+</html>

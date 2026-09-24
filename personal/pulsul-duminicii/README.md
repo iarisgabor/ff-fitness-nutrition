@@ -1,7 +1,9 @@
 # pulsul-duminicii
 
 Site live de statistici pentru feedback-ul săptămânal al bisericii (formularul
-„Evaluare întâlnire duminică"). Citește direct din Google Sheet-ul din spatele
+„Evaluare întâlnire duminică"), plus **Program duminică** (pregătirea fiecărei duminici,
+cu slide-uri/PPT urcate) și **conturi**: `BisericaLogos` vede tot, fiecare predicator își
+vede statisticile lui și duminicile care urmează. Citește direct din Google Sheet-ul din spatele
 formularului la fiecare vizită — nu există niciun pas manual de refresh. Design
 evoluat din raportul static `../librarie/pulsul-duminicii.html`. Plan aprobat:
 `.claude/plans` din sesiunea în care a fost construit (sau `git log` pe acest folder).
@@ -17,12 +19,53 @@ npm install
 
 | Secret | De unde |
 |---|---|
+| `ADMIN_PASSWORD` | o alegi tu — parola contului general `BisericaLogos` (numele e `ADMIN_USERNAME` din `wrangler.toml`) |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | fișierul JSON al service account-ului (vezi mai jos) — câmpul `client_email` |
 | `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | același JSON — câmpul `private_key` (cu tot cu `-----BEGIN/END PRIVATE KEY-----`) |
-| `SITE_PASSWORD` | doar dacă schimbi `AUTH_MODE` în `"password"` (implicit e `"none"`) |
+| `SITE_PASSWORD` | doar dacă schimbi `AUTH_MODE` în `"password"` (implicit e `"accounts"`) |
 | `ANTHROPIC_API_KEY` | consola Anthropic — opțional, activează rezumatul AI per duminică și analiza AI de tendință de pe `/categorii/:cheie` |
 
-`AUTH_MODE` și `GOOGLE_SHEET_ID` sunt în `wrangler.toml` (`[vars]`), nu secrete.
+`AUTH_MODE`, `ADMIN_USERNAME` și `GOOGLE_SHEET_ID` sunt în `wrangler.toml` (`[vars]`), nu secrete.
+
+## Program duminică + conturi — setup (o singură dată)
+
+Programul stă într-o bază **Cloudflare D1**, fișierele urcate într-un bucket **R2** privat,
+sesiunile în KV-ul existent (`PULSUL_KV`). Toate trei au plan gratuit suficient.
+
+```bash
+cd personal/pulsul-duminicii
+
+# 1. Baza de date a programului + conturilor
+npx wrangler d1 create pulsul-duminicii
+#    -> copiază database_id-ul afișat în wrangler.toml, la [[d1_databases]]
+npx wrangler d1 migrations apply DB --remote
+
+# 2. Stocarea fișierelor (PPT, PDF, slide-uri)
+#    Întâi: dashboard Cloudflare -> R2 -> activează R2 (cere un card pe cont,
+#    dar nu taxează nimic sub 10 GB / lună). Apoi:
+npx wrangler r2 bucket create pulsul-resurse
+
+# 3. Parola contului general BisericaLogos
+npx wrangler secret put ADMIN_PASSWORD
+
+# 4. Deploy
+npx wrangler deploy
+```
+
+După deploy:
+1. Intră cu `BisericaLogos` + parola de la pasul 3.
+2. Meniul ☰ → **Conturi predicatori** → creează câte un cont pentru fiecare predicator
+   (lista vine din „Calendar predicare"). Parola i-o dai personal; și-o poate schimba
+   din meniul lui → „Schimbă parola".
+3. **Program duminică** → „+ Duminică nouă" (sau „Creează" pe o duminică din calendar).
+   Predicatorul se completează singur din calendar; programul pornește de la șablonul
+   standard (`src/programTemplate.js`) sau ca o copie a unei duminici anterioare.
+4. După fiecare întâlnire, trece **Prezența** în detaliile duminicii — apare în
+   statisticile predicatorului.
+
+Dacă R2 nu e încă activat, poți face deploy fără el doar comentând blocul `[[r2_buckets]]`
+din `wrangler.toml`: site-ul merge, iar la resurse se pot adăuga doar linkuri (Drive,
+Slides, YouTube) până activezi R2.
 
 ## Configurare Google Sheets — service account (o singură dată)
 
@@ -77,11 +120,23 @@ neafișat public (nu-l trimite decât direct echipei), `AUTH_MODE = "none"` impl
 
 ```bash
 cp .dev.vars.example .dev.vars   # completează cu valorile reale sau cu un service
-                                   # account/Sheet de test
+                                   # account/Sheet de test; ADMIN_PASSWORD e obligatoriu
+npx wrangler d1 migrations apply DB --local   # D1, R2 și KV sunt simulate local
 npm run dev
 ```
 
 ## Verificare end-to-end
+
+Conturi și program:
+- Fără sesiune, orice pagină duce la `/login`; API-ul răspunde 401.
+- `BisericaLogos` vede tab-urile **Analiză · Program duminică**; un predicator vede
+  **Statisticile mele · Program duminică**, iar `/`, `/categorii`, `/predicatori` îl trimit la `/eu`.
+- Predicatorul poate modifica doar elementele din PREDICA la duminica lui (plus cele unde
+  e trecut la „Cine") și poate urca resurse doar la duminica lui; restul răspunde 403.
+- Un fișier urcat se descarcă identic de la `/resurse/:id`, și nu se poate descărca fără login.
+- După 10 parole greșite de pe același IP, login-ul e blocat 15 minute.
+
+Analiză:
 
 - Pagina se încarcă și arată date reale din Sheet, nu eroare de autentificare
   (verifică în consola `wrangler dev` — cel mai frecvent eșec la prima rulare e
@@ -115,7 +170,7 @@ npm run dev
 
 Ambele sunt seam-uri intenționat izolate:
 
-- **Acces**: schimbă `AUTH_MODE` în `wrangler.toml` (`"none"` / `"password"` —
+- **Acces**: implicit `"accounts"` (vezi mai sus). Alternativ, `AUTH_MODE` în `wrangler.toml` (`"none"` / `"password"` —
   setează și `SITE_PASSWORD` — / `"access"` — configurează separat un Cloudflare
   Access Application din dashboard Zero Trust, gratuit până la 50 utilizatori).
 - **Refresh**: implicit e live la fiecare vizită, cu fallback din cache la eroare
