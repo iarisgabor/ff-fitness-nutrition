@@ -1,0 +1,95 @@
+# Deploy automat pentru personal/pulsul-duminicii (Cloudflare Worker) la fiecare
+# push pe main care atinge proiectul. Singura configurare: secretul de repo
+# CLOUDFLARE_API_TOKEN (șablonul „Edit Cloudflare Workers" + Account → D1 → Edit).
+#
+# Tot ce ține de resurse se face idempotent, la fiecare rulare: baza D1 se creează
+# doar dacă lipsește, migrațiile se aplică doar pe cele noi, iar bucket-ul R2 se
+# folosește doar dacă R2 e activat în cont (altfel deploy fără urcare de fișiere).
+name: Deploy Pulsul Duminicii
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'personal/pulsul-duminicii/**'
+      - '.github/workflows/deploy-pulsul-duminicii.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-pulsul-duminicii
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: personal/pulsul-duminicii
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verifică tokenul Cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error title=Lipsește CLOUDFLARE_API_TOKEN::Adaugă-l în Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Instalează wrangler
+        run: npm ci || npm install
+
+      - name: Baza de date D1
+        run: |
+          find_id() {
+            npx wrangler d1 list --json | node -e '
+              let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+                const db = JSON.parse(s).find(d => d.name === "pulsul-duminicii");
+                process.stdout.write(db ? db.uuid : "");
+              });'
+          }
+          ID=$(find_id)
+          if [ -z "$ID" ]; then
+            npx wrangler d1 create pulsul-duminicii
+            ID=$(find_id)
+          fi
+          [ -n "$ID" ] || { echo "::error::Nu am putut crea/găsi baza D1 pulsul-duminicii."; exit 1; }
+          sed -i "s/^database_id = .*/database_id = \"$ID\"/" wrangler.toml
+          npx wrangler d1 migrations apply DB --remote
+
+      - name: Stocarea de fișiere R2 (doar dacă R2 e activat)
+        run: |
+          if npx wrangler r2 bucket info pulsul-resurse > /dev/null 2>&1 || npx wrangler r2 bucket create pulsul-resurse; then
+            echo "R2 activ — urcarea de fișiere e pornită."
+          else
+            echo "::warning title=R2 neactivat::Deploy fără urcare de fișiere (merg doar linkurile). Activează R2 din dashboard-ul Cloudflare și rulează din nou."
+            python3 - <<'PY'
+          import re
+          p = 'wrangler.toml'
+          s = open(p).read()
+          s = re.sub(r'\[\[r2_buckets\]\]\n(?:[a-z_]+ = .*\n)+', '', s)
+          open(p, 'w').write(s)
+          PY
+          fi
+
+      - name: Deploy
+        run: |
+          npx wrangler deploy | tee deploy.log
+          URL=$(grep -o 'https://[a-zA-Z0-9.-]*workers\.dev' deploy.log | head -1)
+          echo "URL=$URL" >> "$GITHUB_ENV"
+
+      - name: Verificare
+        run: |
+          [ -n "$URL" ] || { echo "::warning::Nu am găsit URL-ul workers.dev în output."; exit 0; }
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' "$URL/login")
+            [ "$CODE" = "200" ] && break
+            sleep 5
+          done
+          echo "::notice title=Site live::$URL (login: $CODE)"
+          [ "$CODE" = "200" ]

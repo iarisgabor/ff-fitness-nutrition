@@ -19,7 +19,7 @@ npm install
 
 | Secret | De unde |
 |---|---|
-| `ADMIN_PASSWORD` | o alegi tu — parola contului general `BisericaLogos` (numele e `ADMIN_USERNAME` din `wrangler.toml`) |
+| `ADMIN_PASSWORD` | opțional — dacă e setat, înlocuiește parola contului general `BisericaLogos` dată de `ADMIN_PASSWORD_HASH` din `wrangler.toml` |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | fișierul JSON al service account-ului (vezi mai jos) — câmpul `client_email` |
 | `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | același JSON — câmpul `private_key` (cu tot cu `-----BEGIN/END PRIVATE KEY-----`) |
 | `SITE_PASSWORD` | doar dacă schimbi `AUTH_MODE` în `"password"` (implicit e `"accounts"`) |
@@ -31,6 +31,27 @@ npm install
 
 Programul stă într-o bază **Cloudflare D1**, fișierele urcate într-un bucket **R2** privat,
 sesiunile în KV-ul existent (`PULSUL_KV`). Toate trei au plan gratuit suficient.
+
+### Varianta automată (recomandată): GitHub Actions
+
+`.github/workflows/deploy-pulsul-duminicii.yml` face deploy la fiecare push pe `main` care
+atinge acest folder (sau manual, din tab-ul Actions → „Run workflow"): creează baza D1 dacă
+lipsește, aplică migrațiile noi, folosește R2 doar dacă e activat, face deploy și verifică
+`/login`. Singura configurare, o dată:
+
+1. Cloudflare → My Profile → API Tokens → Create Token → șablonul **Edit Cloudflare
+   Workers** → **+ Add more** → Account · **D1** · Edit → Create Token.
+2. GitHub → repo → Settings → Secrets and variables → Actions → New repository secret:
+   `CLOUDFLARE_API_TOKEN` = tokenul de mai sus.
+3. (Opțional) Cloudflare → R2 → activează, pentru urcarea de fișiere.
+
+**Parola contului general** nu e un secret de setat: `ADMIN_PASSWORD_HASH` din
+`wrangler.toml` e hash-ul PBKDF2 al unei parole aleatoare generate cu
+`node scripts/admin-password.mjs`. Pentru o parolă nouă rulezi scriptul, înlocuiești linia
+și faci push. Hash-ul poate sta public doar pentru că parola e aleatoare și lungă — nu
+genera hash-ul unei parole alese de mână.
+
+### Varianta manuală, din laptop
 
 ```bash
 cd personal/pulsul-duminicii
@@ -45,15 +66,12 @@ npx wrangler d1 migrations apply DB --remote
 #    dar nu taxează nimic sub 10 GB / lună). Apoi:
 npx wrangler r2 bucket create pulsul-resurse
 
-# 3. Parola contului general BisericaLogos
-npx wrangler secret put ADMIN_PASSWORD
-
-# 4. Deploy
+# 3. Deploy (parola BisericaLogos vine din ADMIN_PASSWORD_HASH din wrangler.toml)
 npx wrangler deploy
 ```
 
 După deploy:
-1. Intră cu `BisericaLogos` + parola de la pasul 3.
+1. Intră cu `BisericaLogos` + parola generată (cea din care e făcut `ADMIN_PASSWORD_HASH`).
 2. Meniul ☰ → **Conturi predicatori** → creează câte un cont pentru fiecare predicator
    (lista vine din „Calendar predicare"). Parola i-o dai personal; și-o poate schimba
    din meniul lui → „Schimbă parola".

@@ -2,8 +2,9 @@
 // fără nicio dependență (doar crypto.subtle + KV + D1).
 //
 // Două tipuri de utilizator:
-//   admin    — contul general (ADMIN_USERNAME, implicit "BisericaLogos"), parola
-//              din secretul ADMIN_PASSWORD. Nu există în D1, intenționat.
+//   admin    — contul general (ADMIN_USERNAME, implicit "BisericaLogos"). Parola vine
+//              fie din secretul ADMIN_PASSWORD, fie ca hash din ADMIN_PASSWORD_HASH
+//              (wrangler.toml). Nu există în D1, intenționat.
 //   preacher — rând în tabelul `users` din D1, creat de admin din /admin/conturi.
 
 const SESSION_TTL_SECONDS = 30 * 24 * 3600;
@@ -40,10 +41,10 @@ async function safeEqual(a, b) {
   return diff === 0;
 }
 
-export async function hashPassword(password, saltHex = randomHex(16)) {
+export async function hashPassword(password, saltHex = randomHex(16), iterations = PBKDF2_ITERATIONS) {
   const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt: fromHex(saltHex), iterations: PBKDF2_ITERATIONS },
+    { name: 'PBKDF2', hash: 'SHA-256', salt: fromHex(saltHex), iterations },
     key, 256,
   );
   return { hash: toHex(bits), salt: saltHex };
@@ -54,10 +55,23 @@ async function verifyPassword(password, hash, salt) {
   return safeEqual(computed.hash, hash);
 }
 
-// Amprenta parolei de admin, ținută în sesiune: dacă se schimbă ADMIN_PASSWORD,
-// toate sesiunile de admin vechi devin invalide automat.
+// Parola contului general: secretul ADMIN_PASSWORD are prioritate; altfel
+// ADMIN_PASSWORD_HASH = "pbkdf2$<iterații>$<salt hex>$<hash hex>" (generat cu
+// scripts/admin-password.mjs). Hash-ul poate sta public în wrangler.toml doar
+// pentru că parola generată e aleatoare și lungă — nu pune acolo o parolă aleasă de mână.
+async function checkAdminPassword(env, password) {
+  if (env.ADMIN_PASSWORD) return safeEqual(password, env.ADMIN_PASSWORD);
+  const m = /^pbkdf2\$(\d+)\$([0-9a-f]{32})\$([0-9a-f]{64})$/.exec(env.ADMIN_PASSWORD_HASH || '');
+  if (!m) return false;
+  const { hash } = await hashPassword(String(password || ''), m[2], Number(m[1]));
+  return safeEqual(hash, m[3]);
+}
+
+// Amprenta parolei de admin, ținută în sesiune: dacă se schimbă parola (secretul sau
+// hash-ul), toate sesiunile de admin vechi devin invalide automat.
 async function adminFingerprint(env) {
-  return toHex(await crypto.subtle.digest('SHA-256', enc.encode('puls-admin:' + (env.ADMIN_PASSWORD || '')))).slice(0, 16);
+  const source = env.ADMIN_PASSWORD || env.ADMIN_PASSWORD_HASH || '';
+  return toHex(await crypto.subtle.digest('SHA-256', enc.encode('puls-admin:' + source))).slice(0, 16);
 }
 
 export function adminUsername(env) {
@@ -79,7 +93,7 @@ export async function attemptLogin(env, request, username, password) {
   let user = null;
 
   if (name.toLowerCase() === adminUsername(env).toLowerCase()) {
-    if (env.ADMIN_PASSWORD && await safeEqual(password, env.ADMIN_PASSWORD)) {
+    if (await checkAdminPassword(env, password)) {
       user = { role: 'admin', username: adminUsername(env), displayName: adminUsername(env), fp: await adminFingerprint(env) };
     }
   } else if (env.DB && name) {

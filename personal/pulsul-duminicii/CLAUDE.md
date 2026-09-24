@@ -108,8 +108,10 @@ de import ca text.
 10. **Acces cu conturi** (`AUTH_MODE = "accounts"`, schimbat 2026-09-24 din `"none"`) +
     `x-robots-tag: noindex`. Conținutul include nume și reflecții personale.
     - Contul general (`ADMIN_USERNAME`, implicit `BisericaLogos`) **nu stă în D1**: parola e
-      secretul `ADMIN_PASSWORD`, comparată în timp constant. Sesiunea de admin ține o
-      amprentă a parolei — schimbarea secretului delogează toate sesiunile de admin.
+      `ADMIN_PASSWORD_HASH` din `wrangler.toml` (PBKDF2 al unei parole ALEATOARE generate cu
+      `scripts/admin-password.mjs` — de-asta poate sta public în repo) sau, cu prioritate,
+      secretul `ADMIN_PASSWORD`. Sesiunea de admin ține o amprentă a parolei — orice schimbare
+      a ei delogează toate sesiunile de admin.
     - Predicatorii sunt în D1 (`users`), parole PBKDF2-SHA256 100k iterații (plafonul
       Workers). Resetarea de către admin crește `session_gen` → predicatorul e delogat peste tot;
       schimbarea propriei parole nu (ar deloga și sesiunea din care o schimbă).
@@ -159,6 +161,14 @@ de import ca text.
     Planning Center. „Copie după o duminică" copiază rândurile (nu resursele) și mută pe
     predicatorul nou elementele care erau pe numele celui vechi.
 
+## Deploy
+
+Automat, prin GitHub Actions (`.github/workflows/deploy-pulsul-duminicii.yml` la rădăcina
+repo-ului): la fiecare push pe `main` care atinge acest folder. Singurul secret e
+`CLOUDFLARE_API_TOKEN` în repo. Workflow-ul pune singur `database_id`-ul D1 în
+`wrangler.toml` (în copia de pe runner — în repo rămâne placeholder-ul) și scoate binding-ul
+R2 dacă R2 nu e activat în cont. Setup complet: `README.md`.
+
 ## Comenzi
 
 ```bash
@@ -180,7 +190,7 @@ editare pe el). KV: `PULSUL_KV`.
 D1: `DB` (baza `pulsul-duminicii`, migrații în `migrations/`). R2: `RESURSE` (bucket
 `pulsul-resurse`).
 
-Secrete: `ADMIN_PASSWORD` (parola contului general), `GOOGLE_SERVICE_ACCOUNT_EMAIL`,
+Secrete: `ADMIN_PASSWORD` (opțional, are prioritate peste `ADMIN_PASSWORD_HASH`), `GOOGLE_SERVICE_ACCOUNT_EMAIL`,
 `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, `SITE_PASSWORD` (doar la `AUTH_MODE = "password"`),
 `ANTHROPIC_API_KEY` (opțional).
 

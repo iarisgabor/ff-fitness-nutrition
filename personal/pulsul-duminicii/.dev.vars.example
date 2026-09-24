@@ -1,4 +1,4 @@
-ADMIN_PASSWORD=parola-contului-BisericaLogos
+# ADMIN_PASSWORD=opțional — altfel se folosește ADMIN_PASSWORD_HASH din wrangler.toml
 GOOGLE_SERVICE_ACCOUNT_EMAIL=nume@proiect.iam.gserviceaccount.com
 GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 SITE_PASSWORD=doar-daca-AUTH_MODE-e-password

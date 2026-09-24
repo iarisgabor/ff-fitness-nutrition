@@ -74,7 +74,7 @@ async function deleteAccount(env, id) {
 
 // Predicatorul își schimbă singur parola (are nevoie de cea curentă).
 async function changeOwnPassword(env, request, user, body) {
-  if (user.role !== 'preacher') return fail(400, 'Parola contului general se schimbă din Cloudflare (secretul ADMIN_PASSWORD).');
+  if (user.role !== 'preacher') return fail(400, 'Parola contului general se schimbă din configurare (ADMIN_PASSWORD_HASH în wrangler.toml sau secretul ADMIN_PASSWORD).');
   const check = await attemptLogin(env, request, user.username, String(body.current || ''));
   if (!check.user) return fail(403, 'Parola curentă e greșită.');
   const password = String(body.password || '');

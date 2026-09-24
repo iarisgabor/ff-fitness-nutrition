@@ -16,8 +16,11 @@ fallthrough = true
 # "password" = Basic Auth cu SITE_PASSWORD. "access" = Cloudflare Access (nimic
 # de configurat aici, doar în dashboard Zero Trust).
 AUTH_MODE = "accounts"
-# Contul general. Parola lui NU stă aici — e secretul ADMIN_PASSWORD.
+# Contul general. Parola: hash-ul de mai jos (parolă aleatoare generată cu
+# `node scripts/admin-password.mjs` — pentru o parolă nouă rulezi scriptul și
+# înlocuiești linia). Secretul ADMIN_PASSWORD, dacă e setat, are prioritate.
 ADMIN_USERNAME = "BisericaLogos"
+ADMIN_PASSWORD_HASH = "pbkdf2$100000$2e73fc443a5a86582f785472c8e7f307$e5cc67e62f2024a33b59fdd4e0692f0d36e52d3a4fff166eecd6d8eadbd72dd7"
 GOOGLE_SHEET_ID = "1NIRVF-Dfxbu3BweApf9eWhMW80ZLeXw6RGPAVAQieic"
 # "Calendar predicare" — cine predică în fiecare duminică, Sheet SEPARAT de cel
 # de mai sus. Service account-ul trebuie adăugat Viewer și pe acesta (vezi README).
@@ -48,7 +51,7 @@ binding = "RESURSE"
 bucket_name = "pulsul-resurse"
 
 # Secrete — NICIODATĂ aici, doar prin:
-#   wrangler secret put ADMIN_PASSWORD           (parola contului BisericaLogos)
+#   wrangler secret put ADMIN_PASSWORD           (opțional — altfel ADMIN_PASSWORD_HASH)
 #   wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL
 #   wrangler secret put GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
 #   wrangler secret put SITE_PASSWORD          (doar dacă AUTH_MODE = "password")
