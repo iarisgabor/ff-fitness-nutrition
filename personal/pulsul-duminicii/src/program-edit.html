@@ -2,13 +2,8 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
 <title>Pulsul Duminicii — program</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+__SHARED_HEAD__
 <style>
 __SHARED_CSS__
 
@@ -41,8 +36,8 @@ __SHARED_CSS__
 .plan-row:hover{background:color-mix(in srgb, var(--surface-2) 70%, transparent);}
 .plan-row.header{background:var(--surface-2); min-height:36px; cursor:default;}
 .plan-row.header.clickable{cursor:pointer;}
-.plan-row.header .h-title{font-family:'Sora'; font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; gap:10px;}
-.plan-row.header .h-total{font-family:'IBM Plex Mono'; font-size:11px; color:var(--text-3); font-weight:500; letter-spacing:0;}
+.plan-row.header .h-title{font-family:var(--font-display); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; gap:10px;}
+.plan-row.header .h-total{font-family:var(--font-mono); font-size:11px; color:var(--text-3); font-weight:500; letter-spacing:0;}
 .plan-row.readonly{cursor:pointer;}
 .plan-row.dragging{opacity:.35;}
 .plan-row.drop-before{box-shadow: inset 0 2px 0 var(--accent-mark);}
@@ -50,8 +45,8 @@ __SHARED_CSS__
 .grip{color:var(--text-3); cursor:grab; display:flex; align-items:center; justify-content:center; height:100%; touch-action:none;}
 .grip svg{width:12px; height:16px; fill:currentColor;}
 .grip.off{visibility:hidden;}
-.c-time{font-family:'IBM Plex Mono'; font-size:11.5px; color:var(--text-3); font-variant-numeric:tabular-nums;}
-.c-len{font-family:'IBM Plex Mono'; font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--text-2);}
+.c-time{font-family:var(--font-mono); font-size:11.5px; color:var(--text-3); font-variant-numeric:tabular-nums;}
+.c-len{font-family:var(--font-mono); font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--text-2);}
 .c-title{padding:8px 0; min-width:0;}
 .c-title .t{font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:7px; min-width:0;}
 .c-title .t .txt{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -65,7 +60,7 @@ __SHARED_CSS__
 .add-in-section .btn{padding:3px 9px; font-size:11px; border-radius:7px; background:var(--surface);}
 .plan-foot{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border-top:1px solid var(--border); flex-wrap:wrap;}
 .plan-foot .total{font-size:13px; color:var(--text-2);}
-.plan-foot .total b{font-family:'IBM Plex Mono'; color:var(--text);}
+.plan-foot .total b{font-family:var(--font-mono); color:var(--text);}
 @media (max-width:640px){
   .plan-head, .plan-row{grid-template-columns:22px 50px minmax(0,1fr) 38px; padding:0 10px; gap:8px;}
   .plan-head{letter-spacing:.04em;}
@@ -76,7 +71,7 @@ __SHARED_CSS__
 /* ---- resurse ---- */
 .res-list{display:flex; flex-direction:column; gap:8px;}
 .res-item{display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:10px; background:var(--surface-2); min-width:0;}
-.res-icon{flex:none; width:30px; height:30px; border-radius:8px; background:var(--surface); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:var(--accent-mark); font-family:'IBM Plex Mono';}
+.res-icon{flex:none; width:30px; height:30px; border-radius:8px; background:var(--surface); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:var(--accent-mark); font-family:var(--font-mono);}
 .res-body{min-width:0; flex:1;}
 .res-body a{font-size:13px; font-weight:700; color:var(--text); text-decoration:none; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .res-body a:hover{text-decoration:underline;}

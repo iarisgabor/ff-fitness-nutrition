@@ -36,15 +36,25 @@ function positionTip(x,y){
   tt.style.left = left + 'px';
   tt.style.top = top + 'px';
 }
-function hideTip(){ if(tt) tt.classList.remove('show'); }
+let tipOwner = null;
+function hideTip(){ tipOwner = null; if(tt) tt.classList.remove('show'); }
+// Mouse: apare la hover, dispare la ieșire. Deget: o atingere îl arată, a doua atingere
+// pe același element, o atingere în altă parte sau derularea îl ascund (înainte rămânea
+// pe ecran până atingeai alt element cu tooltip).
 function bindTip(el, htmlFn){
-  el.addEventListener('mousemove', e => showTip(htmlFn(), e.clientX, e.clientY));
-  el.addEventListener('mouseleave', hideTip);
-  el.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    showTip(htmlFn(), t.clientX, t.clientY);
-  }, {passive:true});
+  el.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') showTip(htmlFn(), e.clientX, e.clientY); });
+  el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTip(); });
+  el.addEventListener('pointerup', e => {
+    if (e.pointerType === 'mouse') return;
+    if (tipOwner === el) { hideTip(); return; }
+    showTip(htmlFn(), e.clientX, e.clientY);
+    tipOwner = el;
+  });
 }
+document.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'mouse' && tipOwner && !tipOwner.contains(e.target)) hideTip();
+}, true);
+window.addEventListener('scroll', () => { if (tipOwner) hideTip(); }, {passive:true});
 
 // Temă: aplicată deja înainte de primul paint de scriptul mic din <head> (evită
 // flash-ul de temă greșită); aici doar legăm butonul și persistăm alegerea.
@@ -55,6 +65,8 @@ function isDarkNow(){
 }
 function setTheme(theme){ // 'light' | 'dark'
   document.documentElement.setAttribute('data-theme', theme);
+  // bara de stare a telefonului urmează tema aleasă, nu doar pe cea a sistemului
+  document.querySelectorAll('meta[name=theme-color]').forEach(m => { m.content = theme === 'dark' ? '#090C13' : '#F1F3F8'; });
   try { localStorage.setItem('puls-theme', theme); } catch(e){}
 }
 function initThemeToggle(){

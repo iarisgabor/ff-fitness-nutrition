@@ -2,13 +2,8 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
 <title>Pulsul Duminicii — analiză categorie</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+__SHARED_HEAD__
 <style>
 __SHARED_CSS__
 
@@ -26,9 +21,10 @@ __SHARED_CSS__
 .custom-range[hidden]{display:none;} /* altfel .custom-range{display:flex} anulează atributul hidden */
 .custom-range label{font-size:12.5px; color:var(--text-2);}
 .custom-range input[type="date"]{
-  font-family:'IBM Plex Mono'; font-size:12.5px; padding:7px 10px; border-radius:8px;
+  font-family:var(--font-mono); font-size:12.5px; padding:7px 10px; border-radius:8px;
   border:1px solid var(--border); background:var(--surface-2); color:var(--text);
 }
+@media (max-width:760px), (pointer:coarse){ .custom-range input[type="date"]{font-size:16px;} }
 
 .section-block{margin:32px 0;}
 .section-block h3{font-size:14px; font-weight:700; margin-bottom:2px;}
@@ -38,7 +34,7 @@ __SHARED_CSS__
 .yoy-row{display:flex; align-items:center; gap:22px; flex-wrap:wrap;}
 .yoy-block{text-align:center;}
 .yoy-label{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); font-weight:700;}
-.yoy-val{font-family:'Manrope'; font-weight:800; font-size:26px; margin-top:6px;}
+.yoy-val{font-family:var(--font-body); font-weight:800; font-size:26px; margin-top:6px;}
 .yoy-sub{font-size:12px; color:var(--text-2); margin-top:2px;}
 .yoy-arrow{font-size:22px; color:var(--text-3);}
 .yoy-delta{margin-left:auto; font-size:17px; font-weight:700;}
@@ -382,7 +378,7 @@ __SHARED_JS__
         </filter>
       </defs>
       <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${W-padR}" y2="${avgY.toFixed(1)}" stroke="var(--text-3)" stroke-width="1" opacity="0.35"/>
-      <text x="${W-padR}" y="${(avgY-6).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--text-3)" font-family="IBM Plex Mono">medie ${overallAvg.toFixed(2)}</text>
+      <text x="${W-padR}" y="${(avgY-6).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--text-3)" font-family="var(--font-mono)">medie ${overallAvg.toFixed(2)}</text>
       <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
       <path d="${bandD}" fill="var(--accent-mark)" fill-opacity="0.14" stroke="none"/>
       <path d="${pathD}" fill="none" stroke="var(--accent2-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#catLineGlow)"/>
@@ -395,13 +391,13 @@ __SHARED_JS__
       html += `<circle class="pt" data-i="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${color}" stroke="var(--surface)" stroke-width="2"/>`;
       if (isBest || isWorst) {
         const dy = isBest ? -12 : 18;
-        html += `<text x="${p.x.toFixed(1)}" y="${(p.y+dy).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="${color}" font-family="IBM Plex Mono">${p.avg.toFixed(2)}</text>`;
+        html += `<text x="${p.x.toFixed(1)}" y="${(p.y+dy).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="${color}" font-family="var(--font-mono)">${p.avg.toFixed(2)}</text>`;
       }
     });
     tickIdxs.forEach(i => {
       const p = pts[i];
       const {dd,mm} = parseDMY(p.date);
-      html += `<text x="${p.x.toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="10.5" fill="var(--text-3)" font-family="Manrope">${dd}.${mm}</text>`;
+      html += `<text x="${p.x.toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="10.5" fill="var(--text-3)" font-family="var(--font-body)">${dd}.${mm}</text>`;
     });
     svg.innerHTML = html;
     svg.querySelectorAll('.pt').forEach(circle => {

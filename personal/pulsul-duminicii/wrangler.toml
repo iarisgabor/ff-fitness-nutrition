@@ -9,6 +9,13 @@ type = "Text"
 globs = ["**/*.html", "**/*.css", "**/*.txt"]
 fallthrough = true
 
+# Fișiere statice publice (fonturi, iconițe, favicon; mai târziu manifestul și service
+# worker-ul) — servite direct de Cloudflare, ÎNAINTEA Worker-ului și fără login (browserul
+# cere manifestul și iconițele fără cookie). Nu pune aici nimic personal. Nu e un build
+# step: fișierele se urcă exact cum sunt, la `wrangler deploy`.
+[assets]
+directory = "./public"
+
 [vars]
 # "accounts" = login cu cont (implicit): ADMIN_USERNAME vede tot, predicatorii
 # (creați din /admin/conturi) își văd statisticile și programul.

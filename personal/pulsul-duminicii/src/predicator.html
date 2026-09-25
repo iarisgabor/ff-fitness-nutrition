@@ -2,13 +2,8 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
 <title>Pulsul Duminicii — predicator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+__SHARED_HEAD__
 <style>
 __SHARED_CSS__
 
@@ -32,7 +27,7 @@ __SHARED_CSS__
 
 .quote-list{display:flex; flex-direction:column; gap:14px;}
 .quote-item{padding:14px 16px; border-radius:10px; background:var(--surface-2); font-size:13.5px; line-height:1.55; color:var(--text);}
-.quote-item .q-when{font-size:11px; color:var(--text-3); font-family:'IBM Plex Mono'; margin-bottom:6px;}
+.quote-item .q-when{font-size:11px; color:var(--text-3); font-family:var(--font-mono); margin-bottom:6px;}
 
 .link-list{display:flex; flex-direction:column; gap:8px;}
 .link-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 16px; text-decoration:none; color:inherit;}
@@ -215,7 +210,7 @@ __SHARED_JS__
     });
     pts.forEach(p => {
       const {dd,mm} = parseDMY(p.date);
-      html += `<text x="${p.x.toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="10.5" fill="var(--text-3)" font-family="Manrope">${dd}.${mm}</text>`;
+      html += `<text x="${p.x.toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="10.5" fill="var(--text-3)" font-family="var(--font-body)">${dd}.${mm}</text>`;
     });
     svg.innerHTML = html;
     svg.querySelectorAll('.pt').forEach(circle => {

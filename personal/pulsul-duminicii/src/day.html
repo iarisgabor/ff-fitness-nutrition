@@ -2,13 +2,8 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
 <title>Pulsul Duminicii — o duminică</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+__SHARED_HEAD__
 <style>
 __SHARED_CSS__
 
@@ -39,12 +34,12 @@ __SHARED_CSS__
 .slide-top{display:flex; align-items:center; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
 .slide-meta{display:flex; flex-direction:column; gap:2px;}
 .slide-cat-label{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--text-3);}
-.slide-when{font-size:12px; color:var(--text-3); font-family:'IBM Plex Mono';}
+.slide-when{font-size:12px; color:var(--text-3); font-family:var(--font-mono);}
 .slide-question{font-size:14.5px; color:var(--text-2); font-style:italic; line-height:1.45; margin-bottom:16px; padding-bottom:16px; border-bottom:1px dashed var(--border);}
 .slide-text{font-size:19px; line-height:1.55; color:var(--text); font-weight:500;}
 .slide-text.empty{color:var(--text-3); font-style:italic; font-weight:400;}
 .slide-nav{display:flex; align-items:center; justify-content:space-between; margin-top:26px;}
-.slide-counter{font-family:'IBM Plex Mono'; font-size:13px; color:var(--text-3);}
+.slide-counter{font-family:var(--font-mono); font-size:13px; color:var(--text-3);}
 .slide-empty{padding:40px 0; text-align:center; color:var(--text-3); font-size:14px;}
 
 /* dashboard — toate deodată */
@@ -53,7 +48,7 @@ __SHARED_CSS__
 .dash-card{break-inside:avoid; margin-bottom:18px; padding:20px 22px;}
 .dash-card .dh{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
 .dash-card .dh b{font-size:14.5px; font-weight:700;}
-.dash-card .dh .n{font-size:11.5px; color:var(--text-3); font-family:'IBM Plex Mono';}
+.dash-card .dh .n{font-size:11.5px; color:var(--text-3); font-family:var(--font-mono);}
 .dash-question{font-size:12.5px; color:var(--text-3); font-style:italic; line-height:1.45; margin-bottom:14px; padding-bottom:14px; border-bottom:1px dashed var(--border);}
 .dash-item{display:flex; gap:11px; padding:11px 0; border-top:1px solid var(--border);}
 .dash-item:first-child{border-top:none; padding-top:0;}
