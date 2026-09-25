@@ -71,8 +71,10 @@ jobs:
           mkdir -p "$OUT"
 
           "$BT/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aliniat.apk"
+          # fără --key-pass: cu același fișier, apksigner ar căuta parola cheii pe rândul 2; la PKCS12
+          # parola cheii e cea a depozitului, pe care apksigner o încearcă singur
           "$BT/apksigner" sign --ks "$RUNNER_TEMP/semnare.jks" --ks-key-alias pulsul \
-            --ks-pass "file:$RUNNER_TEMP/semnare.pass" --key-pass "file:$RUNNER_TEMP/semnare.pass" \
+            --ks-pass "file:$RUNNER_TEMP/semnare.pass" \
             --out "$OUT/$NAME.apk" "$RUNNER_TEMP/aliniat.apk"
           "$BT/apksigner" verify --verbose "$OUT/$NAME.apk"
 
