@@ -310,11 +310,14 @@ function closeSheet(dlg, value){
   else setTimeout(done, 170);
 }
 function enableSheetSwipe(dlg){
-  const grab = dlg.querySelector('.sheet-grab');
-  const panel = dlg.querySelector('.sheet-panel');
+  enableSwipeDown(dlg.querySelector('.sheet-grab'), dlg.querySelector('.sheet-panel'), () => closeSheet(dlg));
+}
+// Tragere în jos de mâner (doar deget): panoul urmează degetul și se închide peste 90px.
+function enableSwipeDown(grab, panel, onClose){
+  if (!grab || !panel) return;
   let startY = null, dy = 0;
   grab.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse' || e.target.closest('button, a, input')) return;
     startY = e.clientY; dy = 0;
     grab.setPointerCapture(e.pointerId);
     panel.style.transition = 'none';
@@ -328,8 +331,8 @@ function enableSheetSwipe(dlg){
     if (startY === null) return;
     startY = null;
     panel.style.transition = '';
-    if (dy > 90) { panel.style.transform = ''; closeSheet(dlg); }
-    else panel.style.transform = '';
+    panel.style.transform = '';
+    if (dy > 90) onClose();
   };
   grab.addEventListener('pointerup', end);
   grab.addEventListener('pointercancel', end);
@@ -399,8 +402,14 @@ function isStandalone(){
   });
 })();
 
+// ---------------------------------------------------------------- API
+
+const OFFLINE_MSG = 'Ești offline — modificarea nu a fost trimisă. Încearcă din nou după ce revine conexiunea.';
+const NETWORK_MSG = 'Nu am putut contacta serverul. Verifică conexiunea și încearcă din nou.';
+
 // fetch JSON către API-ul site-ului; aruncă Error cu mesajul serverului la eșec.
 async function api(method, url, body, opts){
+  if (method !== 'GET' && !navigator.onLine) throw new Error(OFFLINE_MSG);
   const init = { method, headers: {}, credentials: 'same-origin' };
   if (body instanceof Blob) {
     init.body = body;
@@ -409,7 +418,9 @@ async function api(method, url, body, opts){
     init.body = JSON.stringify(body);
     init.headers['content-type'] = 'application/json';
   }
-  const res = await fetch(url, init);
+  let res;
+  try { res = await fetch(url, init); }
+  catch (e) { throw new Error(navigator.onLine ? NETWORK_MSG : OFFLINE_MSG); }
   let data = null;
   try { data = await res.json(); } catch(e){}
   if (res.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); throw new Error('Sesiune expirată.'); }
@@ -417,15 +428,140 @@ async function api(method, url, body, opts){
   return data;
 }
 
-// Mesaj scurt jos pe ecran (salvat / eroare).
+// Butonul arată că lucrează (și nu poate fi apăsat de două ori) cât timp rulează fn.
+async function withBusy(btn, fn){
+  if (btn) { btn.disabled = true; btn.classList.add('busy'); btn.setAttribute('aria-busy', 'true'); }
+  try { return await fn(); }
+  finally { if (btn) { btn.disabled = false; btn.classList.remove('busy'); btn.removeAttribute('aria-busy'); } }
+}
+
+// Mesaj scurt jos pe ecran (salvat / eroare). Ca popover, apare și deasupra unui panou deschis.
 function toast(message, isError){
   let el = document.getElementById('toast');
-  if (!el) { el = document.createElement('div'); el.id = 'toast'; el.setAttribute('role','status'); document.body.appendChild(el); }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    if (el.showPopover) el.setAttribute('popover', 'manual');
+    document.body.appendChild(el);
+  }
   el.textContent = message;
-  el.className = 'show' + (isError ? ' error' : '');
+  if (el.showPopover) { try { el.hidePopover(); } catch(e){} el.showPopover(); }
+  el.className = isError ? 'error' : '';
+  requestAnimationFrame(() => el.classList.add('show'));
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => { el.className = ''; }, isError ? 5000 : 2200);
+  toast._t = setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => { if (!el.classList.contains('show') && el.hidePopover) { try { el.hidePopover(); } catch(e){} } }, 200);
+  }, isError ? 5000 : 2200);
 }
+
+// ---------------------------------------------------------------- dialoguri
+//
+// În locul lui confirm()/prompt()/alert(): arată ca restul aplicației (și în aplicația
+// instalată), iar butonul sigur („Renunță") primește focusul. Toate întorc un Promise.
+function confirmDialog(message, opts){
+  opts = opts || {};
+  return new Promise((resolve) => {
+    const dlg = openSheet(`
+      <p class="dialog-text">${esc(message)}</p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-v="0">${esc(opts.cancel || 'Renunță')}</button>
+        <button class="btn ${opts.danger ? 'danger-solid' : 'primary'}" type="button" data-v="1">${esc(opts.ok || 'Confirmă')}</button>
+      </div>`, { title: opts.title || 'Ești sigur?', className: 'dialog', onClose: (v) => resolve(v === true) });
+    dlg.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => closeSheet(dlg, b.dataset.v === '1')));
+  });
+}
+function promptDialog(message, opts){
+  opts = opts || {};
+  return new Promise((resolve) => {
+    const dlg = openSheet(`
+      <form class="dialog-form" method="dialog">
+        ${message ? `<p class="dialog-text">${esc(message)}</p>` : ''}
+        <label class="field"><span>${esc(opts.label || 'Valoare')}</span>
+          <input class="input" name="v" value="${esc(opts.value || '')}" autocomplete="off" autocapitalize="none" spellcheck="false"${opts.minLength ? ` minlength="${opts.minLength}"` : ''} required></label>
+        <div class="dialog-actions">
+          <button class="btn" type="button" data-cancel>Renunță</button>
+          <button class="btn primary" type="submit">${esc(opts.ok || 'Salvează')}</button>
+        </div>
+      </form>`, { title: opts.title, className: 'dialog', onClose: (v) => resolve(typeof v === 'string' ? v : null) });
+    const form = dlg.querySelector('form');
+    dlg.querySelector('[data-cancel]').addEventListener('click', () => closeSheet(dlg, null));
+    form.addEventListener('submit', (e) => { e.preventDefault(); closeSheet(dlg, form.v.value); });
+    const input = form.v;
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+  });
+}
+// Date de dat mai departe (utilizator + parolă): fiecare pe rândul ei, cu „Copiază tot".
+function credentialsDialog(title, rows, note){
+  return new Promise((resolve) => {
+    const text = rows.map(r => `${r.label}: ${r.value}`).join('\n');
+    const dlg = openSheet(`
+      <div class="cred-list">${rows.map(r => `<div class="cred-row"><span>${esc(r.label)}</span><code>${esc(r.value)}</code></div>`).join('')}</div>
+      ${note ? `<p class="dialog-note">${esc(note)}</p>` : ''}
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-copy>Copiază tot</button>
+        <button class="btn primary" type="button" data-ok>Gata</button>
+      </div>`, { title, className: 'dialog', onClose: () => resolve() });
+    dlg.querySelector('[data-ok]').addEventListener('click', () => closeSheet(dlg));
+    dlg.querySelector('[data-copy]').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      try { await navigator.clipboard.writeText(text); btn.textContent = 'Copiat ✓'; }
+      catch (err) { // fără acces la clipboard: selectăm textul, se poate copia manual
+        const sel = window.getSelection(); const range = document.createRange();
+        range.selectNodeContents(dlg.querySelector('.cred-list')); sel.removeAllRanges(); sel.addRange(range);
+        btn.textContent = 'Selectat — copiază manual';
+      }
+    });
+  });
+}
+
+// ---------------------------------------------------------------- offline
+
+// Bandă sus cât timp nu e conexiune; modificările sunt oprite de api() cu un mesaj clar.
+function updateOnlineState(){
+  const offline = !navigator.onLine;
+  document.documentElement.classList.toggle('is-offline', offline);
+  let banner = document.getElementById('offline-banner');
+  if (offline && !banner) {
+    banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    banner.setAttribute('role', 'status');
+    banner.textContent = 'Ești offline — vezi ultima versiune încărcată. Modificările nu se pot salva până revine conexiunea.';
+    const top = document.getElementById('topbar-root');
+    if (top && top.parentNode) top.after(banner); else document.body.prepend(banner);
+  }
+  if (banner) banner.hidden = !offline;
+}
+window.addEventListener('online', updateOnlineState);
+window.addEventListener('offline', updateOnlineState);
+setTimeout(updateOnlineState, 0);
+
+// ---------------------------------------------------------------- grafice
+
+// Lățimea reală a unui SVG, ca graficele să fie desenate la mărimea ecranului (textul
+// rămâne lizibil pe telefon, în loc să fie micșorat cu tot desenul).
+function chartWidth(svg, fallback){
+  const w = Math.round(svg.getBoundingClientRect().width);
+  return w > 0 ? Math.max(300, w) : fallback;
+}
+// Rulează fn când se schimbă lățimea elementului (rotire telefon, fereastră redimensionată).
+function onWidthChange(el, fn){
+  if (!('ResizeObserver' in window)) return;
+  let last = el.getBoundingClientRect().width, t = null;
+  new ResizeObserver(([entry]) => {
+    const w = entry.contentRect.width;
+    if (Math.abs(w - last) < 8) return;
+    last = w;
+    clearTimeout(t); t = setTimeout(fn, 120);
+  }).observe(el);
+}
+
+// ---------------------------------------------------------------- stare ținută minte
+
+function remember(key, value){ try { localStorage.setItem('puls-' + key, value); } catch(e){} }
+function recall(key){ try { return localStorage.getItem('puls-' + key); } catch(e){ return null; } }
 
 // "2026-09-27" -> "duminică, 27 septembrie 2026"
 function formatSlugLong(slug){

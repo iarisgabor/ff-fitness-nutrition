@@ -24,7 +24,19 @@ __SHARED_CSS__
 .day-card .d-avg{font-family:var(--font-mono); font-weight:700; font-size:18px;}
 .day-card:hover{border-left-color:var(--accent-mark); box-shadow:var(--shadow), 0 0 0 1px var(--accent-mark) inset;}
 
-.empty-state{padding:60px 0; text-align:center; color:var(--text-3);}
+.empty-state{padding:60px 0;}
+/* titlu de lună între carduri (ocupă tot rândul grilei) */
+.month-head{grid-column:1 / -1; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin:14px 0 -4px;}
+.month-head:first-child{margin-top:0;}
+@media (max-width:760px){
+  .page-head{padding:22px 0 0;}
+  .page-head p{font-size:13.5px;}
+  .days-grid{grid-template-columns:1fr; gap:8px; padding:20px 0 32px;}
+  .day-card{display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:4px 12px; padding:14px 16px; border-left-width:4px;}
+  .day-card .d-date{font-size:16px;}
+  .day-card .d-row{margin-top:0; gap:14px;}
+  .day-card .d-avg{font-size:17px; min-width:44px; text-align:right;}
+}
 </style>
 </head>
 <body>
@@ -64,8 +76,16 @@ __SHARED_JS__
     return;
   }
 
+  let lastMonth = null;
   DAYS.forEach(d => {
     const {dd,mm,yyyy} = parseDMY(d.date);
+    if (`${mm}.${yyyy}` !== lastMonth) {
+      lastMonth = `${mm}.${yyyy}`;
+      const h = document.createElement('div');
+      h.className = 'month-head';
+      h.textContent = `${MONTHS_RO_FULL[mm-1]} ${yyyy}`;
+      grid.appendChild(h);
+    }
     const avgColor = d.avg ? `var(--r${Math.max(1,Math.min(5,Math.round(d.avg)))})` : 'var(--r3)';
     const a = document.createElement('a');
     a.className = 'card day-card';

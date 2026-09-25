@@ -375,12 +375,52 @@ select.input{appearance:auto;}
 a.btn{text-decoration:none; display:inline-flex; align-items:center; gap:6px;}
 
 #toast{
-  position:fixed; left:50%; bottom:24px; transform:translate(-50%, 12px); opacity:0; pointer-events:none;
+  position:fixed; left:50%; bottom:24px; top:auto; right:auto; margin:0; border:none; overflow:visible; /* anulează stilul implicit de popover */
+  transform:translate(-50%, 12px); opacity:0; pointer-events:none;
   background:var(--text); color:var(--bg); font-size:13px; font-weight:700; padding:10px 16px; border-radius:10px;
   box-shadow:var(--shadow); transition:opacity .15s, transform .15s; z-index:120; max-width:calc(100vw - 32px);
 }
 #toast.show{opacity:1; transform:translate(-50%, 0);}
 #toast.error{background:var(--r1); color:#fff;}
+
+/* buton ocupat (withBusy) */
+.btn.busy{position:relative; color:transparent !important;}
+.btn.busy::after{
+  content:""; position:absolute; inset:0; margin:auto; width:16px; height:16px; border-radius:50%;
+  border:2px solid color-mix(in srgb, var(--text) 25%, transparent); border-top-color:var(--text);
+  animation:spin .7s linear infinite;
+}
+.btn.primary.busy::after, .btn.danger-solid.busy::after{border-color:rgba(255,255,255,.35); border-top-color:#fff;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.btn.danger-solid{background:var(--r1); border-color:var(--r1); color:#fff;}
+.btn.danger-solid:hover:not(:disabled){filter:brightness(1.06); border-color:var(--r1);}
+
+/* dialoguri (confirmDialog / promptDialog / credentialsDialog) */
+dialog.sheet.dialog{max-width:min(420px, calc(100vw - 32px));}
+.dialog-text{font-size:15px; line-height:1.5; color:var(--text-2);}
+.dialog-note{font-size:13px; line-height:1.5; color:var(--text-3); margin-top:12px;}
+.dialog-form{display:flex; flex-direction:column; gap:14px;}
+.dialog-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:20px;}
+.dialog-form .dialog-actions{margin-top:6px;}
+.cred-list{display:flex; flex-direction:column; gap:8px; margin-top:4px;}
+.cred-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:12px; background:var(--surface-2);}
+.cred-row span{font-size:12.5px; font-weight:700; color:var(--text-3);}
+.cred-row code{font-family:var(--font-mono); font-size:15px; font-weight:600; color:var(--text); user-select:all; word-break:break-all; text-align:right;}
+@media (max-width:760px){
+  .dialog-actions{flex-direction:column-reverse;}
+  .dialog-actions .btn{width:100%;}
+}
+
+/* offline */
+#offline-banner{
+  background:color-mix(in srgb, var(--accent2-mark) 14%, var(--surface));
+  border-bottom:1px solid var(--border); color:var(--text);
+  font-size:12.5px; font-weight:600; text-align:center; padding:8px 14px;
+}
+.is-offline .btn.primary{opacity:.55;}
+
+/* stări goale (listă fără elemente, interval fără date) */
+.empty-state{text-align:center; color:var(--text-3); font-size:14px; line-height:1.5;}
 
 /* ---------- sections comune ---------- */
 section{padding:56px 0;}
@@ -487,6 +527,9 @@ section{padding:56px 0;}
 .toggle-group::-webkit-scrollbar{display:none;}
 .toggle-opt{flex:none; white-space:nowrap; padding:8px 15px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; color:var(--text-2);}
 .toggle-opt.active{background:var(--surface); color:var(--text); box-shadow:var(--shadow);}
+button.toggle-opt{border:0; background:transparent; font-family:inherit; line-height:inherit;}
+button.toggle-opt.active{background:var(--surface);}
+button.cat-tab{font-family:inherit; line-height:inherit;}
 
 /* tab-uri de categorie (pastile) — folosite în day.html (slideshow) și category.html */
 .cat-tab{
@@ -543,6 +586,35 @@ footer p{font-size:12.5px; color:var(--text-3); line-height:1.7; max-width:64ch;
   .dist-grid{grid-template-columns:1fr;}
   .trend-grid{grid-template-columns:1fr;}
   .age-row{grid-template-columns:96px 1fr 74px;}
+}
+
+/* ---------- telefon: aceeași informație, mai strâns ---------- */
+@media (max-width:760px){
+  section{padding:32px 0;}
+  .section-head{margin-bottom:16px; gap:6px;}
+  .section-head h2{font-size:20px;}
+  .section-note{font-size:12.5px; max-width:none;}
+  .card{border-radius:16px;}
+  .pad{padding:18px 16px;}
+  .kpi-grid{grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px;}
+  .kpi{padding:14px 14px 15px;}
+  .kpi .tag{font-size:10.5px; letter-spacing:.06em;}
+  .kpi .val{font-size:21px; margin-top:6px; overflow-wrap:anywhere;}
+  .kpi .sub{font-size:12px;}
+  .dim-row{grid-template-columns:minmax(0,1fr) 46px; grid-template-areas:"name val" "bar bar"; gap:6px 10px; padding:10px 4px;}
+  .dim-row > div:first-child{grid-area:name; display:flex; align-items:baseline; gap:8px; min-width:0;}
+  .dim-row .bar-track{grid-area:bar; height:12px;}
+  .dim-row .dim-val{grid-area:val;}
+  .dim-name{font-size:14px;}
+  .trend-card{padding:18px 14px 10px;}
+  .vol-bars{gap:8px;}
+  .age-row{grid-template-columns:92px 1fr 70px; gap:10px;}
+  /* tabele late: se derulează orizontal, prima coloană rămâne pe loc */
+  table.data-table{font-size:12.5px;}
+  table.data-table th:first-child, table.data-table td:first-child{position:sticky; left:0; z-index:1; background:var(--surface); box-shadow:1px 0 0 var(--border);}
+  .ai-summary{padding:16px;}
+  .ai-summary li{font-size:14px;}
+  footer{padding:28px 0 40px;}
 }
 
 @media (prefers-reduced-motion: reduce){

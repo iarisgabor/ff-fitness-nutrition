@@ -29,7 +29,24 @@ __SHARED_CSS__
 .section-block{margin:32px 0;}
 .section-block h3{font-size:14px; font-weight:700; margin-bottom:2px;}
 .section-sub{font-size:12px; color:var(--text-3); margin-bottom:14px;}
-.empty-state{padding:60px 0; text-align:center; color:var(--text-3);}
+.empty-state{padding:60px 0;}
+@media (max-width:760px){
+  .page-head{padding:18px 0 0;}
+  .page-head h1{font-size:26px;}
+  /* categoriile pe un singur rând care se derulează */
+  .cat-tabs{position:relative; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; margin:18px -16px 12px; padding:2px 16px 4px;}
+  .cat-tabs::-webkit-scrollbar{display:none;}
+  .cat-tabs a.cat-tab{flex:none;}
+  /* cele 6 intervale încap pe lățimea ecranului; pe ecrane foarte înguste se derulează */
+  .range-bar{margin:4px 0 18px;}
+  .range-bar .toggle-group{display:flex; width:100%;}
+  .range-bar .toggle-opt{flex:1 0 auto; justify-content:center; padding-left:8px; padding-right:8px;}
+  .custom-range{display:grid; grid-template-columns:auto 1fr; gap:8px 10px;}
+  .custom-range input[type="date"]{width:100%;}
+  .section-block{margin:24px 0;}
+  .yoy-row{gap:14px;}
+  .yoy-delta{margin-left:0; width:100%; text-align:center;}
+}
 
 .yoy-row{display:flex; align-items:center; gap:22px; flex-wrap:wrap;}
 .yoy-block{text-align:center;}
@@ -140,8 +157,13 @@ __SHARED_JS__
     a.className = 'cat-tab' + (k.key === key ? ' active' : '');
     a.href = `/categorii/${k.key}`;
     a.textContent = k.label;
+    if (k.key === key) a.setAttribute('aria-current', 'page');
     tabsWrap.appendChild(a);
   });
+  const activeTab = tabsWrap.querySelector('.cat-tab.active');
+  if (activeTab && tabsWrap.scrollWidth > tabsWrap.clientWidth) {
+    tabsWrap.scrollLeft = activeTab.offsetLeft - (tabsWrap.clientWidth - activeTab.offsetWidth) / 2;
+  }
 
   // ---- selector interval ----
   const RANGE_OPTIONS = [
@@ -154,10 +176,12 @@ __SHARED_JS__
   ];
   let currentRangeKey = 'all';
   let currentRangeMonths = null;
+  const savedRange = recall('range');
+  if (RANGE_OPTIONS.some(o => o.key === savedRange)) currentRangeKey = savedRange;
 
   function renderRangeToggle(){
     document.getElementById('range-toggle').innerHTML = RANGE_OPTIONS
-      .map(o => `<div class="toggle-opt${o.key===currentRangeKey?' active':''}" data-range="${o.key}">${o.label}</div>`)
+      .map(o => `<button type="button" class="toggle-opt${o.key===currentRangeKey?' active':''}" data-range="${o.key}" aria-pressed="${o.key===currentRangeKey}">${o.label}</button>`)
       .join('');
   }
 
@@ -327,7 +351,9 @@ __SHARED_JS__
   }
 
   // ---- grafic evoluție ----
+  let lastTrendArgs = null;
   function renderTrend(weeks, overallAvg, bestSlug, worstSlug){
+    lastTrendArgs = [weeks, overallAvg, bestSlug, worstSlug];
     const svg = document.getElementById('trend-svg');
     const emptyMsg = document.getElementById('trend-empty');
     if (weeks.length < 2) {
@@ -338,7 +364,8 @@ __SHARED_JS__
     svg.style.display = '';
     emptyMsg.hidden = true;
 
-    const W=680, H=220, padL=40, padR=24, padT=28, padB=34;
+    const W=chartWidth(svg, 680), H=220, padL=40, padR=24, padT=28, padB=34;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     const plotW = W-padL-padR, plotH = H-padT-padB;
     const avgs = weeks.map(w => w.avg);
     const yMin = Math.max(1, Math.floor(Math.min(...avgs, overallAvg)*2)/2 - 0.4);
@@ -513,16 +540,25 @@ __SHARED_JS__
     const opt = e.target.closest('.toggle-opt');
     if (!opt) return;
     currentRangeKey = opt.dataset.range;
+    remember('range', currentRangeKey);
     renderRangeToggle();
     document.getElementById('custom-range').hidden = currentRangeKey !== 'custom';
     if (currentRangeKey === 'custom') prefillCustomInputsIfEmpty();
     applyRange();
   });
-  document.getElementById('range-from').addEventListener('change', applyRange);
-  document.getElementById('range-to').addEventListener('change', applyRange);
+  document.getElementById('range-from').addEventListener('change', (e) => { remember('range-from', e.target.value); applyRange(); });
+  document.getElementById('range-to').addEventListener('change', (e) => { remember('range-to', e.target.value); applyRange(); });
 
+  if (currentRangeKey === 'custom') {
+    document.getElementById('range-from').value = recall('range-from') || '';
+    document.getElementById('range-to').value = recall('range-to') || '';
+    document.getElementById('custom-range').hidden = false;
+    prefillCustomInputsIfEmpty();
+  }
   renderRangeToggle();
   applyRange();
+  const trendSvg = document.getElementById('trend-svg');
+  onWidthChange(trendSvg, () => { if (lastTrendArgs) renderTrend(...lastTrendArgs); });
 })();
 </script>
 </body>

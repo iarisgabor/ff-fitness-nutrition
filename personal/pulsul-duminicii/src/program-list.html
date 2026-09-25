@@ -38,11 +38,35 @@ a.sunday-row:hover{border-color:color-mix(in srgb, var(--accent-mark) 50%, var(-
 .pill.next{background:color-mix(in srgb, var(--accent2-mark) 14%, var(--surface-2)); color:var(--accent2-mark); border-color:color-mix(in srgb, var(--accent2-mark) 35%, var(--border));}
 .sunday-row.unplanned{border-style:dashed; box-shadow:none; background:transparent;}
 .sunday-row.unplanned .title{color:var(--text-2);}
-.empty-state{padding:30px 0; color:var(--text-3); font-size:14px;}
+.empty-state{padding:30px 0; text-align:left;}
+/* formularul „Duminică nouă" mutat într-un panou (telefon) */
+.new-card.in-sheet{margin:0; padding:0; border:none; box-shadow:none; background:none;}
+.new-card.in-sheet h3{display:none;}
+@media (max-width:760px){
+  .page-head{padding:22px 0 0;}
+  .page-head .sub{font-size:13px;}
+  .list-block{margin:24px 0;}
+  /* buton plutitor deasupra barei de jos, la îndemâna degetului mare */
+  #new-btn{
+    position:fixed; right:16px; bottom:calc(80px + env(safe-area-inset-bottom)); z-index:44;
+    min-height:52px; padding:0 20px; border-radius:16px; font-size:14px;
+    box-shadow:0 10px 28px color-mix(in srgb, var(--accent-mark) 40%, transparent);
+  }
+  .new-actions .btn{flex:1;}
+  .wrap{padding-bottom:56px;} /* loc pentru butonul plutitor deasupra ultimului rând */
+}
 .notice{margin:20px 0; padding:16px 18px; border-radius:12px; border:1px dashed var(--border); background:var(--surface-2); font-size:13px; color:var(--text-2); line-height:1.5;}
+.m-only{display:none;}
 @media (max-width:560px){
-  .sunday-row{grid-template-columns:56px 1fr; gap:12px; padding:12px 14px;}
-  .sunday-side{grid-column:2; justify-content:flex-start;}
+  /* detaliile laterale (resurse, prezență) trec sub text; în dreapta rămâne doar săgeata */
+  .sunday-row{grid-template-columns:48px minmax(0,1fr) 14px; gap:12px; padding:13px 14px;}
+  .sunday-side{font-size:18px;}
+  .sunday-row.unplanned{grid-template-columns:48px minmax(0,1fr) auto;} /* are butonul „Creează" în dreapta */
+  .sunday-row.unplanned .sunday-side{font-size:12.5px;}
+  .sunday-side .d-only{display:none;}
+  .m-only{display:inline;}
+  .sunday-main .title{font-size:14.5px;}
+  .sunday-main .meta{gap:4px 12px;}
   .sunday-date .d{font-size:22px;}
 }
 </style>
@@ -126,9 +150,9 @@ __SHARED_JS__
             ${isNext ? '<span class="pill next">următoarea</span>' : ''}
             ${s.mine ? '<span class="pill">predici tu</span>' : ''}
           </div>
-          <div class="meta">${bits.map(b => `<span>${b}</span>`).join('')}</div>
+          <div class="meta">${bits.map(b => `<span>${b}</span>`).join('')}${side.map(b => `<span class="m-only">${b}</span>`).join('')}</div>
         </div>
-        <div class="sunday-side">${side.join(' · ')} <span aria-hidden="true">›</span></div>
+        <div class="sunday-side"><span class="d-only">${side.join(' · ')}</span> <span aria-hidden="true">›</span></div>
       </a>`;
   }
 
@@ -182,22 +206,37 @@ __SHARED_JS__
   }
   form.date.addEventListener('change', fillPreacher);
 
+  // Pe telefon formularul se deschide într-un panou de jos (același element, mutat — și
+  // pus la loc la închidere); pe desktop apare în pagină, ca până acum.
+  const isPhone = () => window.matchMedia('(max-width:760px)').matches;
   newBtn.addEventListener('click', () => {
+    if (!form.date.value && PAYLOAD.nextFreeSunday) { form.date.value = PAYLOAD.nextFreeSunday; fillPreacher(); }
+    if (isPhone()) {
+      const spot = document.createComment('new-form');
+      form.before(spot);
+      const dlg = openSheet('', { title: 'Duminică nouă', onClose: () => { form.classList.remove('in-sheet'); form.hidden = true; spot.replaceWith(form); } });
+      form.classList.add('in-sheet');
+      form.hidden = false;
+      dlg.querySelector('.sheet-content').appendChild(form);
+      return;
+    }
     form.hidden = false;
     newBtn.hidden = true;
-    if (!form.date.value && PAYLOAD.nextFreeSunday) { form.date.value = PAYLOAD.nextFreeSunday; fillPreacher(); }
     form.date.focus();
   });
-  document.getElementById('new-cancel').addEventListener('click', () => { form.hidden = true; newBtn.hidden = false; });
+  document.getElementById('new-cancel').addEventListener('click', () => {
+    const dlg = form.closest('dialog');
+    if (dlg) { closeSheet(dlg); return; }
+    form.hidden = true; newBtn.hidden = false;
+  });
 
   async function create(body, btn){
-    if (btn) btn.disabled = true;
     try {
-      await api('POST', '/api/program', body);
+      await withBusy(btn, () => api('POST', '/api/program', body));
+      startNavProgress();
       location.href = '/program/' + body.date;
     } catch (err) {
       toast(err.message, true);
-      if (btn) btn.disabled = false;
     }
   }
   form.addEventListener('submit', (e) => {

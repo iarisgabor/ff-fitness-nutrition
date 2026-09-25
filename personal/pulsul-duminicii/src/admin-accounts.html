@@ -25,7 +25,14 @@ __SHARED_CSS__
 .acc-form{display:flex; flex-direction:column; gap:12px;}
 .pw-row{display:flex; gap:8px;}
 .pw-row .input{flex:1;}
-.empty-state{padding:24px 0; color:var(--text-3); font-size:14px;}
+.empty-state{padding:24px 0; text-align:left;}
+@media (max-width:760px){
+  .page-head{padding:20px 0 0;}
+  .layout{margin-top:18px; gap:14px;}
+  .acc-row{grid-template-columns:1fr; gap:10px;}
+  .acc-actions{justify-content:flex-start;}
+  .pw-row .btn{flex:none;}
+}
 .missing{margin-top:14px; font-size:12.5px; color:var(--text-3); line-height:1.6;}
 .missing b{color:var(--text-2);}
 </style>
@@ -135,18 +142,19 @@ __SHARED_JS__
     e.preventDefault();
     const fd = new FormData(form);
     const btn = form.querySelector('[type=submit]');
-    btn.disabled = true;
     try {
-      const res = await api('POST', '/api/conturi', {
+      const res = await withBusy(btn, () => api('POST', '/api/conturi', {
         preacher_name: fd.get('preacher_name'), display_name: fd.get('preacher_name'),
         username: fd.get('username'), password: fd.get('password'),
-      });
+      }));
       accounts = res.accounts;
       render();
-      alert(`Cont creat.\n\nUtilizator: ${fd.get('username')}\nParolă: ${fd.get('password')}\n\nTrimite-i-le predicatorului personal. Parola nu se mai poate vedea după ce închizi acest mesaj.`);
       form.reset();
+      await credentialsDialog('Cont creat', [
+        { label: 'Utilizator', value: fd.get('username') },
+        { label: 'Parolă', value: fd.get('password') },
+      ], 'Trimite-i-le predicatorului personal. Parola nu se mai poate vedea după ce închizi acest mesaj.');
     } catch (err) { toast(err.message, true); }
-    btn.disabled = false;
   });
 
   document.getElementById('acc-list').addEventListener('click', async (e) => {
@@ -154,17 +162,23 @@ __SHARED_JS__
     const del = e.target.closest('[data-delete]');
     if (reset) {
       const acc = accounts.find(a => a.id === Number(reset.dataset.reset));
-      const pw = prompt(`Parolă nouă pentru ${acc.display_name} (minim 8 caractere). Va fi delogat de pe toate dispozitivele.`, generatePassword());
+      const pw = await promptDialog('Va fi delogat de pe toate dispozitivele. Poți păstra parola generată sau scrie alta.', {
+        title: `Parolă nouă pentru ${acc.display_name}`, label: 'Parola nouă (minim 8 caractere)', value: generatePassword(), ok: 'Resetează parola', minLength: 8,
+      });
       if (!pw) return;
       try {
         accounts = (await api('PATCH', `/api/conturi/${acc.id}`, { password: pw })).accounts;
         render();
-        alert(`Parola lui ${acc.display_name} a fost schimbată.\n\nUtilizator: ${acc.username}\nParolă nouă: ${pw}`);
+        await credentialsDialog(`Parola lui ${acc.display_name} a fost schimbată`, [
+          { label: 'Utilizator', value: acc.username },
+          { label: 'Parolă nouă', value: pw },
+        ]);
       } catch (err) { toast(err.message, true); }
     }
     if (del) {
       const acc = accounts.find(a => a.id === Number(del.dataset.delete));
-      if (!confirm(`Ștergi contul lui ${acc.display_name}? Programul și resursele urcate de el rămân.`)) return;
+      const ok = await confirmDialog('Programul și resursele urcate de el rămân. Poți crea oricând un cont nou.', { title: `Ștergi contul lui ${acc.display_name}?`, ok: 'Șterge contul', danger: true });
+      if (!ok) return;
       try { accounts = (await api('DELETE', `/api/conturi/${acc.id}`)).accounts; render(); toast('Cont șters.'); }
       catch (err) { toast(err.message, true); }
     }

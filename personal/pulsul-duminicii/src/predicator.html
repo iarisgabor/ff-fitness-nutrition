@@ -44,6 +44,13 @@ a.link-row:hover{border-color:color-mix(in srgb, var(--accent-mark) 50%, var(--b
 .chip-links{display:flex; gap:8px; flex-wrap:wrap;}
 .chip-links a{text-decoration:none;}
 .chip-links a:hover{border-color:var(--accent-mark);}
+@media (max-width:760px){
+  .page-head{padding:18px 0 0;}
+  .page-head h1{font-size:26px;}
+  .section-block{margin:26px 0;}
+  .link-row{padding:14px;}
+  .att-row{grid-template-columns:104px 1fr 44px; gap:10px;}
+}
 </style>
 </head>
 <body>
@@ -189,7 +196,8 @@ __SHARED_JS__
     svg.style.display = '';
     emptyMsg.hidden = true;
 
-    const W=680, H=200, padL=40, padR=24, padT=24, padB=32;
+    const W=chartWidth(svg, 680), H=200, padL=40, padR=24, padT=24, padB=32;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     const plotW = W-padL-padR, plotH = H-padT-padB;
     const avgs = withData.map(w => w.avg);
     const yMin = Math.max(1, Math.floor(Math.min(...avgs)*2)/2 - 0.4);
@@ -220,6 +228,7 @@ __SHARED_JS__
     });
   }
   renderTrend(q5Series);
+  onWidthChange(document.getElementById('trend-svg'), () => renderTrend(q5Series));
 
   // ---- tabel comparativ pe dimensiuni ----
   const thead = `<thead><tr><th>Dimensiune</th><th>Duminicile ${his}</th><th>Restul duminicilor</th><th>Diferență</th></tr></thead>`;
@@ -239,6 +248,8 @@ __SHARED_JS__
   const upcoming = PAYLOAD.upcoming || [];
   if (upcoming.length) {
     document.getElementById('upcoming-wrap').hidden = false;
+    // Pentru predicatorul logat, ce are de pregătit contează mai mult decât cifrele — urcă primul.
+    if (SELF) document.getElementById('p-kpis').before(document.getElementById('upcoming-wrap'));
     document.getElementById('upcoming-title').textContent = SELF ? 'Duminicile în care predici' : `Duminicile următoare în care predică`;
     document.getElementById('upcoming-sub').textContent = SELF
       ? 'Deschide programul ca să completezi partea de predică și să urci slide-urile.'
