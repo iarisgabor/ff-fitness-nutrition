@@ -21,3 +21,10 @@ personal/librarie-test/worker/.dev.vars
 player.gd
 personal/ai-agency/
 profesional/client-fotograf/
+# aplicația Android a Pulsului: cheia de semnare NU intră niciodată în repo; build-urile, nici ele
+personal/pulsul-duminicii/android/*.jks
+personal/pulsul-duminicii/android/*.keystore
+personal/pulsul-duminicii/android/.gradle/
+personal/pulsul-duminicii/android/build/
+personal/pulsul-duminicii/android/app/build/
+personal/pulsul-duminicii/android/local.properties

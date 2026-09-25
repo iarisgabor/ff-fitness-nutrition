@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ro.bisericalogos.pulsul",
+      "sha256_cert_fingerprints": [
+        "20:50:C5:65:FB:DC:17:C6:4E:CC:CA:6C:C9:EB:C6:7F:5F:2F:51:49:A7:A1:09:DC:45:A0:B6:33:7B:EE:1A:D4"
+      ]
+    }
+  }
+]

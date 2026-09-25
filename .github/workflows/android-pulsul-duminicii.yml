@@ -1,0 +1,111 @@
+# Construiește aplicația Android a Pulsului Duminicii (Trusted Web Activity — deschide site-ul
+# live pe tot ecranul, fără bara browserului): un APK pentru instalare directă și un AAB pentru
+# Google Play. Rulează la orice schimbare în personal/pulsul-duminicii/android/ și manual
+# (tab-ul Actions → „Android Pulsul Duminicii" → Run workflow). Fișierele apar la „Artifacts".
+#
+# Semnare: secretele de repo PULSUL_ANDROID_KEYSTORE_BASE64 (fișierul .jks, în base64) și
+# PULSUL_ANDROID_KEYSTORE_PASSWORD. FĂRĂ ele se construiește doar un APK de TEST, semnat cu o cheie
+# de unică folosință — bun de încercat pe un telefon, NU de dat oamenilor (o versiune semnată cu
+# altă cheie nu se mai poate instala peste el, și se deschide cu bara de adrese).
+#
+# Nu are nevoie de Cloudflare și nu face deploy — site-ul rămâne treaba deploy-pulsul-duminicii.yml.
+name: Android Pulsul Duminicii
+
+on:
+  push:
+    paths:
+      - 'personal/pulsul-duminicii/android/**'
+      - '.github/workflows/android-pulsul-duminicii.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: android-pulsul-duminicii-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: personal/pulsul-duminicii/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cheia de semnare
+        env:
+          KEYSTORE_B64: ${{ secrets.PULSUL_ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.PULSUL_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          umask 077
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/semnare.jks"
+            printf '%s' "$KEYSTORE_PASSWORD" > "$RUNNER_TEMP/semnare.pass"
+            echo "VARIANTA=lansare" >> "$GITHUB_ENV"
+          else
+            echo "::warning title=Build de TEST::Lipsesc secretele PULSUL_ANDROID_KEYSTORE_BASE64 / PULSUL_ANDROID_KEYSTORE_PASSWORD. APK-ul e semnat cu o cheie de unică folosință — doar pentru încercare, nu pentru distribuit."
+            openssl rand -hex 24 > "$RUNNER_TEMP/semnare.pass"
+            keytool -genkeypair -keystore "$RUNNER_TEMP/semnare.jks" -storetype PKCS12 -alias pulsul \
+              -keyalg RSA -keysize 2048 -validity 30 -dname "CN=Pulsul Duminicii TEST" \
+              -storepass:file "$RUNNER_TEMP/semnare.pass" -keypass:file "$RUNNER_TEMP/semnare.pass"
+            echo "VARIANTA=TEST" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build (Gradle)
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease bundleRelease
+
+      - name: Semnare APK + AAB
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          VERSION=$(grep -m1 'versionName' app/build.gradle | grep -o '"[^"]*"' | tr -d '"')
+          CODE=$(grep -m1 'versionCode' app/build.gradle | grep -oE '[0-9]+')
+          NAME="pulsul-duminicii-$VERSION-v$CODE"
+          [ "$VARIANTA" = TEST ] && NAME="$NAME-TEST"
+          OUT="$GITHUB_WORKSPACE/rezultat"
+          mkdir -p "$OUT"
+
+          "$BT/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aliniat.apk"
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/semnare.jks" --ks-key-alias pulsul \
+            --ks-pass "file:$RUNNER_TEMP/semnare.pass" --key-pass "file:$RUNNER_TEMP/semnare.pass" \
+            --out "$OUT/$NAME.apk" "$RUNNER_TEMP/aliniat.apk"
+          "$BT/apksigner" verify --verbose "$OUT/$NAME.apk"
+
+          SHA=$(keytool -list -v -keystore "$RUNNER_TEMP/semnare.jks" -storepass:file "$RUNNER_TEMP/semnare.pass" -alias pulsul | awk '/SHA256:/ {print $2}')
+          echo "::notice title=Amprenta cheii de semnare::$SHA"
+          if [ "$VARIANTA" = lansare ]; then
+            cp app/build/outputs/bundle/release/app-release.aab "$OUT/$NAME.aab"
+            jarsigner -keystore "$RUNNER_TEMP/semnare.jks" -storepass:file "$RUNNER_TEMP/semnare.pass" \
+              -sigalg SHA256withRSA -digestalg SHA-256 "$OUT/$NAME.aab" pulsul
+            jarsigner -verify "$OUT/$NAME.aab"
+            # Fără amprenta în assetlinks.json, Android nu „leagă" aplicația de site și o deschide cu bara de adrese.
+            if ! grep -q "$SHA" ../public/.well-known/assetlinks.json; then
+              echo "::error title=Amprenta lipsește din assetlinks.json::Adaugă $SHA în personal/pulsul-duminicii/public/.well-known/assetlinks.json și fă deploy."
+              exit 1
+            fi
+          fi
+          rm -f "$RUNNER_TEMP/semnare.jks" "$RUNNER_TEMP/semnare.pass"
+          ls -la "$OUT"
+          {
+            echo "## Pulsul Duminicii — Android ($VARIANTA)"
+            echo ""
+            echo "Versiune **$VERSION** (cod $CODE). Fișierele sunt mai jos, la **Artifacts**."
+            echo ""
+            echo "- \`$NAME.apk\` — instalare directă pe telefon (Setări → permite instalarea din această sursă)."
+            [ "$VARIANTA" = lansare ] && echo "- \`$NAME.aab\` — pentru Google Play Console."
+            [ "$VARIANTA" = TEST ] && echo "- **Build de TEST** — cheie de unică folosință; adaugă secretele de semnare pentru versiunea de distribuit."
+            echo ""
+            echo "Amprenta cheii: \`$SHA\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pulsul-duminicii-android-${{ env.VARIANTA }}
+          path: rezultat/
+          if-no-files-found: error
+          retention-days: 90

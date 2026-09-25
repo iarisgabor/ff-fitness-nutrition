@@ -20,6 +20,10 @@ ecranul, cu bară de navigare jos, și arată paginile deja deschise și fără 
   apar și în aplicație (butonul de cont → *Instalează pe iPhone*).
 - **Desktop (Chrome/Edge):** meniul ☰ → *Instalează aplicația*, sau iconița din bara de adrese.
 
+**Aplicație Android (APK / Google Play):** `android/` — construită automat în GitHub Actions,
+fișierul `.apk` se descarcă de la *Actions → Android Pulsul Duminicii → Artifacts* și se trimite
+direct oamenilor. Pași (secretele de semnare, instalare, Google Play): `android/README.md`.
+
 **Fără semnal:** fiecare pagină deschisă cu conexiune se salvează pe dispozitiv (ex. programul
 duminicii, deschis acasă, se vede și în sală fără semnal), cu o bandă „offline — salvată la …".
 Modificările nu se pot face offline. La **Ieșire** tot ce era salvat se șterge.

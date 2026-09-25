@@ -67,7 +67,9 @@ slug de predicator = numele normalizat (`src/preachers.js:preacherSlug`, ex. „
 | analiză AI de tendință per categorie | `src/aiTrendSummary.js` |
 | CSS + JS comune tuturor paginilor: navigarea pe roluri (`initNav` — bara de sus, bara de jos pe telefon, sub-tab-urile de pe desktop), panouri (`openSheet`), dialoguri (`confirmDialog`/`promptDialog`/`credentialsDialog`), `api()`, `withBusy()`, `toast()`, offline, instalare | `src/shared.css`, `src/shared.txt` |
 | `<head>` comun (viewport, theme-color, manifest, iconițe, preload font) | `src/head.html` |
-| fișiere statice publice: fonturi (`fonts/` + `OFL.txt`), iconițe, `favicon.svg`, `manifest.webmanifest`, **`sw.js`** (service worker), `offline.html`, antete (`_headers`) | `public/` |
+| fișiere statice publice: fonturi (`fonts/` + `OFL.txt`), iconițe, `favicon.svg`, `manifest.webmanifest`, **`sw.js`** (service worker), `offline.html`, antete (`_headers`), `.well-known/assetlinks.json` (legătura cu aplicația Android) | `public/` |
+| aplicația Android (Trusted Web Activity, generată cu Bubblewrap) + build în GitHub Actions | `android/` (`android/README.md`), `.github/workflows/android-pulsul-duminicii.yml` |
+| testele (`npm test`) | `tests/` (`tests/README.md`) |
 | `AUTH_MODE`, `ADMIN_USERNAME`, `GOOGLE_SHEET_ID`, binding-uri KV/D1/R2 | `wrangler.toml` |
 
 ## Cum se leagă șabloanele
@@ -205,11 +207,21 @@ de import ca text.
     --flavor=woff2 --layout-features='*'`. Orice `font-family` nou folosește
     `var(--font-display|--font-body|--font-mono)` — au fonturi de rezervă.
 
+31. **Aplicația Android e un Trusted Web Activity, nu cod separat** (`android/`): deschide site-ul
+    live pe tot ecranul. Legată de host-ul `pulsul-duminicii.iarisgabor.workers.dev` și de cheia de
+    semnare prin `public/.well-known/assetlinks.json` (pachet `ro.bisericalogos.pulsul` + amprenta
+    SHA-256). Dacă lipsește sau nu se potrivește amprenta, aplicația merge, dar cu bara de adrese.
+    Cheia (`.jks`) **nu intră niciodată în repo** — stă în secretele de repo
+    `PULSUL_ANDROID_KEYSTORE_BASE64` / `PULSUL_ANDROID_KEYSTORE_PASSWORD`; o cheie pierdută = nicio
+    actualizare posibilă pe același pachet. Cu Google Play App Signing, amprenta cheii Google se
+    ADAUGĂ în assetlinks.json, lângă cea existentă. Detalii: `android/README.md`.
+
 ## Deploy
 
 Automat, prin GitHub Actions (`.github/workflows/deploy-pulsul-duminicii.yml` la rădăcina
 repo-ului): la fiecare push pe `main` care atinge acest folder. `wrangler deploy` urcă și
-`public/` (fișierele statice), fără pași în plus. Singurul secret e
+`public/` (fișierele statice), fără pași în plus. Aplicația Android se construiește separat, în
+`.github/workflows/android-pulsul-duminicii.yml` (APK + AAB la „Artifacts") — nu face deploy. Singurul secret e
 `CLOUDFLARE_API_TOKEN` în repo. Workflow-ul pune singur `database_id`-ul D1 în
 `wrangler.toml` (în copia de pe runner — în repo rămâne placeholder-ul) și scoate binding-ul
 R2 dacă R2 nu e activat în cont. Setup complet: `README.md`.
