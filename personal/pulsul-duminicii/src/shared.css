@@ -109,6 +109,9 @@
 
 *{box-sizing:border-box;}
 html, body{ max-width:100%; overflow-x:hidden; }
+/* clip taie la fel, dar nu transformă body în container de derulare — bara de sus
+   rămâne lipită (sticky) sigur și pe iOS */
+@supports (overflow:clip){ html, body{ overflow-x:clip; } }
 body{
   margin:0;
   background:var(--bg);
@@ -127,6 +130,8 @@ a{color:inherit;}
 /* ---------- top bar + meniu hamburger ---------- */
 .topbar{
   position:sticky; top:0; z-index:40;
+  padding-top:env(safe-area-inset-top); /* sub bara de stare, în aplicația instalată */
+  view-transition-name:topbar;
   backdrop-filter: blur(14px);
   background: color-mix(in srgb, var(--bg) 78%, transparent);
   border-bottom:1px solid var(--border);
@@ -194,6 +199,159 @@ a{color:inherit;}
   .nav-tab .long{display:none;}
   .nav-tab .short{display:inline;}
   .menu-panel{right:0;}
+}
+
+/* ---------- app shell ----------
+   Desktop: sub-tab-uri pentru Analiză sub bara de sus. Telefon (≤760px): bară de aplicație
+   (înapoi/logo · titlu la derulare · cont) + bara de navigare fixă jos. */
+.menu-wrap{position:relative;}
+.app-back, .app-title, .avatar-btn{display:none;}
+.subnav{border-top:1px solid var(--border);}
+.subnav-inner{max-width:1180px; margin:0 auto; padding:0 16px; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none;}
+.subnav-inner::-webkit-scrollbar{display:none;}
+.subnav-tab{padding:11px 10px 10px; font-size:13px; font-weight:700; color:var(--text-2); text-decoration:none; white-space:nowrap; border-bottom:2px solid transparent; margin-bottom:-1px;}
+.subnav-tab:hover{color:var(--text);}
+.subnav-tab.active{color:var(--text); border-bottom-color:var(--accent-mark);}
+.avatar{
+  width:34px; height:34px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center;
+  background:color-mix(in srgb, var(--accent-mark) 16%, var(--surface-2)); color:var(--accent-mark);
+  border:1px solid color-mix(in srgb, var(--accent-mark) 30%, var(--border));
+  font-weight:800; font-size:12.5px; letter-spacing:.02em;
+}
+.avatar.lg{width:48px; height:48px; font-size:16px;}
+.bottom-nav{display:none;}
+
+@media (max-width:760px){
+  .wrap{padding:0 16px;}
+  .topbar-inner{padding:6px 6px; min-height:56px; gap:2px; justify-content:flex-start;}
+  .nav-tabs, .theme-btn, .menu-wrap, .subnav, .topbar-meta{display:none;}
+  .topbar-right{margin-left:auto;}
+  .brand{min-height:44px; padding:0 10px; flex:none;}
+  .brand-name{display:block; font-size:14px;}
+  .app-title{
+    display:block; flex:1; min-width:0; padding:0 4px;
+    font-family:var(--font-display); font-weight:700; font-size:16px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    opacity:0; transition:opacity .15s;
+  }
+  body.title-in-bar .app-title{opacity:1;}
+  body.title-in-bar .brand-name{display:none;}
+  body.has-back .brand{display:none;}
+  .app-back{width:44px; height:44px; flex:none; align-items:center; justify-content:center; border-radius:12px; color:var(--text);}
+  body.has-back .app-back{display:flex;}
+  .app-back svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
+  .app-back:active{background:var(--surface-2);}
+  .avatar-btn{display:flex; width:44px; height:44px; align-items:center; justify-content:center; background:none; border:none; padding:0; cursor:pointer; border-radius:50%;}
+  /* săgeata din bara de sus ține locul linkului „← înapoi" din pagină */
+  .wrap .back-link{display:none;}
+
+  .bottom-nav{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:45;
+    padding:5px 6px calc(5px + env(safe-area-inset-bottom));
+    background:color-mix(in srgb, var(--surface) 94%, transparent);
+    -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+    border-top:1px solid var(--border);
+    view-transition-name:bottomnav;
+  }
+  .bn-item{
+    flex:1; min-width:0; min-height:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    text-decoration:none; color:var(--text-3); font-size:11px; font-weight:700; letter-spacing:.01em;
+    -webkit-user-select:none; user-select:none;
+  }
+  .bn-ico{display:flex; align-items:center; justify-content:center; width:56px; height:30px; border-radius:999px; transition:background .15s;}
+  .bn-ico svg{width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;}
+  .bn-label{max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bn-item.active{color:var(--accent-mark);}
+  .bn-item.active .bn-ico{background:color-mix(in srgb, var(--accent-mark) 15%, transparent);}
+  .bn-item:active .bn-ico{background:color-mix(in srgb, var(--accent-mark) 22%, transparent);}
+  body.has-bottom-nav{padding-bottom:calc(66px + env(safe-area-inset-bottom));}
+  body.has-bottom-nav #toast{bottom:calc(78px + env(safe-area-inset-bottom));}
+}
+
+/* ---------- panouri (sheet) — vezi openSheet() în shared.txt ---------- */
+html.sheet-open, html.sheet-open body{overflow:hidden;}
+dialog.sheet{
+  padding:0; border:none; background:transparent; color:var(--text);
+  width:100%; max-width:min(520px, calc(100vw - 32px)); max-height:min(86vh, 760px); overflow:visible;
+}
+dialog.sheet::backdrop{background:rgba(8,10,18,.45);}
+.sheet-panel{
+  background:var(--surface); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow);
+  max-height:inherit; display:flex; flex-direction:column; overflow:hidden;
+  animation:sheet-pop .18s ease-out;
+}
+.sheet-handle{display:none;}
+.sheet-title{padding:18px 20px 2px; font-family:var(--font-display); font-weight:700; font-size:17px;}
+.sheet-content{padding:14px 20px 20px; overflow-y:auto; overscroll-behavior:contain;}
+dialog.sheet.closing .sheet-panel{animation:sheet-pop-out .17s ease-in forwards;}
+dialog.sheet.closing::backdrop{opacity:0; transition:opacity .17s;}
+@media (max-width:760px){
+  dialog.sheet{margin:auto 0 0; max-width:100%; max-height:92vh;}
+  .sheet-panel{border-radius:22px 22px 0 0; border-bottom:none; padding-bottom:env(safe-area-inset-bottom); animation:sheet-up .26s cubic-bezier(.2,.8,.2,1);}
+  .sheet-grab{touch-action:none; cursor:grab;}
+  .sheet-handle{display:block; width:40px; height:5px; border-radius:3px; background:var(--border); margin:9px auto 0;}
+  .sheet-title{padding-top:12px;}
+  dialog.sheet.closing .sheet-panel{animation:sheet-down .17s ease-in forwards;}
+}
+@keyframes sheet-up{from{transform:translateY(100%);} to{transform:none;}}
+@keyframes sheet-down{to{transform:translateY(100%);}}
+@keyframes sheet-pop{from{opacity:0; transform:translateY(10px) scale(.98);} to{opacity:1; transform:none;}}
+@keyframes sheet-pop-out{to{opacity:0; transform:translateY(10px) scale(.98);}}
+
+/* rânduri de meniu în panou (contul) */
+.acct-head{display:flex; align-items:center; gap:14px; padding:2px 4px 16px; margin-bottom:6px; border-bottom:1px solid var(--border);}
+.acct-head b{display:block; font-size:16px;}
+.acct-head span{font-size:12.5px; font-weight:600; color:var(--text-3);}
+.sheet-list{display:flex; flex-direction:column;}
+.sheet-row{
+  display:flex; align-items:center; gap:14px; width:100%; min-height:52px; padding:0 6px;
+  border:none; background:none; border-radius:12px; cursor:pointer; text-align:left;
+  font:inherit; font-size:15px; font-weight:600; color:var(--text); text-decoration:none;
+}
+.sheet-row:hover, .sheet-row:active{background:var(--surface-2);}
+.sheet-row svg{width:22px; height:22px; flex:none; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; color:var(--text-2);}
+.sheet-row .sr-label{flex:1; min-width:0;}
+.sheet-row .chev{color:var(--text-3); font-size:22px; line-height:1;}
+.sheet-row.danger, .sheet-row.danger svg{color:var(--r1);}
+.switch{width:46px; height:28px; border-radius:14px; background:var(--surface-3); position:relative; flex:none; transition:background .15s;}
+.switch::after{content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.28); transition:transform .15s;}
+[aria-checked="true"] > .switch{background:var(--accent-mark);}
+[aria-checked="true"] > .switch::after{transform:translateX(18px);}
+
+/* ---------- navigare: tranziții, bară de progres, tragere pentru reîncărcare ---------- */
+@view-transition{navigation:auto;}
+::view-transition-old(root), ::view-transition-new(root){animation-duration:.18s;}
+#nav-progress{
+  position:fixed; top:env(safe-area-inset-top); left:0; z-index:200; height:3px; width:0; opacity:0; pointer-events:none;
+  background:var(--accent2-mark); border-radius:0 2px 2px 0;
+}
+#nav-progress.run{width:88%; opacity:1; transition:width 7s cubic-bezier(.08,.75,.2,1), opacity .15s .12s;}
+#ptr{
+  position:fixed; top:calc(env(safe-area-inset-top) + 6px); left:50%; z-index:60; width:38px; height:38px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; pointer-events:none; opacity:0;
+  transform:translate(-50%, -56px); transition:transform .2s, opacity .2s;
+  background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow);
+}
+#ptr svg{width:20px; height:20px; stroke:var(--text-3); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
+#ptr.armed{border-color:var(--accent-mark);}
+#ptr.armed svg{stroke:var(--accent-mark);}
+#ptr.loading svg{animation:ptr-beat .7s ease-in-out infinite;}
+@keyframes ptr-beat{50%{transform:scale(1.25);}}
+
+/* ---------- atingere: ținte mari, reacție la apăsare, focus vizibil ---------- */
+a, button, summary, [role="button"], .toggle-opt, .cat-tab{-webkit-tap-highlight-color:transparent; touch-action:manipulation;}
+:focus-visible{outline:2px solid var(--accent-mark); outline-offset:2px;}
+.btn, a.card{transition:transform .08s ease-out, border-color .12s, box-shadow .12s, background .12s;}
+.btn:active:not(:disabled){transform:scale(.97);}
+a.card:active{transform:scale(.985);}
+@media (pointer:coarse){
+  .btn{min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px;}
+  .btn.small{min-height:40px;}
+  .cat-tab{min-height:40px; display:inline-flex; align-items:center;}
+  .toggle-opt{min-height:40px; display:flex; align-items:center;}
+  a.chip{min-height:40px; display:inline-flex; align-items:center; padding-left:14px; padding-right:14px;}
+  details.table-toggle summary{min-height:44px;}
+  .menu-btn, .theme-btn{width:44px; height:44px;}
 }
 
 /* formulare (login, conturi, editorul de program) */
@@ -389,4 +547,5 @@ footer p{font-size:12.5px; color:var(--text-3); line-height:1.7; max-width:64ch;
 
 @media (prefers-reduced-motion: reduce){
   *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*){animation:none !important;}
 }
