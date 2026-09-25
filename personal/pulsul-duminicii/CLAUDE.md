@@ -221,9 +221,13 @@ npm install
 cp .dev.vars.example .dev.vars   # completează cu valori reale sau de test (inclusiv ADMIN_PASSWORD)
 npx wrangler d1 migrations apply DB --local
 npm run dev
+npm test          # ~75s: site local pe stare separată + date sintetice + Chromium — vezi tests/README.md
 npx wrangler deploy
 npx wrangler tail
 ```
+
+**Rulează `npm test` înainte de orice push care atinge acest folder.** Suitele (`tests/`) verifică
+și permisiunile direct pe API, aspectul pe telefon și modul offline.
 
 ## Config și secrete
 

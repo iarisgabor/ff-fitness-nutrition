@@ -13,6 +13,7 @@ personal/telegram-assistant/.dev.vars
 personal/pulsul-duminicii/node_modules/
 personal/pulsul-duminicii/.wrangler/
 personal/pulsul-duminicii/.dev.vars
+personal/pulsul-duminicii/tests/capturi/
 personal/librarie-test/worker/node_modules/
 personal/librarie-test/worker/.wrangler/
 personal/librarie-test/worker/.dev.vars
