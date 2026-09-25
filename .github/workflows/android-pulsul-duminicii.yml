@@ -74,9 +74,9 @@ jobs:
           # fără --key-pass: cu același fișier, apksigner ar căuta parola cheii pe rândul 2; la PKCS12
           # parola cheii e cea a depozitului, pe care apksigner o încearcă singur
           "$BT/apksigner" sign --ks "$RUNNER_TEMP/semnare.jks" --ks-key-alias pulsul \
-            --ks-pass "file:$RUNNER_TEMP/semnare.pass" \
+            --ks-pass "file:$RUNNER_TEMP/semnare.pass" --v4-signing-enabled false \
             --out "$OUT/$NAME.apk" "$RUNNER_TEMP/aliniat.apk"
-          "$BT/apksigner" verify --verbose "$OUT/$NAME.apk"
+          "$BT/apksigner" verify --print-certs "$OUT/$NAME.apk"
 
           SHA=$(keytool -list -v -keystore "$RUNNER_TEMP/semnare.jks" -storepass:file "$RUNNER_TEMP/semnare.pass" -alias pulsul | awk '/SHA256:/ {print $2}')
           echo "::notice title=Amprenta cheii de semnare::$SHA"
