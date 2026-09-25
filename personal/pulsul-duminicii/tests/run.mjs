@@ -20,7 +20,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STATE = join(ROOT, '.wrangler', 'test-state');
 const PORT = Number(process.env.TEST_PORT || 8788);
 const B = `http://127.0.0.1:${PORT}`;
-const ALL_SUITES = ['regresie', 'telefon', 'iphone', 'aspect', 'navigare', 'pwa'];
+// api-app primul: rulează pe conturile exact cum le lasă seed-ul (celelalte suite schimbă parole)
+const ALL_SUITES = ['api-app', 'regresie', 'telefon', 'iphone', 'aspect', 'navigare', 'pwa'];
 const args = process.argv.slice(2);
 const shots = args.includes('--capturi');
 const serverOnly = args.includes('--server');
@@ -31,8 +32,10 @@ if (unknown.length) { console.error(`Suite necunoscute: ${unknown.join(', ')} (e
 
 const F = await import('./fixtures.mjs');
 const isWin = process.platform === 'win32';
+// pe Windows (shell: true) o cale cu spații s-ar rupe în mai multe argumente
+const q = (arg) => (isWin && /\s/.test(arg) ? `"${arg}"` : arg);
 function wrangler(...cmd) {
-  const r = spawnSync('npx', ['wrangler', ...cmd], { cwd: ROOT, encoding: 'utf8', shell: isWin, env: { ...process.env, CI: '1' } });
+  const r = spawnSync('npx', ['wrangler', ...cmd.map(q)], { cwd: ROOT, encoding: 'utf8', shell: isWin, env: { ...process.env, CI: '1' } });
   if (r.status !== 0) throw new Error(`wrangler ${cmd.join(' ')} a eșuat:\n${r.stdout}\n${r.stderr}`);
 }
 
@@ -50,7 +53,7 @@ wrangler('kv', 'key', 'put', '--binding', 'PULSUL_KV', '--local', '--persist-to'
 
 // ---- 2. serverul — parola de test și AI oprit suprascriu orice ai în .dev.vars
 const server = spawn('npx', [
-  'wrangler', 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', STATE,
+  'wrangler', 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', q(STATE),
   '--var', `ADMIN_PASSWORD:${F.ADMIN.password}`, '--var', 'ANTHROPIC_API_KEY:',
 ], { cwd: ROOT, shell: isWin, detached: !isWin, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CI: '1' } });
 let serverLog = '';

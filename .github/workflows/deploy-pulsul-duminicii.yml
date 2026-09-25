@@ -12,6 +12,7 @@ on:
     branches: [main]
     paths:
       - 'personal/pulsul-duminicii/**'
+      - '!personal/pulsul-duminicii/android-nativ/**'
       - '.github/workflows/deploy-pulsul-duminicii.yml'
   workflow_dispatch:
 

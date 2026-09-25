@@ -130,12 +130,19 @@ function readCookie(request, name) {
   return null;
 }
 
+// Aplicația nativă trimite același token ca `Authorization: Bearer`; browserul, prin cookie.
+function readToken(request) {
+  const bearer = /^Bearer ([0-9a-f]{64})$/.exec(request.headers.get('Authorization') || '');
+  const token = bearer ? bearer[1] : readCookie(request, COOKIE_NAME);
+  return token && /^[0-9a-f]{64}$/.test(token) ? token : null;
+}
+
 // Sesiunea curentă sau null. Pentru predicatori re-verifică în D1 că, între timp,
 // contul n-a fost șters și parola n-a fost resetată (session_gen) — un singur SELECT
 // pe cheie primară, ieftin.
 export async function getSession(env, request) {
-  const token = readCookie(request, COOKIE_NAME);
-  if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
+  const token = readToken(request);
+  if (!token) return null;
   const user = await env.PULSUL_KV.get(`session:${token}`, 'json');
   if (!user) return null;
 
@@ -154,8 +161,8 @@ export async function getSession(env, request) {
 }
 
 export async function destroySession(env, request) {
-  const token = readCookie(request, COOKIE_NAME);
-  if (token && /^[0-9a-f]{64}$/.test(token)) await env.PULSUL_KV.delete(`session:${token}`);
+  const token = readToken(request);
+  if (token) await env.PULSUL_KV.delete(`session:${token}`);
 }
 
 export function sessionCookie(token) {

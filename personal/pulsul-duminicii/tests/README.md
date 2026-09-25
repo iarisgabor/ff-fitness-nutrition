@@ -6,7 +6,11 @@ npm test                    # toate suitele (~75s)
 npm test -- pwa aspect      # doar unele
 npm test -- --capturi       # + capturi de ecran în tests/capturi/ (ignorat de git)
 npm test -- --server        # doar pornește site-ul de test cu datele sintetice (verificări manuale)
+npm run dev:app             # la fel — pentru aplicația nativă, prin `adb reverse tcp:8788 tcp:8788`
 ```
+
+Pe Windows, `run.mjs` pune ghilimele în jurul argumentelor cu spații (calea repo-ului are
+spații); fără ele, `wrangler` primea `--persist-to` rupt în bucăți.
 
 `npm test` face totul singur: pornește site-ul local (`wrangler dev`, port 8788) pe o stare
 **separată** — `.wrangler/test-state`, ștearsă la fiecare rulare — cu date sintetice, creează
@@ -18,6 +22,7 @@ AI-ul oprit (`--var`) suprascriu orice ai în `.dev.vars`.
 
 | Suită | Ce |
 |---|---|
+| `api-app` | API-ul aplicației native (`/api/app/…`): login cu token, **fiecare rută întoarce exact `PAYLOAD`-ul paginii corespunzătoare**, permisiunile (403 JSON), urcare/descărcare/ștergere cu Bearer, tokenul nu mai merge după logout. Rulează primul și își șterge fișierul urcat — celelalte suite pornesc de la o duminică fără resurse |
 | `regresie` | comportamentul de dinainte de aplicație, pe telefon și desktop: editorul de program, **permisiunile pe server** (predicatorul primește 403 în afara secțiunii lui), redirecționările predicatorului, slideshow-ul, intervalele |
 | `telefon` | glisarea între răspunsuri, trecerea la categoria următoare, starea ținută minte, „Duminică nouă" în panou, urcarea cu progres + descărcarea identică, dialogurile de ștergere, offline, conturile (creare / resetare / ștergere), „arată parola" |
 | `iphone` | sugestia de instalare (o singură dată) și pașii Share → Adaugă pe ecranul principal |
@@ -50,4 +55,6 @@ sau Edge de pe calculator.
 - o pagină nouă → adaug-o în lista din `aspect.mjs`;
 - o permisiune nouă → un test în `regresie.mjs` care o încearcă **direct pe API** (pagina doar
   ascunde butoanele; regula e pe server);
-- o rută care nu trebuie salvată offline → verifică și în `pwa.mjs`.
+- o rută care nu trebuie salvată offline → verifică și în `pwa.mjs`;
+- o pagină nouă cu date → și ruta ei `/api/app/…` (vezi `src/appApi.js`), adăugată în lista din
+  `api-app.mjs`, ca aplicația nativă să primească aceleași date ca pagina.

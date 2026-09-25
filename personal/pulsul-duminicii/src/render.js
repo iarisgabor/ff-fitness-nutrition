@@ -175,7 +175,14 @@ function baseMeta(responses, stale) {
 
 // ---- pagina Acasă ----
 
+// Fiecare pagină are un build…Payload (datele) și un render… (HTML). Aplicația nativă
+// (/api/app/…, src/appApi.js) primește exact obiectul pe care îl primește pagina.
+
 export async function renderHome(env, ctx, user) {
+  return fillPage(HOME_TEMPLATE, user, await buildHomePayload(env, ctx));
+}
+
+export async function buildHomePayload(env, ctx) {
   const { responses, data, stale } = await getComputedPayload(env, ctx);
   const meta = baseMeta(responses, stale);
   delete meta._dates;
@@ -220,25 +227,31 @@ export async function renderHome(env, ctx, user) {
     overviewCards.push({ tag: 'Vârstă dominantă', val: topAge.label, sub: `${topAge.n} din ${totalAge} răspunsuri (${Math.round((topAge.n / totalAge) * 100)}%)` });
   }
 
-  const payload = { DATA: data, meta: { ...meta, heroKpis, overviewCards } };
-  const html = fillPage(HOME_TEMPLATE, user, payload);
-  return html;
+  return { DATA: data, meta: { ...meta, heroKpis, overviewCards } };
 }
 
 // ---- pagina /zile ----
 
 export async function renderDaysList(env, ctx, user) {
+  return fillPage(DAYS_TEMPLATE, user, await buildDaysListPayload(env, ctx));
+}
+
+export async function buildDaysListPayload(env, ctx) {
   const { responses, stale } = await getComputedPayload(env, ctx);
   const meta = baseMeta(responses, stale);
   delete meta._dates;
   const days = summarizeByDate(responses);
-  const payload = { days, meta };
-  return fillPage(DAYS_TEMPLATE, user, payload);
+  return { days, meta };
 }
 
 // ---- pagina /zile/:slug ----
 
 export async function renderDay(env, ctx, slug, user) {
+  const payload = await buildDayPayload(env, ctx, slug, user);
+  return payload === null ? null : fillPage(DAY_TEMPLATE, user, payload);
+}
+
+export async function buildDayPayload(env, ctx, slug, user) {
   const { responses, data, stale } = await getComputedPayload(env, ctx);
   const date = slugToDate(slug);
   const items = responses.filter((r) => r.date === date);
@@ -269,24 +282,31 @@ export async function renderDay(env, ctx, slug, user) {
   meta.overallAvg = data.overallAvg;
 
   const dimLabels = DIMENSIONS.map((d) => ({ key: d.key, label: d.label, full: d.full }));
-  const payload = { date, items, dimLabels, aiSummary, preacher, meta };
-  return fillPage(DAY_TEMPLATE, user, payload);
+  return { date, items, dimLabels, aiSummary, preacher, meta };
 }
 
 // ---- pagina /categorii ----
 
 export async function renderCategoriesIndex(env, ctx, user) {
+  return fillPage(CATEGORIES_TEMPLATE, user, await buildCategoriesIndexPayload(env, ctx));
+}
+
+export async function buildCategoriesIndexPayload(env, ctx) {
   const { responses, data, stale } = await getComputedPayload(env, ctx);
   const meta = baseMeta(responses, stale);
   delete meta._dates;
   const allKeys = DIMENSIONS.map((d) => ({ key: d.key, label: d.label }));
-  const payload = { dims: data.dims, correlations: data.categoryCorrelations, allKeys, meta };
-  return fillPage(CATEGORIES_TEMPLATE, user, payload);
+  return { dims: data.dims, correlations: data.categoryCorrelations, allKeys, meta };
 }
 
 // ---- pagina /categorii/:key ----
 
 export async function renderCategoryDetail(env, ctx, key, user) {
+  const payload = await buildCategoryDetailPayload(env, ctx, key);
+  return payload === null ? null : fillPage(CATEGORY_TEMPLATE, user, payload);
+}
+
+export async function buildCategoryDetailPayload(env, ctx, key) {
   const dim = DIMENSIONS.find((d) => d.key === key);
   if (!dim) return null; // 404 — cheie de categorie necunoscută
 
@@ -311,8 +331,7 @@ export async function renderCategoryDetail(env, ctx, key, user) {
   const meta = baseMeta(responses, stale);
   delete meta._dates;
 
-  const payload = { key, label: dim.label, full: dim.full, series, allKeys, trendSummaries, meta };
-  return fillPage(CATEGORY_TEMPLATE, user, payload);
+  return { key, label: dim.label, full: dim.full, series, allKeys, trendSummaries, meta };
 }
 
 // ---- pagina /predicatori ----
@@ -323,6 +342,10 @@ function compositeAvg(responses) {
 }
 
 export async function renderPreachersIndex(env, ctx, user) {
+  return fillPage(PREACHERS_TEMPLATE, user, await buildPreachersIndexPayload(env, ctx));
+}
+
+export async function buildPreachersIndexPayload(env, ctx) {
   const { responses, stale } = await getComputedPayload(env, ctx);
   const { schedule, stale: scheduleStale, error: scheduleError } = await getSchedule(env, ctx);
   const meta = baseMeta(responses, stale || scheduleStale);
@@ -358,8 +381,7 @@ export async function renderPreachersIndex(env, ctx, user) {
     }),
   }));
 
-  const payload = { preachers, comparisonRows, scheduleError: scheduleError || null, meta };
-  return fillPage(PREACHERS_TEMPLATE, user, payload);
+  return { preachers, comparisonRows, scheduleError: scheduleError || null, meta };
 }
 
 // ---- statisticile unui predicator: /predicatori/:slug (admin) și /eu (predicatorul) ----
@@ -442,16 +464,23 @@ async function buildPreacherStats(env, ctx, name) {
 }
 
 export async function renderPreacherDetail(env, ctx, slug, user) {
+  const payload = await buildPreacherDetailPayload(env, ctx, slug);
+  return payload === null ? null : fillPage(PREACHER_TEMPLATE, user, payload);
+}
+
+export async function buildPreacherDetailPayload(env, ctx, slug) {
   const { schedule } = await getSchedule(env, ctx);
   const name = [...new Set(schedule.map((s) => s.speaker))].find((n) => preacherSlug(n) === slug);
   if (!name) return null; // 404 — predicator necunoscut sau calendar indisponibil
-  const payload = await buildPreacherStats(env, ctx, name);
-  return fillPage(PREACHER_TEMPLATE, user, { ...payload, self: false });
+  return { ...(await buildPreacherStats(env, ctx, name)), self: false };
 }
 
 export async function renderMe(env, ctx, user) {
-  const payload = await buildPreacherStats(env, ctx, user.preacherName);
-  return fillPage(PREACHER_TEMPLATE, user, { ...payload, self: true });
+  return fillPage(PREACHER_TEMPLATE, user, await buildMePayload(env, ctx, user));
+}
+
+export async function buildMePayload(env, ctx, user) {
+  return { ...(await buildPreacherStats(env, ctx, user.preacherName)), self: true };
 }
 
 // ---- /login și /cont (schimbare parolă) — același șablon, fără date din Sheet ----
@@ -474,6 +503,10 @@ function nextSundays(fromDate, count) {
 }
 
 export async function renderProgramList(env, ctx, user) {
+  return fillPage(PROGRAM_LIST_TEMPLATE, user, await buildProgramListPayload(env, ctx, user));
+}
+
+export async function buildProgramListPayload(env, ctx, user) {
   const today = todayRo();
   const isAdmin = user.role === 'admin';
   const [sundays, { schedule }] = await Promise.all([listSundays(env), getSchedule(env, ctx)]);
@@ -494,7 +527,7 @@ export async function renderProgramList(env, ctx, user) {
     .filter((s) => s.date >= today && !plannedDates.has(s.date))
     .filter((s) => isAdmin || mine(s.speaker));
 
-  const payload = {
+  return {
     today,
     sundays: visible,
     unplanned,
@@ -503,10 +536,14 @@ export async function renderProgramList(env, ctx, user) {
     copySources: isAdmin ? sundays.slice(-12).reverse().map((s) => ({ date: s.date, preacher_name: s.preacher_name })) : [],
     dbReady: !!env.DB,
   };
-  return fillPage(PROGRAM_LIST_TEMPLATE, user, payload);
 }
 
 export async function renderProgramEdit(env, ctx, user, date) {
+  const payload = await buildProgramEditPayload(env, ctx, user, date);
+  return payload === null ? null : fillPage(PROGRAM_EDIT_TEMPLATE, user, payload);
+}
+
+export async function buildProgramEditPayload(env, ctx, user, date) {
   if (!env.DB) return null;
   const plan = await planPayload(env, user, date);
   if (!plan) return null;
@@ -527,11 +564,15 @@ export async function renderProgramEdit(env, ctx, user, date) {
       hasFeedback = responses.some((r) => r.date === slugToDate(date));
     } catch { /* idem */ }
   }
-  return fillPage(PROGRAM_EDIT_TEMPLATE, user, { plan, preachers, hasFeedback });
+  return { plan, preachers, hasFeedback };
 }
 
 export async function renderAccounts(env, ctx, user) {
+  return fillPage(ACCOUNTS_TEMPLATE, user, await buildAccountsPayload(env, ctx));
+}
+
+export async function buildAccountsPayload(env, ctx) {
   const [accounts, { schedule, error }] = await Promise.all([listAccounts(env), getSchedule(env, ctx)]);
   const preachers = [...new Set(schedule.map((s) => s.speaker))];
-  return fillPage(ACCOUNTS_TEMPLATE, user, { accounts, preachers, scheduleError: error || null, dbReady: !!env.DB });
+  return { accounts, preachers, scheduleError: error || null, dbReady: !!env.DB };
 }

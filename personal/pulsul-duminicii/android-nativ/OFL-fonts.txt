@@ -1,0 +1,9 @@
+Fonturile din app/src/main/res/font sunt aceleași familii ca pe site, luate ca TTF complete
+din depozitul oficial Google Fonts (github.com/google/fonts, folderul ofl/), fiindcă Android
+nu citește .woff2:
+
+Manrope, Copyright 2019 The Manrope Project Authors (https://github.com/sharanda/manrope)
+Sora, Copyright 2019 The Sora Project Authors (https://github.com/sora-xor/sora-font)
+IBM Plex Mono, Copyright 2017 IBM Corp.
+
+Toate sunt sub SIL Open Font License 1.1: https://openfontlicense.org

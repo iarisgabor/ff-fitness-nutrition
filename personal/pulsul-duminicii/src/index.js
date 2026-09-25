@@ -7,6 +7,7 @@ import {
 } from './render.js';
 import { handleProgramApi, serveResource } from './program.js';
 import { handleAccountsApi } from './accounts.js';
+import { handleAppLogin, handleAppApi } from './appApi.js';
 import { slugToDate } from './transform.js';
 
 const HTML_HEADERS = {
@@ -74,6 +75,7 @@ export default {
     try {
       // ---- rute publice (doar în modul cu conturi) ----
       if (accountsMode && path === '/login') return await handleLogin(request, env, url, user);
+      if (accountsMode && path === '/api/app/login') return await handleAppLogin(request, env);
       if (accountsMode && path === '/logout') {
         await destroySession(env, request);
         // golește cache-ul browserului pentru site (inclusiv paginile ținute pentru „înapoi"),
@@ -99,6 +101,9 @@ export default {
       }
       if (path.startsWith('/api/conturi') || path === '/api/parola') {
         return await handleAccountsApi(request, env, user, path);
+      }
+      if (path === '/api/app' || path.startsWith('/api/app/')) {
+        return await handleAppApi(request, env, ctx, user, path);
       }
       const resourceMatch = path.match(/^\/resurse\/(\d+)$/);
       if (resourceMatch) {
@@ -169,6 +174,9 @@ export default {
       return text('Pagina nu există.', 404);
     } catch (err) {
       console.error(err);
+      if (path.startsWith('/api/')) {
+        return new Response(JSON.stringify({ error: 'Nu am putut încărca datele momentan. Încearcă din nou în câteva minute.' }), { status: 503, headers: { 'content-type': 'application/json; charset=utf-8' } });
+      }
       return text(
         'Nu am putut încărca datele momentan și nu există nicio versiune anterioară salvată. Încearcă din nou în câteva minute.',
         503,

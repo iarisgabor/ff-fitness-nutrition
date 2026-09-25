@@ -39,6 +39,7 @@ Designul e evoluat din raportul static făcut manual o singură dată:
 | `/api/program/...`, `/api/resurse/:id` — JSON, folosit de editor | `handleProgramApi()` | — |
 | `/api/conturi/...`, `/api/parola` — JSON | `handleAccountsApi()` | — |
 | `/resurse/:id` — descărcarea unui fișier din R2, după verificarea accesului | `serveResource()` | — |
+| `/api/app/…` — aceleași date ca paginile, ca JSON, pentru aplicația nativă (+ `login`, `logout`, `sesiune`) | `handleAppApi()` | — |
 
 **Cine vede ce** (gardă în `src/index.js`): `admin` — tot. `preacher` — `/eu`, `/cont`, `/program`,
 `/program/:data`, `/resurse/:id` și `/zile/:slug` **doar** pentru duminicile lui din calendar;
@@ -69,6 +70,8 @@ slug de predicator = numele normalizat (`src/preachers.js:preacherSlug`, ex. „
 | `<head>` comun (viewport, theme-color, manifest, iconițe, preload font) | `src/head.html` |
 | fișiere statice publice: fonturi (`fonts/` + `OFL.txt`), iconițe, `favicon.svg`, `manifest.webmanifest`, **`sw.js`** (service worker), `offline.html`, antete (`_headers`), `.well-known/assetlinks.json` (legătura cu aplicația Android) | `public/` |
 | aplicația Android (Trusted Web Activity, generată cu Bubblewrap) + build în GitHub Actions | `android/` (`android/README.md`), `.github/workflows/android-pulsul-duminicii.yml` |
+| **aplicația Android nativă** (Kotlin + Compose, separată de TWA) | `android-nativ/` (`android-nativ/README.md`) |
+| API-ul JSON al aplicației native | `src/appApi.js` |
 | testele (`npm test`) | `tests/` (`tests/README.md`) |
 | `AUTH_MODE`, `ADMIN_USERNAME`, `GOOGLE_SHEET_ID`, binding-uri KV/D1/R2 | `wrangler.toml` |
 
@@ -232,6 +235,23 @@ de import ca text.
 35. **Prima imagine a paginii e completă**: `<link rel="expect" href="#randat" blocking="render">`
     (head) ține afișarea până la markerul `#randat`, pus de `render.js` înainte de `</body>`, după
     scripturi. Fiecare șablon trebuie să aibă exact un `</body>`.
+
+36. **Aplicația nativă (`android-nativ/`) primește exact datele paginilor.** Fiecare pagină are un
+    `build…Payload()` în `render.js`, folosit și de `render…()` (HTML), și de `src/appApi.js`
+    (`GET /api/app` + calea paginii, răspuns `{user, data}`). Deci **o schimbare de payload ajunge
+    și în aplicație**: un câmp redenumit sau scos o poate strica — verifică `android-nativ/app/.../data/Models.kt`.
+    Un câmp nou e inofensiv (aplicația ignoră ce nu cunoaște). Testul `tests/api-app.mjs` compară
+    JSON-ul cu `PAYLOAD`-ul din HTML pe fiecare rută; o pagină nouă se adaugă și acolo.
+37. **Tokenul aplicației = același token de sesiune**, citit din `Authorization: Bearer` sau din
+    cookie (`readToken` în `session.js`) — aceleași reguli: 30 de zile, `session_gen`, amprenta de
+    admin, delogare la resetare. Verificarea de `Origin` rămâne pentru orice scriere: aplicația
+    trimite `Origin: <site>`. `/api/app/…` răspunde **403 JSON** unde site-ul redirecționează.
+38. **Calculele din browser sunt duplicate în aplicație**: intervalele de pe `/categorii/:cheie`
+    (`category.html` → `domain/CategoryRange.kt`) și mini-dashboard-ul zilei (`day.html` →
+    `domain/DayStats.kt`). O schimbare de formulă pe site se face și acolo (au teste JUnit).
+39. Workflow-ul de deploy **ignoră** `android-nativ/**` (o schimbare doar în aplicație nu redeploy-ează
+    Worker-ul); invers, schimbările din `src/` care ating `/api/app` trebuie să ajungă live înainte
+    ca un APK pentru producție să le folosească.
 
 ## Deploy
 
