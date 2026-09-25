@@ -43,7 +43,10 @@ function injectShared(template, user) {
   return template
     .replace('__SHARED_HEAD__', () => SHARED_HEAD)
     .replace('__SHARED_CSS__', () => SHARED_CSS)
-    .replace('__SHARED_JS__', () => userJs + SHARED_JS);
+    .replace('__SHARED_JS__', () => userJs + SHARED_JS)
+    // marker după scripturi: <link rel="expect" href="#randat" blocking="render"> din head.html
+    // ține afișarea până aici, ca prima imagine a paginii să fie deja completă (barele, conținutul)
+    .replace('</body>', () => '<div id="randat" hidden></div>\n</body>');
 }
 
 // Funcție ca al doilea argument la replace(): un text de la membri care conține

@@ -47,7 +47,13 @@ instalează peste el, și se deschide cu bara de adrese.
 
 Pentru ca aplicația să se deschidă **fără bara de adrese**, site-ul trebuie să servească
 `/.well-known/assetlinks.json` cu amprenta cheii — e în `../public/.well-known/`, ajunge live la
-următorul deploy (merge pe `main`). Până atunci aplicația merge, dar cu bara de sus a Chrome.
+următorul deploy (merge pe `main`; pasul „Verificare" din deploy confirmă că răspunde). Până
+atunci aplicația merge, dar cu bara de sus a Chrome.
+
+**Dacă bara apare și după deploy:** închide aplicația complet (glisează-o din aplicațiile
+recente) și redeschide-o — Android verifică legătura la pornire. Dacă tot apare: Setări →
+Aplicații → Pulsul → Stocare → Șterge datele (sau reinstalează). Browserul implicit al
+telefonului trebuie să știe Trusted Web Activity (Chrome, Edge, Samsung Internet — da).
 
 ## Google Play (opțional)
 

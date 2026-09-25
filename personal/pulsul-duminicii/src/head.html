@@ -11,3 +11,35 @@
 <meta name="apple-mobile-web-app-title" content="Pulsul">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<!-- Nu arăta pagina pe jumătate construită: afișarea așteaptă markerul #randat, pus de render.js
+     la finalul <body>, după scripturi (care construiesc barele și conținutul). Chrome 124+. -->
+<link rel="expect" href="#randat" blocking="render">
+<!-- Paginile următoare se pregătesc în fundal (Chrome, deci și aplicația Android): tab-urile din
+     bara de jos / sus imediat, orice alt link când e atins. ATENȚIE: o rută GET cu efecte (ca
+     /logout) TREBUIE exclusă aici — prerender-ul chiar o accesează. Vezi CLAUDE.md, regula 32. -->
+<script type="speculationrules" id="spec-rules">
+{
+  "prerender": [
+    {
+      "where": { "and": [
+        { "selector_matches": ".bn-item, .nav-tab, .subnav-tab, .app-back" },
+        { "not": { "selector_matches": "[aria-current]" } },
+        { "not": { "href_matches": "/logout*" } },
+        { "not": { "href_matches": "/login*" } }
+      ]},
+      "eagerness": "immediate"
+    },
+    {
+      "where": { "and": [
+        { "href_matches": "/*" },
+        { "not": { "href_matches": "/logout*" } },
+        { "not": { "href_matches": "/login*" } },
+        { "not": { "href_matches": "/api/*" } },
+        { "not": { "href_matches": "/resurse/*" } },
+        { "not": { "selector_matches": "[target], [download]" } }
+      ]},
+      "eagerness": "moderate"
+    }
+  ]
+}
+</script>

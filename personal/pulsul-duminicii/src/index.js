@@ -12,7 +12,10 @@ import { slugToDate } from './transform.js';
 const HTML_HEADERS = {
   'content-type': 'text/html; charset=utf-8',
   'x-robots-tag': 'noindex, nofollow', // link neafișat public — nu trebuie indexat
-  'cache-control': 'private, no-store', // pagini per utilizator — nimic în cache-uri intermediare
+  // private: nimic în cache-uri intermediare (pagini per utilizator). no-cache (nu no-store): browserul
+  // tot cere pagina de la server la fiecare navigare, dar o poate ține în memorie pentru „înapoi"
+  // instant (bfcache) — de-asta /logout trimite Clear-Site-Data, care golește și memoria asta.
+  'cache-control': 'private, no-cache',
   'x-frame-options': 'DENY',
   'referrer-policy': 'same-origin',
 };
@@ -73,7 +76,9 @@ export default {
       if (accountsMode && path === '/login') return await handleLogin(request, env, url, user);
       if (accountsMode && path === '/logout') {
         await destroySession(env, request);
-        return redirect('/login', { 'set-cookie': clearSessionCookie() });
+        // golește cache-ul browserului pentru site (inclusiv paginile ținute pentru „înapoi"),
+        // ca după Ieșire butonul înapoi să nu mai arate paginile contului
+        return redirect('/login', { 'set-cookie': clearSessionCookie(), 'clear-site-data': '"cache"' });
       }
 
       if (!user) {

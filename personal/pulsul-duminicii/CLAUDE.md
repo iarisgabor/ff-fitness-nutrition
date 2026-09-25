@@ -215,6 +215,23 @@ de import ca text.
     `PULSUL_ANDROID_KEYSTORE_BASE64` / `PULSUL_ANDROID_KEYSTORE_PASSWORD`; o cheie pierdută = nicio
     actualizare posibilă pe același pachet. Cu Google Play App Signing, amprenta cheii Google se
     ADAUGĂ în assetlinks.json, lângă cea existentă. Detalii: `android/README.md`.
+32. **Paginile se pregătesc în fundal (prerender, `<script type="speculationrules" id="spec-rules">`
+    din `src/head.html`)**: tab-urile imediat, orice alt link la atingere — de-asta schimbarea de
+    pagină e instantă. Prerender-ul CHIAR accesează URL-ul, deci **orice rută GET cu efecte trebuie
+    exclusă acolo** (acum: `/logout`; excluse și `/login`, `/api/`, `/resurse/`). După orice
+    modificare, `markChanged()` reîncarcă regulile (paginile deja pregătite ar fi vechi) — `api()`
+    o face singur pentru POST/PATCH/PUT/DELETE; un apel făcut altfel (ca urcarea prin XHR) trebuie
+    s-o cheme explicit.
+33. **„Înapoi" instant (bfcache)**: HTML-ul are `cache-control: private, no-cache` (nu `no-store`,
+    care oprea bfcache-ul) și `/logout` trimite `Clear-Site-Data: "cache"`. O pagină readusă din
+    memorie se reîncarcă singură dacă între timp s-a schimbat utilizatorul sau s-a modificat ceva
+    (garda `pageshow` din `shared.txt`). Nu adăuga handlere `unload` — scot pagina din bfcache.
+34. **Tranziții cu direcție** (`pagereveal` + `:active-view-transition-type` în `shared.css`): spre o
+    pagină mai „adâncă" glisează din dreapta, înapoi spre dreapta, între tab-uri doar estompare.
+    Adâncimea vine din `NAV_ROOTS` (`shared.txt`) — o pagină nouă de nivel de tab se adaugă acolo.
+35. **Prima imagine a paginii e completă**: `<link rel="expect" href="#randat" blocking="render">`
+    (head) ține afișarea până la markerul `#randat`, pus de `render.js` înainte de `</body>`, după
+    scripturi. Fiecare șablon trebuie să aibă exact un `</body>`.
 
 ## Deploy
 

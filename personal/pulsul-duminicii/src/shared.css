@@ -321,6 +321,23 @@ dialog.sheet.closing::backdrop{opacity:0; transition:opacity .17s;}
 /* ---------- navigare: tranziții, bară de progres, tragere pentru reîncărcare ---------- */
 @view-transition{navigation:auto;}
 ::view-transition-old(root), ::view-transition-new(root){animation-duration:.18s;}
+/* pe telefon, tranziția are direcție (tipul e pus în shared.txt, la pagereveal): bara de sus și
+   cea de jos au nume proprii, deci rămân pe loc — doar conținutul glisează, ca într-o aplicație */
+@media (max-width:760px){
+  html:active-view-transition-type(forward)::view-transition-old(root){animation:vt-out-left .24s cubic-bezier(.3,.7,.3,1) both;}
+  html:active-view-transition-type(forward)::view-transition-new(root){animation:vt-in-right .28s cubic-bezier(.2,.8,.2,1) both;}
+  html:active-view-transition-type(back)::view-transition-old(root){animation:vt-out-right .24s cubic-bezier(.3,.7,.3,1) both;}
+  html:active-view-transition-type(back)::view-transition-new(root){animation:vt-in-left .28s cubic-bezier(.2,.8,.2,1) both;}
+  html:active-view-transition-type(tab)::view-transition-old(root), html:active-view-transition-type(tab)::view-transition-new(root){animation-duration:.14s;}
+}
+@keyframes vt-in-right{from{transform:translateX(32%); opacity:0;}}
+@keyframes vt-out-left{to{transform:translateX(-12%); opacity:0;}}
+@keyframes vt-in-left{from{transform:translateX(-12%); opacity:0;}}
+@keyframes vt-out-right{to{transform:translateX(32%); opacity:0;}}
+/* aplicația instalată: fără selecție de text și meniu de link pe elementele pe care le apeși */
+.standalone a, .standalone button, .standalone [role="button"], .standalone .plan-row, .standalone .toggle-opt, .standalone .cat-tab{
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+}
 #nav-progress{
   position:fixed; top:env(safe-area-inset-top); left:0; z-index:200; height:3px; width:0; opacity:0; pointer-events:none;
   background:var(--accent2-mark); border-radius:0 2px 2px 0;

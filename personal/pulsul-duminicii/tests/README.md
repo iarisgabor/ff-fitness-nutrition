@@ -5,6 +5,7 @@ npm install
 npm test                    # toate suitele (~75s)
 npm test -- pwa aspect      # doar unele
 npm test -- --capturi       # + capturi de ecran în tests/capturi/ (ignorat de git)
+npm test -- --server        # doar pornește site-ul de test cu datele sintetice (verificări manuale)
 ```
 
 `npm test` face totul singur: pornește site-ul local (`wrangler dev`, port 8788) pe o stare
@@ -21,9 +22,15 @@ AI-ul oprit (`--var`) suprascriu orice ai în `.dev.vars`.
 | `telefon` | glisarea între răspunsuri, trecerea la categoria următoare, starea ținută minte, „Duminică nouă" în panou, urcarea cu progres + descărcarea identică, dialogurile de ștergere, offline, conturile (creare / resetare / ștergere), „arată parola" |
 | `iphone` | sugestia de instalare (o singură dată) și pașii Share → Adaugă pe ecranul principal |
 | `aspect` | toate paginile, pe roluri, pe telefon (luminos + întunecat) și desktop: nimic nu iese din ecran, nicio eroare JS, pe telefon niciun câmp sub 16px și nicio țintă de atingere sub 40px |
+| `navigare` | ce pagini pregătește Chrome în fundal (**niciodată `/logout`**, `/login`, `/api`, `/resurse`), eligibilitatea pentru „înapoi" instant, garda care reîncarcă o pagină readusă după o modificare sau după Ieșire, `Clear-Site-Data` la Ieșire, prima imagine completă |
 | `pwa` | instalabilitatea (criteriile Chrome), service worker-ul, paginile salvate, semnal slab (copia după 6s), offline, pagina offline, ștergerea copiilor la Ieșire |
 
 Orice eroare JS sau fereastră nativă (`alert`/`confirm`) pe o pagină face testul să pice.
+
+Liniile `⊘` sunt lucruri pe care Chrome controlat de Playwright nu le face deloc — prerender-ul
+(`PrerenderingDisabledByDevTools`) și bfcache-ul (`BackForwardCacheDisabledForDelegate`). Se verifică
+tot ce se poate în jurul lor (ce URL-uri încearcă Chrome, dacă pagina e eligibilă, garda de
+reîncărcare), dar efectul final se vede doar pe un telefon real.
 
 ## Date
 

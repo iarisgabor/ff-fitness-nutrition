@@ -5,6 +5,7 @@
 //   npm test                    toate suitele
 //   npm test -- pwa aspect      doar unele
 //   npm test -- --capturi       + capturi de ecran în tests/capturi/
+//   npm test -- --server        doar pornește site-ul de test (cu datele sintetice) și îl lasă deschis
 //
 // Detalii și cerințe: tests/README.md.
 import { spawn, spawnSync } from 'node:child_process';
@@ -19,9 +20,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STATE = join(ROOT, '.wrangler', 'test-state');
 const PORT = Number(process.env.TEST_PORT || 8788);
 const B = `http://127.0.0.1:${PORT}`;
-const ALL_SUITES = ['regresie', 'telefon', 'iphone', 'aspect', 'pwa'];
+const ALL_SUITES = ['regresie', 'telefon', 'iphone', 'aspect', 'navigare', 'pwa'];
 const args = process.argv.slice(2);
 const shots = args.includes('--capturi');
+const serverOnly = args.includes('--server');
 const chosen = args.filter((a) => !a.startsWith('--'));
 const suites = chosen.length ? chosen : ALL_SUITES;
 const unknown = suites.filter((s) => !ALL_SUITES.includes(s));
@@ -94,6 +96,10 @@ let failed = 0, total = 0;
 try {
   await waitForServer();
   await seedViaApi();
+  if (serverOnly) {
+    console.log(`Site de test: ${B} — ${F.ADMIN.username} / ${F.ADMIN.password}, ${F.MARIUS.username} / ${F.MARIUS.password}. Ctrl+C oprește.`);
+    await new Promise(() => {}); // rămâne deschis până la Ctrl+C
+  }
   const { launchBrowser, Checks } = await import('./lib.mjs');
   const browser = await launchBrowser();
   console.log(`Site local: ${B} · azi ${F.TODAY} · duminica cu feedback ${F.DAY_WITH_FEEDBACK} · duminica lui Marius ${F.MARIUS_SUNDAY}\n`);

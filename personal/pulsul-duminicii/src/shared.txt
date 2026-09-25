@@ -433,6 +433,7 @@ async function api(method, url, body, opts){
   try { data = await res.json(); } catch(e){}
   if (res.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); throw new Error('Sesiune expirată.'); }
   if (!res.ok) throw new Error((data && data.error) || `Eroare ${res.status}`);
+  if (method !== 'GET') markChanged();
   return data;
 }
 
@@ -678,3 +679,62 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 window.addEventListener('appinstalled', () => { installPrompt = null; hideInstallHint(); remember('install-hint', 'no'); });
 if (isIOS()) setTimeout(showInstallHint, 1500);
+
+// ---------------------------------------------------------------- navigare ca într-o aplicație
+//
+// 1. Paginile următoare sunt pregătite în fundal de Chrome (regulile #spec-rules din head.html):
+//    tab-urile se deschid instant. După orice modificare (api() cu POST/PATCH/PUT/DELETE, urcare
+//    de fișier) regulile se reîncarcă — paginile pregătite înainte ar arăta date vechi.
+// 2. „Înapoi" readuce pagina din memorie (bfcache), instant. O pagină readusă se reîncarcă totuși
+//    dacă între timp s-a modificat ceva sau s-a schimbat contul (Ieșire, alt utilizator) — nu
+//    arătăm niciodată o versiune veche sau pe a altcuiva.
+// 3. Tranziția are direcție: spre o pagină mai „adâncă" glisează din dreapta, înapoi spre dreapta,
+//    între tab-uri doar se estompează (CSS: :active-view-transition-type în shared.css).
+function refreshSpeculation(){
+  const old = document.getElementById('spec-rules');
+  if (!old) return;
+  const rules = old.textContent;
+  old.remove(); // anulează paginile deja pregătite
+  const fresh = document.createElement('script'); // element nou: o clonă nu s-ar mai executa
+  fresh.type = 'speculationrules';
+  fresh.id = 'spec-rules';
+  fresh.textContent = rules;
+  setTimeout(() => document.head.appendChild(fresh), 50);
+}
+function markChanged(){
+  try { sessionStorage.setItem('puls-changed-at', String(Date.now())); } catch(e){}
+  refreshSpeculation();
+}
+
+const PAGE_LOADED_AT = Date.now();
+const PAGE_USER = (typeof PULS_USER !== 'undefined' && PULS_USER) ? (PULS_USER.username || '') : '';
+try { sessionStorage.setItem('puls-user', PAGE_USER); } catch(e){}
+window.addEventListener('pageshow', (e) => {
+  if (!e.persisted) return;
+  let lastUser = PAGE_USER, changedAt = 0;
+  try { lastUser = sessionStorage.getItem('puls-user'); changedAt = Number(sessionStorage.getItem('puls-changed-at')) || 0; } catch(err){}
+  if (lastUser !== PAGE_USER || changedAt > PAGE_LOADED_AT) { location.reload(); return; }
+  try { sessionStorage.setItem('puls-user', PAGE_USER); } catch(err){}
+});
+
+// „Adâncimea" unei pagini: tab-urile (și paginile din meniu) sunt rădăcini, restul — după segmente.
+const NAV_ROOTS = ['/', '/eu', '/zile', '/categorii', '/predicatori', '/program', '/admin/conturi', '/cont', '/login'];
+function navDepth(url){
+  const path = new URL(url, location.href).pathname.replace(/\/+$/, '') || '/';
+  return NAV_ROOTS.includes(path) ? 1 : path.split('/').filter(Boolean).length;
+}
+window.addEventListener('pagereveal', (e) => {
+  const act = window.navigation && navigation.activation;
+  if (!e.viewTransition || !e.viewTransition.types || !act || !act.from) return;
+  const from = navDepth(act.from.url), to = navDepth(location.href);
+  e.viewTransition.types.add(to > from ? 'forward' : to < from ? 'back' : 'tab');
+});
+
+// În aplicația instalată: apăsarea lungă pe un link sau buton nu mai deschide meniul browserului
+// („deschide în filă nouă", „copiază linkul"), iar textul lor nu se selectează.
+if (isStandalone()) {
+  document.documentElement.classList.add('standalone');
+  document.addEventListener('contextmenu', (e) => {
+    if (e.target.closest && e.target.closest('a, button, [role="button"], .plan-row, img, svg')) e.preventDefault();
+  });
+}

@@ -12,7 +12,8 @@ export async function launchBrowser() {
   const tries = [process.env.CHROMIUM_PATH && { executablePath: process.env.CHROMIUM_PATH }, {}, { channel: 'chrome' }, { channel: 'msedge' }].filter(Boolean);
   let last;
   for (const opts of tries) {
-    try { return await chromium.launch(opts); } catch (err) { last = err; }
+    // Playwright oprește implicit memoria pentru „înapoi" (bfcache); o vrem pornită, ca la utilizatori
+    try { return await chromium.launch({ ...opts, ignoreDefaultArgs: ['--disable-back-forward-cache'] }); } catch (err) { last = err; }
   }
   throw new Error(`Nu găsesc un Chromium. Rulează „npx playwright-core install chromium" sau setează CHROMIUM_PATH.\n${last?.message || ''}`);
 }
@@ -24,6 +25,8 @@ export class Checks {
     if (!cond) this.fails++;
     console.log(`  ${cond ? '✓' : '✗'} ${msg}`);
   }
+  // ce nu se poate verifica într-un browser automatizat (ex. prerender, bfcache) — spus explicit, nu ascuns
+  note(msg) { console.log(`  ⊘ ${msg}`); }
 }
 
 // Context nou, logat; orice eroare JS sau fereastră nativă (alert/confirm) e o eroare de test.

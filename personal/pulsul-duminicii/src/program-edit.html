@@ -382,6 +382,7 @@ __SHARED_JS__
         try { data = JSON.parse(xhr.responseText); } catch(e){}
         if (xhr.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); reject(new Error('Sesiune expirată.')); return; }
         if (xhr.status < 200 || xhr.status >= 300) { reject(new Error((data && data.error) || `Eroare ${xhr.status}`)); return; }
+        markChanged();
         resolve(data);
       };
       xhr.onerror = () => reject(new Error(navigator.onLine ? NETWORK_MSG : OFFLINE_MSG));

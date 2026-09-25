@@ -93,3 +93,10 @@ jobs:
           done
           echo "::notice title=Site live::$URL (login: $CODE)"
           [ "$CODE" = "200" ]
+          # Legătura cu aplicația Android: fără ea, aplicația se deschide cu bara de adrese Chrome.
+          if curl -fsS "$URL/.well-known/assetlinks.json" | grep -q '"ro.bisericalogos.pulsul"'; then
+            echo "::notice title=Aplicația Android::assetlinks.json e live — aplicația se deschide pe tot ecranul"
+          else
+            echo "::error title=assetlinks.json lipsește::$URL/.well-known/assetlinks.json nu răspunde corect — aplicația Android s-ar deschide cu bara de adrese."
+            exit 1
+          fi
