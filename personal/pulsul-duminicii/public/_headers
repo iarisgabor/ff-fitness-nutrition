@@ -1,0 +1,17 @@
+# Antete pentru fișierele statice din public/ (servite de Cloudflare direct, fără Worker).
+# Nimic de aici nu e personal: fonturi, iconițe, manifest, service worker.
+/*
+  X-Robots-Tag: noindex, nofollow
+  X-Content-Type-Options: nosniff
+
+# Numele fișierelor de font nu se schimbă niciodată -> cache „pe viață”.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Service worker-ul se verifică la fiecare încărcare, ca o versiune nouă să ajungă imediat.
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8

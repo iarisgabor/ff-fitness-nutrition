@@ -2,13 +2,8 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
 <title>Pulsul Duminicii — o duminică</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+__SHARED_HEAD__
 <style>
 __SHARED_CSS__
 
@@ -39,12 +34,12 @@ __SHARED_CSS__
 .slide-top{display:flex; align-items:center; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
 .slide-meta{display:flex; flex-direction:column; gap:2px;}
 .slide-cat-label{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--text-3);}
-.slide-when{font-size:12px; color:var(--text-3); font-family:'IBM Plex Mono';}
+.slide-when{font-size:12px; color:var(--text-3); font-family:var(--font-mono);}
 .slide-question{font-size:14.5px; color:var(--text-2); font-style:italic; line-height:1.45; margin-bottom:16px; padding-bottom:16px; border-bottom:1px dashed var(--border);}
 .slide-text{font-size:19px; line-height:1.55; color:var(--text); font-weight:500;}
 .slide-text.empty{color:var(--text-3); font-style:italic; font-weight:400;}
 .slide-nav{display:flex; align-items:center; justify-content:space-between; margin-top:26px;}
-.slide-counter{font-family:'IBM Plex Mono'; font-size:13px; color:var(--text-3);}
+.slide-counter{font-family:var(--font-mono); font-size:13px; color:var(--text-3);}
 .slide-empty{padding:40px 0; text-align:center; color:var(--text-3); font-size:14px;}
 
 /* dashboard — toate deodată */
@@ -53,7 +48,7 @@ __SHARED_CSS__
 .dash-card{break-inside:avoid; margin-bottom:18px; padding:20px 22px;}
 .dash-card .dh{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
 .dash-card .dh b{font-size:14.5px; font-weight:700;}
-.dash-card .dh .n{font-size:11.5px; color:var(--text-3); font-family:'IBM Plex Mono';}
+.dash-card .dh .n{font-size:11.5px; color:var(--text-3); font-family:var(--font-mono);}
 .dash-question{font-size:12.5px; color:var(--text-3); font-style:italic; line-height:1.45; margin-bottom:14px; padding-bottom:14px; border-bottom:1px dashed var(--border);}
 .dash-item{display:flex; gap:11px; padding:11px 0; border-top:1px solid var(--border);}
 .dash-item:first-child{border-top:none; padding-top:0;}
@@ -63,6 +58,35 @@ __SHARED_CSS__
 
 .rbadge.sm{width:26px; height:26px; font-size:12px; flex:none;}
 .rbadge.lg{width:44px; height:44px; font-size:20px; flex:none;}
+
+.cat-tabs{position:relative;}
+/* glisare între răspunsuri: browserul păstrează doar derularea verticală, gestul orizontal e al nostru */
+.slide-card{touch-action:pan-y;}
+.slide-card.from-next{animation:slide-from-next .22s ease-out;}
+.slide-card.from-prev{animation:slide-from-prev .22s ease-out;}
+@keyframes slide-from-next{from{opacity:.2; transform:translateX(28px);} to{opacity:1; transform:none;}}
+@keyframes slide-from-prev{from{opacity:.2; transform:translateX(-28px);} to{opacity:1; transform:none;}}
+.slide-nav .btn{display:block; max-width:46%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:26px;} /* block: „…" merge doar pe text direct, nu în flex */
+
+@media (max-width:760px){
+  .day-head{padding:18px 0 0; align-items:center; flex-wrap:nowrap;}
+  .day-title h1{font-size:24px;}
+  .day-nav a{width:44px; height:44px; border-radius:12px;}
+  .day-stats{grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; margin:18px 0 4px;}
+  .view-bar{margin:22px 0 12px;}
+  .view-bar .toggle-group{width:100%;}
+  .view-bar .toggle-opt{flex:1; justify-content:center;}
+  /* categoriile pe un singur rând care se derulează, cea activă adusă în centru */
+  .cat-tabs{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; margin:0 -16px 14px; padding:2px 16px 4px;}
+  .cat-tabs::-webkit-scrollbar{display:none;}
+  .cat-tab{flex:none;}
+  .slide-card{padding:20px 18px; border-radius:16px; min-height:0;}
+  .slide-text{font-size:17px;}
+  .slide-question{font-size:13.5px;}
+  .slide-nav{margin-top:20px; gap:10px;}
+  .slide-hint{display:block;}
+}
+.slide-hint{display:none; text-align:center; font-size:11.5px; color:var(--text-3); margin-top:10px;}
 </style>
 </head>
 <body>
@@ -90,8 +114,8 @@ __SHARED_CSS__
 
   <div class="view-bar">
     <div class="toggle-group" id="view-toggle">
-      <div class="toggle-opt active" data-view="slideshow">Slideshow</div>
-      <div class="toggle-opt" data-view="dashboard">Toate deodată</div>
+      <button type="button" class="toggle-opt active" data-view="slideshow" aria-pressed="true">Slideshow</button>
+      <button type="button" class="toggle-opt" data-view="dashboard" aria-pressed="false">Toate deodată</button>
     </div>
   </div>
 
@@ -188,14 +212,21 @@ __SHARED_JS__
   const toggleEl = document.getElementById('view-toggle');
   const viewSlideshow = document.getElementById('view-slideshow');
   const viewDashboard = document.getElementById('view-dashboard');
+  function setView(view){
+    toggleEl.querySelectorAll('.toggle-opt').forEach(o => {
+      o.classList.toggle('active', o.dataset.view === view);
+      o.setAttribute('aria-pressed', String(o.dataset.view === view));
+    });
+    viewSlideshow.hidden = view !== 'slideshow';
+    viewDashboard.hidden = view === 'slideshow';
+  }
   toggleEl.addEventListener('click', (e) => {
     const opt = e.target.closest('.toggle-opt');
     if (!opt) return;
-    toggleEl.querySelectorAll('.toggle-opt').forEach(o => o.classList.toggle('active', o === opt));
-    const isSlideshow = opt.dataset.view === 'slideshow';
-    viewSlideshow.hidden = !isSlideshow;
-    viewDashboard.hidden = isSlideshow;
+    setView(opt.dataset.view);
+    remember('day-view', opt.dataset.view); // următoarea duminică se deschide în același mod
   });
+  if (recall('day-view') === 'dashboard') setView('dashboard');
 
   // ---- slideshow ----
   const catsWithData = dimLabels.filter(d => items.some(r => r[d.key] && (r[d.key].r || (r[d.key].t||'').trim())));
@@ -204,19 +235,40 @@ __SHARED_JS__
   let currentCatKey = catsWithData.length ? catsWithData[0].key : null;
   let currentSlideIdx = 0;
 
-  function slidesForCurrentCategory(){
-    if (!currentCatKey) return [];
+  function slidesFor(key){
+    if (!key) return [];
     return items
-      .filter(r => r[currentCatKey] && (r[currentCatKey].r || (r[currentCatKey].t||'').trim()))
-      .map(r => ({ ...r[currentCatKey], name: r.name, age: r.age, time: r.time }));
+      .filter(r => r[key] && (r[key].r || (r[key].t||'').trim()))
+      .map(r => ({ ...r[key], name: r.name, age: r.age, time: r.time }));
+  }
+  function slidesForCurrentCategory(){ return slidesFor(currentCatKey); }
+
+  // Înainte/înapoi prin răspunsuri; la capătul unei categorii trece la categoria vecină,
+  // ca la întâlnirea de luni să poți parcurge toată duminica fără să atingi tab-urile.
+  function neighbourCat(delta){
+    const ci = catsWithData.findIndex(d => d.key === currentCatKey);
+    return catsWithData[ci + delta] || null;
+  }
+  function go(delta){
+    const slides = slidesForCurrentCategory();
+    const next = currentSlideIdx + delta;
+    if (next >= 0 && next < slides.length) { currentSlideIdx = next; renderSlide(delta); return; }
+    const cat = neighbourCat(delta);
+    if (!cat) return;
+    currentCatKey = cat.key;
+    currentSlideIdx = delta > 0 ? 0 : slidesFor(cat.key).length - 1;
+    renderCatTabs();
+    renderSlide(delta);
   }
 
   function renderCatTabs(){
     catTabsWrap.innerHTML = '';
     catsWithData.forEach(d => {
       const n = items.filter(r => r[d.key] && (r[d.key].r || (r[d.key].t||'').trim())).length;
-      const tab = document.createElement('div');
+      const tab = document.createElement('button');
+      tab.type = 'button';
       tab.className = 'cat-tab' + (d.key === currentCatKey ? ' active' : '');
+      if (d.key === currentCatKey) tab.setAttribute('aria-current', 'true');
       tab.innerHTML = `${esc(d.label)}<span class="cat-n">${n}</span>`;
       tab.addEventListener('click', () => {
         currentCatKey = d.key;
@@ -226,9 +278,13 @@ __SHARED_JS__
       });
       catTabsWrap.appendChild(tab);
     });
+    const act = catTabsWrap.querySelector('.cat-tab.active');
+    if (act && catTabsWrap.scrollWidth > catTabsWrap.clientWidth) {
+      catTabsWrap.scrollTo({ left: act.offsetLeft - (catTabsWrap.clientWidth - act.offsetWidth) / 2, behavior: 'smooth' });
+    }
   }
 
-  function renderSlide(){
+  function renderSlide(dir){
     const slides = slidesForCurrentCategory();
     if (!slides.length) {
       slidePanel.innerHTML = '<div class="slide-empty">Nimeni nu a răspuns la această categorie în această duminică.</div>';
@@ -242,8 +298,12 @@ __SHARED_JS__
       : `<div class="rbadge lg empty">&ndash;</div>`;
     const dim = dimLabels.find(d => d.key === currentCatKey) || {};
     const chips = (s.age ? `<span class="chip">${esc(s.age)}</span>` : '') + (s.name ? `<span class="chip name">${esc(s.name)}</span>` : '');
+    const atStart = currentSlideIdx === 0, atEnd = currentSlideIdx === slides.length - 1;
+    const prevCat = atStart ? neighbourCat(-1) : null, nextCat = atEnd ? neighbourCat(1) : null;
+    const prevLabel = prevCat ? `&larr; ${esc(prevCat.label)}` : '&larr; Anterior';
+    const nextLabel = nextCat ? `${esc(nextCat.label)} &rarr;` : 'Următor &rarr;';
     slidePanel.innerHTML = `
-      <div class="slide-card">
+      <div class="slide-card${dir > 0 ? ' from-next' : dir < 0 ? ' from-prev' : ''}">
         <div class="slide-top">
           ${badge}
           <div class="slide-meta">
@@ -254,25 +314,39 @@ __SHARED_JS__
         ${dim.full ? `<div class="slide-question">${esc(dim.full)}</div>` : ''}
         <div class="slide-text ${s.t?'':'empty'}">${s.t ? esc(s.t) : 'fără text, doar notă'}</div>
         <div class="slide-nav">
-          <button class="btn" id="slide-prev" ${currentSlideIdx===0?'disabled':''}>&larr; Anterior</button>
+          <button class="btn" id="slide-prev" ${atStart && !prevCat ? 'disabled' : ''}>${prevLabel}</button>
           <div class="slide-counter">${currentSlideIdx+1} din ${slides.length}</div>
-          <button class="btn" id="slide-next" ${currentSlideIdx===slides.length-1?'disabled':''}>Următor &rarr;</button>
+          <button class="btn" id="slide-next" ${atEnd && !nextCat ? 'disabled' : ''}>${nextLabel}</button>
         </div>
       </div>
+      <div class="slide-hint">glisează stânga / dreapta</div>
     `;
     const prevBtn = document.getElementById('slide-prev');
     const nextBtn = document.getElementById('slide-next');
-    if (prevBtn) prevBtn.addEventListener('click', () => { currentSlideIdx--; renderSlide(); });
-    if (nextBtn) nextBtn.addEventListener('click', () => { currentSlideIdx++; renderSlide(); });
+    if (prevBtn) prevBtn.addEventListener('click', () => go(-1));
+    if (nextBtn) nextBtn.addEventListener('click', () => go(1));
   }
+
+  // glisare cu degetul pe card: stânga = următorul, dreapta = anteriorul
+  let swipe = null;
+  slidePanel.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' || !e.target.closest('.slide-card') || e.target.closest('button')) return;
+    swipe = { x: e.clientX, y: e.clientY };
+  });
+  slidePanel.addEventListener('pointerup', (e) => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+  });
+  slidePanel.addEventListener('pointercancel', () => { swipe = null; });
 
   document.addEventListener('keydown', (e) => {
     if (viewSlideshow.hidden || !currentCatKey) return;
     const tag = (document.activeElement && document.activeElement.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-    const slides = slidesForCurrentCategory();
-    if (e.key === 'ArrowLeft' && currentSlideIdx > 0) { currentSlideIdx--; renderSlide(); }
-    if (e.key === 'ArrowRight' && currentSlideIdx < slides.length-1) { currentSlideIdx++; renderSlide(); }
+    if (e.key === 'ArrowLeft') go(-1);
+    if (e.key === 'ArrowRight') go(1);
   });
 
   if (catsWithData.length) { renderCatTabs(); renderSlide(); }

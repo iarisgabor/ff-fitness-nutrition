@@ -2,7 +2,25 @@
    Paletă validată cu skill-ul dataviz (categorical: violet+portocaliu, ambele treceri
    CVD/contrast în light+dark; scala 1-5 pe perechea diverging documentată albastru<->roșu,
    cu gri neutru la mijloc). */
+
+/* Fonturi găzduite local (public/fonts/): subsetul latin + unul mic doar cu ă/ș/ț,
+   descărcat de browser doar când pagina chiar le conține (unicode-range). Fără
+   Google Fonts — pagina nu mai depinde de alte domenii și arată la fel și offline. */
+@font-face{font-family:'Manrope'; font-style:normal; font-weight:200 800; font-display:swap; src:url(/fonts/manrope-latin.woff2) format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Manrope'; font-style:normal; font-weight:200 800; font-display:swap; src:url(/fonts/manrope-ro.woff2) format('woff2'); unicode-range:U+0102-0103,U+015E-015F,U+0162-0163,U+0218-021B;}
+@font-face{font-family:'Sora'; font-style:normal; font-weight:100 800; font-display:swap; src:url(/fonts/sora-latin.woff2) format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Sora'; font-style:normal; font-weight:100 800; font-display:swap; src:url(/fonts/sora-ro.woff2) format('woff2'); unicode-range:U+0102-0103,U+015E-015F,U+0162-0163,U+0218-021B;}
+@font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:500; font-display:swap; src:url(/fonts/plex-mono-500-latin.woff2) format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:500; font-display:swap; src:url(/fonts/plex-mono-500-ro.woff2) format('woff2'); unicode-range:U+0102-0103,U+015E-015F,U+0162-0163,U+0218-021B;}
+@font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:600 700; font-display:swap; src:url(/fonts/plex-mono-600-latin.woff2) format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:600 700; font-display:swap; src:url(/fonts/plex-mono-600-ro.woff2) format('woff2'); unicode-range:U+0102-0103,U+015E-015F,U+0162-0163,U+0218-021B;}
+
 :root{
+  /* mereu cu font de rezervă — altfel, fără fontul web, cifrele cad pe Times */
+  --font-display:'Sora', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-body:'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
   --bg:#F1F3F8;
   --surface:#FFFFFF;
   --surface-2:#E8ECF3;
@@ -91,24 +109,29 @@
 
 *{box-sizing:border-box;}
 html, body{ max-width:100%; overflow-x:hidden; }
+/* clip taie la fel, dar nu transformă body în container de derulare — bara de sus
+   rămâne lipită (sticky) sigur și pe iOS */
+@supports (overflow:clip){ html, body{ overflow-x:clip; } }
 body{
   margin:0;
   background:var(--bg);
   color:var(--text);
-  font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;
+  font-family:var(--font-body);
   -webkit-font-smoothing:antialiased;
 }
 /* atributul hidden câștigă mereu, chiar și peste componente cu display:flex/grid */
 [hidden]{display:none !important;}
-h1,h2,h3{font-family:'Sora',ui-sans-serif,system-ui,sans-serif; margin:0; text-wrap:balance;}
+h1,h2,h3{font-family:var(--font-display); margin:0; text-wrap:balance;}
 p{margin:0;}
 a{color:inherit;}
-.mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+.mono{font-family:var(--font-mono);}
 .wrap{max-width:1180px; margin:0 auto; padding:0 24px;}
 
 /* ---------- top bar + meniu hamburger ---------- */
 .topbar{
   position:sticky; top:0; z-index:40;
+  padding-top:env(safe-area-inset-top); /* sub bara de stare, în aplicația instalată */
+  view-transition-name:topbar;
   backdrop-filter: blur(14px);
   background: color-mix(in srgb, var(--bg) 78%, transparent);
   border-bottom:1px solid var(--border);
@@ -116,7 +139,7 @@ a{color:inherit;}
 .topbar-inner{display:flex; align-items:center; justify-content:space-between; padding:14px 24px; max-width:1180px; margin:0 auto; gap:12px;}
 .brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; min-width:0;}
 .brand-mark{width:26px; height:26px; flex:none;}
-.brand-name{font-family:'Sora'; font-weight:700; font-size:15px; letter-spacing:.02em; white-space:nowrap;}
+.brand-name{font-family:var(--font-display); font-weight:700; font-size:15px; letter-spacing:.02em; white-space:nowrap;}
 .topbar-right{display:flex; align-items:center; gap:10px; flex:none;}
 .topbar-meta{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-2); min-width:0;}
 .topbar-meta span:last-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -156,7 +179,7 @@ a{color:inherit;}
 }
 .menu-item:hover{background:var(--surface-2);}
 .menu-item.active{color:var(--accent-mark);}
-.menu-item .n{margin-left:auto; font-family:'IBM Plex Mono'; font-size:11.5px; color:var(--text-3); font-weight:500;}
+.menu-item .n{margin-left:auto; font-family:var(--font-mono); font-size:11.5px; color:var(--text-3); font-weight:500;}
 
 /* tab-uri principale în topbar: Analiză · Program duminică (sau Statisticile mele · Program) */
 .nav-tabs{display:flex; gap:2px; padding:3px; border-radius:11px; background:var(--surface-2); border:1px solid var(--border); min-width:0;}
@@ -178,6 +201,176 @@ a{color:inherit;}
   .menu-panel{right:0;}
 }
 
+/* ---------- app shell ----------
+   Desktop: sub-tab-uri pentru Analiză sub bara de sus. Telefon (≤760px): bară de aplicație
+   (înapoi/logo · titlu la derulare · cont) + bara de navigare fixă jos. */
+.menu-wrap{position:relative;}
+.app-back, .app-title, .avatar-btn{display:none;}
+.subnav{border-top:1px solid var(--border);}
+.subnav-inner{max-width:1180px; margin:0 auto; padding:0 16px; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none;}
+.subnav-inner::-webkit-scrollbar{display:none;}
+.subnav-tab{padding:11px 10px 10px; font-size:13px; font-weight:700; color:var(--text-2); text-decoration:none; white-space:nowrap; border-bottom:2px solid transparent; margin-bottom:-1px;}
+.subnav-tab:hover{color:var(--text);}
+.subnav-tab.active{color:var(--text); border-bottom-color:var(--accent-mark);}
+.avatar{
+  width:34px; height:34px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center;
+  background:color-mix(in srgb, var(--accent-mark) 16%, var(--surface-2)); color:var(--accent-mark);
+  border:1px solid color-mix(in srgb, var(--accent-mark) 30%, var(--border));
+  font-weight:800; font-size:12.5px; letter-spacing:.02em;
+}
+.avatar.lg{width:48px; height:48px; font-size:16px;}
+.bottom-nav{display:none;}
+
+@media (max-width:760px){
+  .wrap{padding:0 16px;}
+  .topbar-inner{padding:6px 6px; min-height:56px; gap:2px; justify-content:flex-start;}
+  .nav-tabs, .theme-btn, .menu-wrap, .subnav, .topbar-meta{display:none;}
+  .topbar-right{margin-left:auto;}
+  .brand{min-height:44px; padding:0 10px; flex:none;}
+  .brand-name{display:block; font-size:14px;}
+  .app-title{
+    display:block; flex:1; min-width:0; padding:0 4px;
+    font-family:var(--font-display); font-weight:700; font-size:16px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    opacity:0; transition:opacity .15s;
+  }
+  body.title-in-bar .app-title{opacity:1;}
+  body.title-in-bar .brand-name{display:none;}
+  body.has-back .brand{display:none;}
+  .app-back{width:44px; height:44px; flex:none; align-items:center; justify-content:center; border-radius:12px; color:var(--text);}
+  body.has-back .app-back{display:flex;}
+  .app-back svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
+  .app-back:active{background:var(--surface-2);}
+  .avatar-btn{display:flex; width:44px; height:44px; align-items:center; justify-content:center; background:none; border:none; padding:0; cursor:pointer; border-radius:50%;}
+  /* săgeata din bara de sus ține locul linkului „← înapoi" din pagină */
+  .wrap .back-link{display:none;}
+
+  .bottom-nav{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:45;
+    padding:5px 6px calc(5px + env(safe-area-inset-bottom));
+    background:color-mix(in srgb, var(--surface) 94%, transparent);
+    -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+    border-top:1px solid var(--border);
+    view-transition-name:bottomnav;
+  }
+  .bn-item{
+    flex:1; min-width:0; min-height:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    text-decoration:none; color:var(--text-3); font-size:11px; font-weight:700; letter-spacing:.01em;
+    -webkit-user-select:none; user-select:none;
+  }
+  .bn-ico{display:flex; align-items:center; justify-content:center; width:56px; height:30px; border-radius:999px; transition:background .15s;}
+  .bn-ico svg{width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;}
+  .bn-label{max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bn-item.active{color:var(--accent-mark);}
+  .bn-item.active .bn-ico{background:color-mix(in srgb, var(--accent-mark) 15%, transparent);}
+  .bn-item:active .bn-ico{background:color-mix(in srgb, var(--accent-mark) 22%, transparent);}
+  body.has-bottom-nav{padding-bottom:calc(66px + env(safe-area-inset-bottom));}
+  body.has-bottom-nav #toast{bottom:calc(78px + env(safe-area-inset-bottom));}
+}
+
+/* ---------- panouri (sheet) — vezi openSheet() în shared.txt ---------- */
+html.sheet-open, html.sheet-open body{overflow:hidden;}
+dialog.sheet{
+  padding:0; border:none; background:transparent; color:var(--text);
+  width:100%; max-width:min(520px, calc(100vw - 32px)); max-height:min(86vh, 760px); overflow:visible;
+}
+dialog.sheet::backdrop{background:rgba(8,10,18,.45);}
+.sheet-panel{
+  background:var(--surface); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow);
+  max-height:inherit; display:flex; flex-direction:column; overflow:hidden;
+  animation:sheet-pop .18s ease-out;
+}
+.sheet-handle{display:none;}
+.sheet-title{padding:18px 20px 2px; font-family:var(--font-display); font-weight:700; font-size:17px;}
+.sheet-content{padding:14px 20px 20px; overflow-y:auto; overscroll-behavior:contain;}
+dialog.sheet.closing .sheet-panel{animation:sheet-pop-out .17s ease-in forwards;}
+dialog.sheet.closing::backdrop{opacity:0; transition:opacity .17s;}
+@media (max-width:760px){
+  dialog.sheet{margin:auto 0 0; max-width:100%; max-height:92vh;}
+  .sheet-panel{border-radius:22px 22px 0 0; border-bottom:none; padding-bottom:env(safe-area-inset-bottom); animation:sheet-up .26s cubic-bezier(.2,.8,.2,1);}
+  .sheet-grab{touch-action:none; cursor:grab;}
+  .sheet-handle{display:block; width:40px; height:5px; border-radius:3px; background:var(--border); margin:9px auto 0;}
+  .sheet-title{padding-top:12px;}
+  dialog.sheet.closing .sheet-panel{animation:sheet-down .17s ease-in forwards;}
+}
+@keyframes sheet-up{from{transform:translateY(100%);} to{transform:none;}}
+@keyframes sheet-down{to{transform:translateY(100%);}}
+@keyframes sheet-pop{from{opacity:0; transform:translateY(10px) scale(.98);} to{opacity:1; transform:none;}}
+@keyframes sheet-pop-out{to{opacity:0; transform:translateY(10px) scale(.98);}}
+
+/* rânduri de meniu în panou (contul) */
+.acct-head{display:flex; align-items:center; gap:14px; padding:2px 4px 16px; margin-bottom:6px; border-bottom:1px solid var(--border);}
+.acct-head b{display:block; font-size:16px;}
+.acct-head span{font-size:12.5px; font-weight:600; color:var(--text-3);}
+.sheet-list{display:flex; flex-direction:column;}
+.sheet-row{
+  display:flex; align-items:center; gap:14px; width:100%; min-height:52px; padding:0 6px;
+  border:none; background:none; border-radius:12px; cursor:pointer; text-align:left;
+  font:inherit; font-size:15px; font-weight:600; color:var(--text); text-decoration:none;
+}
+.sheet-row:hover, .sheet-row:active{background:var(--surface-2);}
+.sheet-row svg{width:22px; height:22px; flex:none; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; color:var(--text-2);}
+.sheet-row .sr-label{flex:1; min-width:0;}
+.sheet-row .chev{color:var(--text-3); font-size:22px; line-height:1;}
+.sheet-row.danger, .sheet-row.danger svg{color:var(--r1);}
+.switch{width:46px; height:28px; border-radius:14px; background:var(--surface-3); position:relative; flex:none; transition:background .15s;}
+.switch::after{content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.28); transition:transform .15s;}
+[aria-checked="true"] > .switch{background:var(--accent-mark);}
+[aria-checked="true"] > .switch::after{transform:translateX(18px);}
+
+/* ---------- navigare: tranziții, bară de progres, tragere pentru reîncărcare ---------- */
+@view-transition{navigation:auto;}
+::view-transition-old(root), ::view-transition-new(root){animation-duration:.18s;}
+/* pe telefon, tranziția are direcție (tipul e pus în shared.txt, la pagereveal): bara de sus și
+   cea de jos au nume proprii, deci rămân pe loc — doar conținutul glisează, ca într-o aplicație */
+@media (max-width:760px){
+  html:active-view-transition-type(forward)::view-transition-old(root){animation:vt-out-left .24s cubic-bezier(.3,.7,.3,1) both;}
+  html:active-view-transition-type(forward)::view-transition-new(root){animation:vt-in-right .28s cubic-bezier(.2,.8,.2,1) both;}
+  html:active-view-transition-type(back)::view-transition-old(root){animation:vt-out-right .24s cubic-bezier(.3,.7,.3,1) both;}
+  html:active-view-transition-type(back)::view-transition-new(root){animation:vt-in-left .28s cubic-bezier(.2,.8,.2,1) both;}
+  html:active-view-transition-type(tab)::view-transition-old(root), html:active-view-transition-type(tab)::view-transition-new(root){animation-duration:.14s;}
+}
+@keyframes vt-in-right{from{transform:translateX(32%); opacity:0;}}
+@keyframes vt-out-left{to{transform:translateX(-12%); opacity:0;}}
+@keyframes vt-in-left{from{transform:translateX(-12%); opacity:0;}}
+@keyframes vt-out-right{to{transform:translateX(32%); opacity:0;}}
+/* aplicația instalată: fără selecție de text și meniu de link pe elementele pe care le apeși */
+.standalone a, .standalone button, .standalone [role="button"], .standalone .plan-row, .standalone .toggle-opt, .standalone .cat-tab{
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+}
+#nav-progress{
+  position:fixed; top:env(safe-area-inset-top); left:0; z-index:200; height:3px; width:0; opacity:0; pointer-events:none;
+  background:var(--accent2-mark); border-radius:0 2px 2px 0;
+}
+#nav-progress.run{width:88%; opacity:1; transition:width 7s cubic-bezier(.08,.75,.2,1), opacity .15s .12s;}
+#ptr{
+  position:fixed; top:calc(env(safe-area-inset-top) + 6px); left:50%; z-index:60; width:38px; height:38px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; pointer-events:none; opacity:0;
+  transform:translate(-50%, -56px); transition:transform .2s, opacity .2s;
+  background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow);
+}
+#ptr svg{width:20px; height:20px; stroke:var(--text-3); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
+#ptr.armed{border-color:var(--accent-mark);}
+#ptr.armed svg{stroke:var(--accent-mark);}
+#ptr.loading svg{animation:ptr-beat .7s ease-in-out infinite;}
+@keyframes ptr-beat{50%{transform:scale(1.25);}}
+
+/* ---------- atingere: ținte mari, reacție la apăsare, focus vizibil ---------- */
+a, button, summary, [role="button"], .toggle-opt, .cat-tab{-webkit-tap-highlight-color:transparent; touch-action:manipulation;}
+:focus-visible{outline:2px solid var(--accent-mark); outline-offset:2px;}
+.btn, a.card{transition:transform .08s ease-out, border-color .12s, box-shadow .12s, background .12s;}
+.btn:active:not(:disabled){transform:scale(.97);}
+a.card:active{transform:scale(.985);}
+@media (pointer:coarse){
+  .btn{min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px;}
+  .btn.small{min-height:40px;}
+  .cat-tab{min-height:40px; display:inline-flex; align-items:center;}
+  .toggle-opt{min-height:40px; display:flex; align-items:center;}
+  a.chip{min-height:40px; display:inline-flex; align-items:center; padding-left:14px; padding-right:14px;}
+  details.table-toggle summary{min-height:44px;}
+  .menu-btn, .theme-btn{width:44px; height:44px;}
+}
+
 /* formulare (login, conturi, editorul de program) */
 .field{display:flex; flex-direction:column; gap:6px; min-width:0;}
 .field > span{font-size:12px; font-weight:700; color:var(--text-2);}
@@ -188,6 +381,10 @@ a{color:inherit;}
 .input:focus{outline:2px solid color-mix(in srgb, var(--accent-mark) 55%, transparent); outline-offset:1px; border-color:var(--accent-mark);}
 textarea.input{resize:vertical; min-height:74px; line-height:1.5;}
 select.input{appearance:auto;}
+/* iOS mărește pagina la focus pe orice câmp sub 16px — pe telefon rămân la 16px */
+@media (max-width:760px), (pointer:coarse){
+  .input, input[type="date"], input[type="time"], input[type="number"], select, textarea{font-size:16px;}
+}
 .form-error{padding:10px 12px; border-radius:10px; font-size:13px; background:color-mix(in srgb, var(--r1) 14%, var(--surface)); color:var(--text); border:1px solid color-mix(in srgb, var(--r1) 40%, var(--border));}
 .btn.danger{color:var(--r1);}
 .btn.danger:hover:not(:disabled){border-color:var(--r1);}
@@ -195,12 +392,53 @@ select.input{appearance:auto;}
 a.btn{text-decoration:none; display:inline-flex; align-items:center; gap:6px;}
 
 #toast{
-  position:fixed; left:50%; bottom:24px; transform:translate(-50%, 12px); opacity:0; pointer-events:none;
+  position:fixed; left:50%; bottom:24px; top:auto; right:auto; margin:0; border:none; overflow:visible; /* anulează stilul implicit de popover */
+  transform:translate(-50%, 12px); opacity:0; pointer-events:none;
   background:var(--text); color:var(--bg); font-size:13px; font-weight:700; padding:10px 16px; border-radius:10px;
   box-shadow:var(--shadow); transition:opacity .15s, transform .15s; z-index:120; max-width:calc(100vw - 32px);
 }
 #toast.show{opacity:1; transform:translate(-50%, 0);}
 #toast.error{background:var(--r1); color:#fff;}
+
+/* buton ocupat (withBusy) */
+.btn.busy{position:relative; color:transparent !important;}
+.btn.busy::after{
+  content:""; position:absolute; inset:0; margin:auto; width:16px; height:16px; border-radius:50%;
+  border:2px solid color-mix(in srgb, var(--text) 25%, transparent); border-top-color:var(--text);
+  animation:spin .7s linear infinite;
+}
+.btn.primary.busy::after, .btn.danger-solid.busy::after{border-color:rgba(255,255,255,.35); border-top-color:#fff;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.btn.danger-solid{background:var(--r1); border-color:var(--r1); color:#fff;}
+.btn.danger-solid:hover:not(:disabled){filter:brightness(1.06); border-color:var(--r1);}
+
+/* dialoguri (confirmDialog / promptDialog / credentialsDialog) */
+dialog.sheet.dialog{max-width:min(420px, calc(100vw - 32px));}
+.dialog-text{font-size:15px; line-height:1.5; color:var(--text-2);}
+.dialog-note{font-size:13px; line-height:1.5; color:var(--text-3); margin-top:12px;}
+.dialog-form{display:flex; flex-direction:column; gap:14px;}
+.dialog-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:20px;}
+.dialog-form .dialog-actions{margin-top:6px;}
+.cred-list{display:flex; flex-direction:column; gap:8px; margin-top:4px;}
+.cred-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:12px; background:var(--surface-2);}
+.cred-row span{font-size:12.5px; font-weight:700; color:var(--text-3);}
+.cred-row code{font-family:var(--font-mono); font-size:15px; font-weight:600; color:var(--text); user-select:all; word-break:break-all; text-align:right;}
+@media (max-width:760px){
+  dialog.sheet.dialog{max-width:100%;} /* pe telefon și dialogurile urcă de jos, pe toată lățimea */
+  .dialog-actions{flex-direction:column-reverse;}
+  .dialog-actions .btn{width:100%;}
+}
+
+/* offline */
+#offline-banner{
+  background:color-mix(in srgb, var(--accent2-mark) 14%, var(--surface));
+  border-bottom:1px solid var(--border); color:var(--text);
+  font-size:12.5px; font-weight:600; text-align:center; padding:8px 14px;
+}
+.is-offline .btn.primary{opacity:.55;}
+
+/* stări goale (listă fără elemente, interval fără date) */
+.empty-state{text-align:center; color:var(--text-3); font-size:14px; line-height:1.5;}
 
 /* ---------- sections comune ---------- */
 section{padding:56px 0;}
@@ -219,7 +457,7 @@ section{padding:56px 0;}
 .kpi-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;}
 .kpi{padding:20px 22px;}
 .kpi .tag{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); font-weight:700;}
-.kpi .val{font-family:'Manrope'; font-weight:800; font-size:28px; margin-top:8px;}
+.kpi .val{font-family:var(--font-body); font-weight:800; font-size:28px; margin-top:8px;}
 .kpi .sub{font-size:12.5px; color:var(--text-2); margin-top:4px;}
 .kpi .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px;}
 
@@ -238,7 +476,7 @@ section{padding:56px 0;}
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent-mark) 75%, transparent), var(--accent-mark));
 }
 .bar-fill.accent2{background: linear-gradient(90deg, color-mix(in srgb, var(--accent2-mark) 75%, transparent), var(--accent2-mark));}
-.dim-val{font-family:'IBM Plex Mono'; font-weight:600; font-size:14px; text-align:right; font-variant-numeric:tabular-nums;}
+.dim-val{font-family:var(--font-mono); font-weight:600; font-size:14px; text-align:right; font-variant-numeric:tabular-nums;}
 
 /* distribution small multiples */
 .dist-legend{display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; font-size:12.5px; color:var(--text-2);}
@@ -247,7 +485,7 @@ section{padding:56px 0;}
 .dist-grid{display:grid; grid-template-columns:1fr 1fr; gap:22px 28px;}
 .dist-item .head{display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px;}
 .dist-item .head b{font-weight:600;}
-.dist-item .head .avg{font-family:'IBM Plex Mono'; color:var(--text-2); font-variant-numeric:tabular-nums;}
+.dist-item .head .avg{font-family:var(--font-mono); color:var(--text-2); font-variant-numeric:tabular-nums;}
 .stack{display:flex; height:24px; border-radius:6px; overflow:hidden; gap:2px; background:var(--surface);}
 .seg{height:100%; min-width:0; cursor:default;}
 
@@ -258,7 +496,7 @@ section{padding:56px 0;}
 .trend-sub{font-size:12px; color:var(--text-3); margin-bottom:14px;}
 .vol-bars{display:flex; align-items:flex-end; gap:14px; height:150px; padding-top:10px;}
 .vol-col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:8px;}
-.vol-cap{font-family:'IBM Plex Mono'; font-size:12px; color:var(--text-2); font-variant-numeric:tabular-nums;}
+.vol-cap{font-family:var(--font-mono); font-size:12px; color:var(--text-2); font-variant-numeric:tabular-nums;}
 .vol-bar{width:100%; max-width:34px; border-radius:5px 5px 3px 3px; background:linear-gradient(180deg, color-mix(in srgb, var(--accent2-mark) 85%, transparent), var(--accent2-mark));}
 .vol-month{font-size:11.5px; color:var(--text-3);}
 
@@ -268,7 +506,7 @@ section{padding:56px 0;}
 .age-row:hover{background:var(--surface-2);}
 .age-name{font-size:13.5px; font-weight:600;}
 .age-fill{background:linear-gradient(90deg, color-mix(in srgb, var(--accent2-mark) 75%, transparent), var(--accent2-mark)); border-radius:6px 4px 4px 6px;}
-.age-val{font-family:'IBM Plex Mono'; font-size:12.5px; color:var(--text-2); text-align:right; font-variant-numeric:tabular-nums;}
+.age-val{font-family:var(--font-mono); font-size:12.5px; color:var(--text-2); text-align:right; font-variant-numeric:tabular-nums;}
 
 /* quotes */
 .quote-grid{columns:2; column-gap:20px;}
@@ -277,12 +515,12 @@ section{padding:56px 0;}
 .quote-tag{display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); margin-bottom:12px;}
 .quote-tag i{width:8px; height:8px; border-radius:50%; background:var(--accent-mark); display:inline-block;}
 .quote p{font-size:14.5px; line-height:1.6; color:var(--text);}
-.quote p::before{content:"\201C"; color:var(--accent); font-family:'Sora'; font-weight:700; margin-right:2px;}
+.quote p::before{content:"\201C"; color:var(--accent); font-family:var(--font-display); font-weight:700; margin-right:2px;}
 
 /* chips + badges (rating 1-5) */
 .chip{font-size:11px; padding:3px 10px; border-radius:999px; background:var(--surface-2); color:var(--text-2); border:1px solid var(--border);}
 .chip.name{color:var(--text); font-weight:600;}
-.rbadge{display:inline-flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono'; font-weight:700; color:#fff; border-radius:8px;}
+.rbadge{display:inline-flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700; color:#fff; border-radius:8px;}
 .rbadge.empty{background:var(--surface-2); color:var(--text-3); border:1px solid var(--border);}
 
 /* delta (creștere/scădere față de o perioadă de referință) */
@@ -292,7 +530,7 @@ section{padding:56px 0;}
 
 /* butoane */
 .btn{
-  font-family:'Manrope'; font-weight:700; font-size:13px; padding:9px 16px; border-radius:10px;
+  font-family:var(--font-body); font-weight:700; font-size:13px; padding:9px 16px; border-radius:10px;
   border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer;
 }
 .btn:hover:not(:disabled){border-color:var(--accent-mark);}
@@ -301,9 +539,15 @@ section{padding:56px 0;}
 .btn.primary:hover{background:var(--accent-bright); border-color:var(--accent-bright);}
 
 /* toggle (Slideshow / Dashboard) */
-.toggle-group{display:inline-flex; border:1px solid var(--border); border-radius:11px; padding:3px; background:var(--surface-2); gap:2px;}
-.toggle-opt{padding:8px 15px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; color:var(--text-2);}
+/* Pe ecrane înguste grupul se derulează orizontal în loc să iasă din pagină
+   (body are overflow-x:hidden, deci opțiunile de la capăt ar fi fost de neatins). */
+.toggle-group{display:inline-flex; max-width:100%; overflow-x:auto; scrollbar-width:none; border:1px solid var(--border); border-radius:11px; padding:3px; background:var(--surface-2); gap:2px;}
+.toggle-group::-webkit-scrollbar{display:none;}
+.toggle-opt{flex:none; white-space:nowrap; padding:8px 15px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; color:var(--text-2);}
 .toggle-opt.active{background:var(--surface); color:var(--text); box-shadow:var(--shadow);}
+button.toggle-opt{border:0; background:transparent; font-family:inherit; line-height:inherit;}
+button.toggle-opt.active{background:var(--surface);}
+button.cat-tab{font-family:inherit; line-height:inherit;}
 
 /* tab-uri de categorie (pastile) — folosite în day.html (slideshow) și category.html */
 .cat-tab{
@@ -312,7 +556,7 @@ section{padding:56px 0;}
 }
 .cat-tab:hover{border-color:color-mix(in srgb, var(--accent-mark) 45%, var(--border));}
 .cat-tab.active{background:color-mix(in srgb, var(--accent-mark) 16%, var(--surface-2)); border-color:var(--accent-mark); color:var(--text);}
-.cat-tab .cat-n{font-family:'IBM Plex Mono'; opacity:.7; margin-left:5px;}
+.cat-tab .cat-n{font-family:var(--font-mono); opacity:.7; margin-left:5px;}
 
 /* table view */
 details.table-toggle{margin-top:22px;}
@@ -362,6 +606,55 @@ footer p{font-size:12.5px; color:var(--text-3); line-height:1.7; max-width:64ch;
   .age-row{grid-template-columns:96px 1fr 74px;}
 }
 
+/* ---------- instalare (PWA) ---------- */
+button.menu-item{width:100%; border:none; background:none; font:inherit; font-size:13.5px; font-weight:600; cursor:pointer; text-align:left;}
+#install-hint{
+  position:fixed; z-index:46; right:16px; bottom:calc(20px + env(safe-area-inset-bottom)); width:min(440px, calc(100vw - 32px));
+  display:flex; align-items:center; gap:12px; padding:12px 12px 12px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);
+  animation:sheet-pop .25s ease-out;
+}
+body.has-bottom-nav #install-hint{bottom:calc(80px + env(safe-area-inset-bottom)); right:12px; width:calc(100vw - 24px);}
+#install-hint img{border-radius:10px; flex:none;}
+.ih-text{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;}
+.ih-text b{font-size:14px;}
+.ih-text span{font-size:12px; color:var(--text-3); line-height:1.35;}
+.ih-close{flex:none; width:36px; height:36px; border:none; background:none; color:var(--text-3); font-size:22px; line-height:1; cursor:pointer; border-radius:10px;}
+.ih-close:hover{background:var(--surface-2);}
+.ios-steps{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:12px; font-size:15px; line-height:1.5; color:var(--text-2);}
+.ios-steps b{color:var(--text);}
+.ios-share{width:19px; height:19px; vertical-align:-3px; stroke:var(--accent-mark); fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;}
+
+/* ---------- telefon: aceeași informație, mai strâns ---------- */
+@media (max-width:760px){
+  section{padding:32px 0;}
+  .section-head{margin-bottom:16px; gap:6px;}
+  .section-head h2{font-size:20px;}
+  .section-note{font-size:12.5px; max-width:none;}
+  .card{border-radius:16px;}
+  .pad{padding:18px 16px;}
+  .kpi-grid{grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px;}
+  .kpi{padding:14px 14px 15px;}
+  .kpi .tag{font-size:10.5px; letter-spacing:.06em;}
+  .kpi .val{font-size:21px; margin-top:6px; overflow-wrap:anywhere;}
+  .kpi .sub{font-size:12px;}
+  .dim-row{grid-template-columns:minmax(0,1fr) 46px; grid-template-areas:"name val" "bar bar"; gap:6px 10px; padding:10px 4px;}
+  .dim-row > div:first-child{grid-area:name; display:flex; align-items:baseline; gap:8px; min-width:0;}
+  .dim-row .bar-track{grid-area:bar; height:12px;}
+  .dim-row .dim-val{grid-area:val;}
+  .dim-name{font-size:14px;}
+  .trend-card{padding:18px 14px 10px;}
+  .vol-bars{gap:8px;}
+  .age-row{grid-template-columns:92px 1fr 70px; gap:10px;}
+  /* tabele late: se derulează orizontal, prima coloană rămâne pe loc */
+  table.data-table{font-size:12.5px;}
+  table.data-table th:first-child, table.data-table td:first-child{position:sticky; left:0; z-index:1; background:var(--surface); box-shadow:1px 0 0 var(--border);}
+  .ai-summary{padding:16px;}
+  .ai-summary li{font-size:14px;}
+  footer{padding:28px 0 40px;}
+}
+
 @media (prefers-reduced-motion: reduce){
   *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*){animation:none !important;}
 }

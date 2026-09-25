@@ -8,6 +8,26 @@ formularului la fiecare vizită — nu există niciun pas manual de refresh. Des
 evoluat din raportul static `../librarie/pulsul-duminicii.html`. Plan aprobat:
 `.claude/plans` din sesiunea în care a fost construit (sau `git log` pe acest folder).
 
+## Aplicația pe telefon
+
+Site-ul se poate instala ca aplicație (PWA) — apare pe ecranul principal, se deschide pe tot
+ecranul, cu bară de navigare jos, și arată paginile deja deschise și fără semnal.
+
+- **Android (Chrome):** după login apare „Pulsul, ca aplicație → Instalează" (o singură dată);
+  oricând din butonul de cont (cercul cu inițiale, sus-dreapta) → **Instalează aplicația**, sau
+  din meniul ⋮ al Chrome → *Instalează aplicația*.
+- **iPhone (Safari):** butonul **Share** → **Adaugă pe ecranul principal** → **Adaugă**. Pașii
+  apar și în aplicație (butonul de cont → *Instalează pe iPhone*).
+- **Desktop (Chrome/Edge):** meniul ☰ → *Instalează aplicația*, sau iconița din bara de adrese.
+
+**Aplicație Android (APK / Google Play):** `android/` — construită automat în GitHub Actions,
+fișierul `.apk` se descarcă de la *Actions → Android Pulsul Duminicii → Artifacts* și se trimite
+direct oamenilor. Pași (secretele de semnare, instalare, Google Play): `android/README.md`.
+
+**Fără semnal:** fiecare pagină deschisă cu conexiune se salvează pe dispozitiv (ex. programul
+duminicii, deschis acasă, se vede și în sală fără semnal), cu o bandă „offline — salvată la …".
+Modificările nu se pot face offline. La **Ieșire** tot ce era salvat se șterge.
+
 ## Instalare
 
 ```bash
@@ -136,6 +156,11 @@ Site-ul apare la `https://pulsul-duminicii.<subdomeniu>.workers.dev` — link
 neafișat public (nu-l trimite decât direct echipei), `AUTH_MODE = "none"` implicit.
 
 ## Dezvoltare locală
+
+`public/` (fonturi, iconițe, manifest, service worker, pagina offline) e servit de `wrangler
+dev` la fel ca în producție. Service worker-ul merge și pe `http://127.0.0.1` (browserele
+tratează localhost ca sigur); dacă vrei să vezi imediat o schimbare în `sw.js`, bifează
+*Update on reload* în DevTools → Application → Service workers.
 
 ```bash
 cp .dev.vars.example .dev.vars   # completează cu valorile reale sau cu un service

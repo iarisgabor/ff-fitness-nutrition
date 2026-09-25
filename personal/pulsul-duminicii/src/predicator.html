@@ -2,13 +2,8 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
 <title>Pulsul Duminicii — predicator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+__SHARED_HEAD__
 <style>
 __SHARED_CSS__
 
@@ -32,7 +27,7 @@ __SHARED_CSS__
 
 .quote-list{display:flex; flex-direction:column; gap:14px;}
 .quote-item{padding:14px 16px; border-radius:10px; background:var(--surface-2); font-size:13.5px; line-height:1.55; color:var(--text);}
-.quote-item .q-when{font-size:11px; color:var(--text-3); font-family:'IBM Plex Mono'; margin-bottom:6px;}
+.quote-item .q-when{font-size:11px; color:var(--text-3); font-family:var(--font-mono); margin-bottom:6px;}
 
 .link-list{display:flex; flex-direction:column; gap:8px;}
 .link-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 16px; text-decoration:none; color:inherit;}
@@ -49,6 +44,13 @@ a.link-row:hover{border-color:color-mix(in srgb, var(--accent-mark) 50%, var(--b
 .chip-links{display:flex; gap:8px; flex-wrap:wrap;}
 .chip-links a{text-decoration:none;}
 .chip-links a:hover{border-color:var(--accent-mark);}
+@media (max-width:760px){
+  .page-head{padding:18px 0 0;}
+  .page-head h1{font-size:26px;}
+  .section-block{margin:26px 0;}
+  .link-row{padding:14px;}
+  .att-row{grid-template-columns:104px 1fr 44px; gap:10px;}
+}
 </style>
 </head>
 <body>
@@ -194,7 +196,8 @@ __SHARED_JS__
     svg.style.display = '';
     emptyMsg.hidden = true;
 
-    const W=680, H=200, padL=40, padR=24, padT=24, padB=32;
+    const W=chartWidth(svg, 680), H=200, padL=40, padR=24, padT=24, padB=32;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     const plotW = W-padL-padR, plotH = H-padT-padB;
     const avgs = withData.map(w => w.avg);
     const yMin = Math.max(1, Math.floor(Math.min(...avgs)*2)/2 - 0.4);
@@ -215,7 +218,7 @@ __SHARED_JS__
     });
     pts.forEach(p => {
       const {dd,mm} = parseDMY(p.date);
-      html += `<text x="${p.x.toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="10.5" fill="var(--text-3)" font-family="Manrope">${dd}.${mm}</text>`;
+      html += `<text x="${p.x.toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="10.5" fill="var(--text-3)" font-family="var(--font-body)">${dd}.${mm}</text>`;
     });
     svg.innerHTML = html;
     svg.querySelectorAll('.pt').forEach(circle => {
@@ -225,6 +228,7 @@ __SHARED_JS__
     });
   }
   renderTrend(q5Series);
+  onWidthChange(document.getElementById('trend-svg'), () => renderTrend(q5Series));
 
   // ---- tabel comparativ pe dimensiuni ----
   const thead = `<thead><tr><th>Dimensiune</th><th>Duminicile ${his}</th><th>Restul duminicilor</th><th>Diferență</th></tr></thead>`;
@@ -244,6 +248,8 @@ __SHARED_JS__
   const upcoming = PAYLOAD.upcoming || [];
   if (upcoming.length) {
     document.getElementById('upcoming-wrap').hidden = false;
+    // Pentru predicatorul logat, ce are de pregătit contează mai mult decât cifrele — urcă primul.
+    if (SELF) document.getElementById('p-kpis').before(document.getElementById('upcoming-wrap'));
     document.getElementById('upcoming-title').textContent = SELF ? 'Duminicile în care predici' : `Duminicile următoare în care predică`;
     document.getElementById('upcoming-sub').textContent = SELF
       ? 'Deschide programul ca să completezi partea de predică și să urci slide-urile.'

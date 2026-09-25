@@ -9,6 +9,11 @@ programul stă în D1, fișierele în R2, sesiunile în KV. **Nu există fronten
 step, nici cron** — automatizarea cerută (raport proaspăt lunea) e implicită, fiindcă
 totul e live.
 
+Din 2026-09-25 e și **aplicație instalabilă (PWA)**, gândită întâi pentru telefon: bară de
+aplicație + bară de navigare jos, panouri de jos, service worker cu acces offline la paginile
+deja deschise. Tot pe aceeași arhitectură — șabloanele randate pe server au rămas; s-au adăugat
+doar fișiere statice în `public/` (servite de Cloudflare, fără build step). Vezi regulile 21–30.
+
 > **Setup operațional (service account Google, secrete, deploy, verificare end-to-end):
 > `README.md` din acest folder.** Fișierul de față e harta de cod + deciziile de design.
 
@@ -60,14 +65,18 @@ slug de predicator = numele normalizat (`src/preachers.js:preacherSlug`, ex. „
 | auth Google prin service account (JWT semnat cu `crypto.subtle`) — comun ambelor Sheet-uri | `src/sheets.js` |
 | rezumat AI per duminică | `src/aiSummary.js` |
 | analiză AI de tendință per categorie | `src/aiTrendSummary.js` |
-| CSS + JS comune tuturor paginilor (nav pe roluri: `initNav`, `api()`, `toast()`) | `src/shared.css`, `src/shared.txt` |
+| CSS + JS comune tuturor paginilor: navigarea pe roluri (`initNav` — bara de sus, bara de jos pe telefon, sub-tab-urile de pe desktop), panouri (`openSheet`), dialoguri (`confirmDialog`/`promptDialog`/`credentialsDialog`), `api()`, `withBusy()`, `toast()`, offline, instalare | `src/shared.css`, `src/shared.txt` |
+| `<head>` comun (viewport, theme-color, manifest, iconițe, preload font) | `src/head.html` |
+| fișiere statice publice: fonturi (`fonts/` + `OFL.txt`), iconițe, `favicon.svg`, `manifest.webmanifest`, **`sw.js`** (service worker), `offline.html`, antete (`_headers`), `.well-known/assetlinks.json` (legătura cu aplicația Android) | `public/` |
+| aplicația Android (Trusted Web Activity, generată cu Bubblewrap) + build în GitHub Actions | `android/` (`android/README.md`), `.github/workflows/android-pulsul-duminicii.yml` |
+| testele (`npm test`) | `tests/` (`tests/README.md`) |
 | `AUTH_MODE`, `ADMIN_USERNAME`, `GOOGLE_SHEET_ID`, binding-uri KV/D1/R2 | `wrangler.toml` |
 
 ## Cum se leagă șabloanele
 
 `.html`, `.css` și `.txt` din `src/` sunt importate **ca text brut** (regula `[[rules]]`
-type `Text` din `wrangler.toml`), nu servite static. `render.js` înlocuiește trei markere
-în fiecare șablon: `__SHARED_CSS__`, `__SHARED_JS__`, `__PULS_DATA_JSON__` — prin
+type `Text` din `wrangler.toml`), nu servite static. `render.js` înlocuiește patru markere
+în fiecare șablon: `__SHARED_HEAD__`, `__SHARED_CSS__`, `__SHARED_JS__`, `__PULS_DATA_JSON__` — prin
 `fillPage()`, care folosește funcție ca al doilea argument la `replace()` (un text de la membri
 cu `$&` sau `$'` ar fi fost altfel interpretat ca tipar de înlocuire). Înaintea lui
 `__SHARED_JS__` se injectează `const PULS_USER = {...}` (rol, nume) — de aici știe `initNav`
@@ -161,10 +170,75 @@ de import ca text.
     Planning Center. „Copie după o duminică" copiază rândurile (nu resursele) și mută pe
     predicatorul nou elementele care erau pe numele celui vechi.
 
+21. **Paginile: întâi rețeaua, mereu** (`public/sw.js`). Cât timp e conexiune, service worker-ul
+    doar trece cererea mai departe și salvează o copie; copia se arată **numai** când serverul
+    nu răspunde (bandă „offline — salvată la HH:MM", din `window.PULS_SAVED_AT` pus de SW).
+    Nu schimba asta în cache-first: un program de duminică vechi arătat ca „actual" e mai rău
+    decât o pagină care nu se încarcă.
+22. **Copiile salvate conțin date personale** → se șterg la `/logout` și la orice navigare pe
+    `/login` (sesiune expirată, parolă resetată, alt cont pe același telefon). `/login`, `/logout`,
+    `/cont`, `/admin/…` nu se salvează niciodată (`NEVER_SAVE` în `sw.js`) — o rută nouă cu date
+    sensibile se adaugă acolo. `/api/…` și `/resurse/…` nu trec deloc prin service worker.
+23. **`public/` e servit ÎNAINTEA Worker-ului și fără login** (`[assets]` în `wrangler.toml`) —
+    trebuie, fiindcă browserul cere manifestul și iconițele fără cookie. Nu pune acolo nimic
+    personal. `html_handling = "none"`: un `.html` din `public/` nu devine rută „frumoasă" care
+    să umbrească o rută a Worker-ului.
+24. `STATIC_VERSION` din `sw.js` se crește **doar** când se schimbă lista `PRECACHE` (fonturi,
+    iconițe, `offline.html`). Șabloanele nu trec prin cache-ul static, deci o schimbare de pagină
+    ajunge la toată lumea la următoarea navigare, fără nicio versiune.
+25. **Navigarea pe telefon (≤760px) o construiește `initNav`**: bara de jos pe roluri și săgeata
+    „înapoi" din bara de sus. Săgeata ia `href`-ul linkului `.back-link` din pagină (care e ascuns
+    pe telefon) — o pagină nouă de detaliu trebuie să aibă `<a class="back-link">`. Primul `h1` din
+    `.wrap` urcă în bară la derulare.
+26. **Fără `alert`/`confirm`/`prompt`** — în aplicația instalată arată străin și blochează pagina.
+    Se folosesc `confirmDialog` (butonul sigur primește focusul; `danger: true` pentru ștergeri),
+    `promptDialog`, `credentialsDialog` (parole de dat mai departe, cu „Copiază tot").
+27. **Graficele SVG se desenează la lățimea reală**: `W = chartWidth(svg, fallback)` + `viewBox`
+    setat dinamic + `onWidthChange()` pentru redesenare. Cu `W` fix, pe telefon tot desenul (și
+    textul) era micșorat la ~5px.
+28. **Stare ținută minte** în `localStorage`, mereu prin `remember()`/`recall()` (prefix `puls-`):
+    `theme`, `day-view` (slideshow/toate), `range` (+ `range-from`/`range-to`), `install-hint`.
+    Nimic de acolo nu e necesar pentru funcționare — lipsa lui (navigare privată) doar resetează.
+29. **Urcarea de fișiere merge prin XHR**, nu prin `api()`/fetch — fetch nu raportează progresul.
+    Același endpoint, același corp brut, aceeași verificare de `Origin` pe server.
+30. **Fonturile sunt găzduite local**: câte un subset latin (Fontsource) + unul mic doar cu ă/ș/ț
+    (`unicode-range`). Pentru o greutate nouă: `npm pack @fontsource-variable/manrope` (etc.),
+    apoi `pyftsubset <latin-ext.woff2> --unicodes=U+0102-0103,U+015E-015F,U+0162-0163,U+0218-021B
+    --flavor=woff2 --layout-features='*'`. Orice `font-family` nou folosește
+    `var(--font-display|--font-body|--font-mono)` — au fonturi de rezervă.
+
+31. **Aplicația Android e un Trusted Web Activity, nu cod separat** (`android/`): deschide site-ul
+    live pe tot ecranul. Legată de host-ul `pulsul-duminicii.iarisgabor.workers.dev` și de cheia de
+    semnare prin `public/.well-known/assetlinks.json` (pachet `ro.bisericalogos.pulsul` + amprenta
+    SHA-256). Dacă lipsește sau nu se potrivește amprenta, aplicația merge, dar cu bara de adrese.
+    Cheia (`.jks`) **nu intră niciodată în repo** — stă în secretele de repo
+    `PULSUL_ANDROID_KEYSTORE_BASE64` / `PULSUL_ANDROID_KEYSTORE_PASSWORD`; o cheie pierdută = nicio
+    actualizare posibilă pe același pachet. Cu Google Play App Signing, amprenta cheii Google se
+    ADAUGĂ în assetlinks.json, lângă cea existentă. Detalii: `android/README.md`.
+32. **Paginile se pregătesc în fundal (prerender, `<script type="speculationrules" id="spec-rules">`
+    din `src/head.html`)**: tab-urile imediat, orice alt link la atingere — de-asta schimbarea de
+    pagină e instantă. Prerender-ul CHIAR accesează URL-ul, deci **orice rută GET cu efecte trebuie
+    exclusă acolo** (acum: `/logout`; excluse și `/login`, `/api/`, `/resurse/`). După orice
+    modificare, `markChanged()` reîncarcă regulile (paginile deja pregătite ar fi vechi) — `api()`
+    o face singur pentru POST/PATCH/PUT/DELETE; un apel făcut altfel (ca urcarea prin XHR) trebuie
+    s-o cheme explicit.
+33. **„Înapoi" instant (bfcache)**: HTML-ul are `cache-control: private, no-cache` (nu `no-store`,
+    care oprea bfcache-ul) și `/logout` trimite `Clear-Site-Data: "cache"`. O pagină readusă din
+    memorie se reîncarcă singură dacă între timp s-a schimbat utilizatorul sau s-a modificat ceva
+    (garda `pageshow` din `shared.txt`). Nu adăuga handlere `unload` — scot pagina din bfcache.
+34. **Tranziții cu direcție** (`pagereveal` + `:active-view-transition-type` în `shared.css`): spre o
+    pagină mai „adâncă" glisează din dreapta, înapoi spre dreapta, între tab-uri doar estompare.
+    Adâncimea vine din `NAV_ROOTS` (`shared.txt`) — o pagină nouă de nivel de tab se adaugă acolo.
+35. **Prima imagine a paginii e completă**: `<link rel="expect" href="#randat" blocking="render">`
+    (head) ține afișarea până la markerul `#randat`, pus de `render.js` înainte de `</body>`, după
+    scripturi. Fiecare șablon trebuie să aibă exact un `</body>`.
+
 ## Deploy
 
 Automat, prin GitHub Actions (`.github/workflows/deploy-pulsul-duminicii.yml` la rădăcina
-repo-ului): la fiecare push pe `main` care atinge acest folder. Singurul secret e
+repo-ului): la fiecare push pe `main` care atinge acest folder. `wrangler deploy` urcă și
+`public/` (fișierele statice), fără pași în plus. Aplicația Android se construiește separat, în
+`.github/workflows/android-pulsul-duminicii.yml` (APK + AAB la „Artifacts") — nu face deploy. Singurul secret e
 `CLOUDFLARE_API_TOKEN` în repo. Workflow-ul pune singur `database_id`-ul D1 în
 `wrangler.toml` (în copia de pe runner — în repo rămâne placeholder-ul) și scoate binding-ul
 R2 dacă R2 nu e activat în cont. Setup complet: `README.md`.
@@ -176,9 +250,13 @@ npm install
 cp .dev.vars.example .dev.vars   # completează cu valori reale sau de test (inclusiv ADMIN_PASSWORD)
 npx wrangler d1 migrations apply DB --local
 npm run dev
+npm test          # ~75s: site local pe stare separată + date sintetice + Chromium — vezi tests/README.md
 npx wrangler deploy
 npx wrangler tail
 ```
+
+**Rulează `npm test` înainte de orice push care atinge acest folder.** Suitele (`tests/`) verifică
+și permisiunile direct pe API, aspectul pe telefon și modul offline.
 
 ## Config și secrete
 

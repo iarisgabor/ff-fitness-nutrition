@@ -1,0 +1,65 @@
+{
+  "packageId": "ro.bisericalogos.pulsul",
+  "host": "pulsul-duminicii.iarisgabor.workers.dev",
+  "name": "Pulsul Duminicii",
+  "launcherName": "Pulsul",
+  "display": "standalone",
+  "themeColor": "#F1F3F8",
+  "themeColorDark": "#090C13",
+  "navigationColor": "#FFFFFF",
+  "navigationColorDark": "#121826",
+  "navigationDividerColor": "#D5DCE6",
+  "navigationDividerColorDark": "#2B3549",
+  "backgroundColor": "#F1F3F8",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://pulsul-duminicii.iarisgabor.workers.dev/icons/icon-512.png",
+  "maskableIconUrl": "https://pulsul-duminicii.iarisgabor.workers.dev/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./pulsul-duminicii-android.jks",
+    "alias": "pulsul"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Program duminică",
+      "shortName": "Program",
+      "url": "/program",
+      "chosenIconUrl": "https://pulsul-duminicii.iarisgabor.workers.dev/icons/icon-192.png"
+    },
+    {
+      "name": "Statistici",
+      "shortName": "Statistici",
+      "url": "/",
+      "chosenIconUrl": "https://pulsul-duminicii.iarisgabor.workers.dev/icons/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://pulsul-duminicii.iarisgabor.workers.dev/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://pulsul-duminicii.iarisgabor.workers.dev/",
+  "minSdkVersion": 21,
+  "orientation": "default",
+  "fingerprints": [
+    {
+      "name": "cheia de urcare (upload)",
+      "value": "20:50:C5:65:FB:DC:17:C6:4E:CC:CA:6C:C9:EB:C6:7F:5F:2F:51:49:A7:A1:09:DC:45:A0:B6:33:7B:EE:1A:D4"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}

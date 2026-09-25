@@ -9,6 +9,7 @@ import LOGIN_TEMPLATE from './login.html';
 import PROGRAM_LIST_TEMPLATE from './program-list.html';
 import PROGRAM_EDIT_TEMPLATE from './program-edit.html';
 import ACCOUNTS_TEMPLATE from './admin-accounts.html';
+import SHARED_HEAD from './head.html';
 import SHARED_CSS from './shared.css';
 import SHARED_JS from './shared.txt';
 import { getAccessToken, fetchSheetValues } from './sheets.js';
@@ -39,7 +40,13 @@ function safeJsonForScript(value) {
 // Sheet nu poate conține markerul înlocuit aici.
 function injectShared(template, user) {
   const userJs = `const PULS_USER = ${safeJsonForScript(publicUser(user))};\n`;
-  return template.replace('__SHARED_CSS__', SHARED_CSS).replace('__SHARED_JS__', () => userJs + SHARED_JS);
+  return template
+    .replace('__SHARED_HEAD__', () => SHARED_HEAD)
+    .replace('__SHARED_CSS__', () => SHARED_CSS)
+    .replace('__SHARED_JS__', () => userJs + SHARED_JS)
+    // marker după scripturi: <link rel="expect" href="#randat" blocking="render"> din head.html
+    // ține afișarea până aici, ca prima imagine a paginii să fie deja completă (barele, conținutul)
+    .replace('</body>', () => '<div id="randat" hidden></div>\n</body>');
 }
 
 // Funcție ca al doilea argument la replace(): un text de la membri care conține
@@ -290,16 +297,16 @@ export async function renderCategoryDetail(env, ctx, key, user) {
 
   // Analiză AI de tendință, doar pentru presetup-urile de interval (nu "Personalizat" —
   // ar fi imposibil de cache-uit). Rapid: doar KV.get; generarea lipsă pornește în fundal.
-  const trendSummaries = {};
-  for (const preset of RANGE_PRESETS) {
+  // Cele 5 citiri din KV pornesc în paralel, nu una după alta.
+  const trendSummaries = Object.fromEntries(await Promise.all(RANGE_PRESETS.map(async (preset) => {
     const weeks = weeksForPreset(series, preset.months);
-    if (weeks.length < 2) { trendSummaries[preset.key] = null; continue; }
+    if (weeks.length < 2) return [preset.key, null];
     const cached = await getCachedTrendSummary(env, key, preset.key, weeks);
-    trendSummaries[preset.key] = cached;
     if (cached === null && env.ANTHROPIC_API_KEY) {
       ctx.waitUntil(generateAndCacheTrendSummary(env, dim, preset, weeks, series, globalAvg));
     }
-  }
+    return [preset.key, cached];
+  })));
 
   const meta = baseMeta(responses, stale);
   delete meta._dates;

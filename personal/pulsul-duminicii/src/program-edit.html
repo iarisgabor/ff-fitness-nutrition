@@ -2,13 +2,8 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
 <title>Pulsul Duminicii — program</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+__SHARED_HEAD__
 <style>
 __SHARED_CSS__
 
@@ -41,8 +36,8 @@ __SHARED_CSS__
 .plan-row:hover{background:color-mix(in srgb, var(--surface-2) 70%, transparent);}
 .plan-row.header{background:var(--surface-2); min-height:36px; cursor:default;}
 .plan-row.header.clickable{cursor:pointer;}
-.plan-row.header .h-title{font-family:'Sora'; font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; gap:10px;}
-.plan-row.header .h-total{font-family:'IBM Plex Mono'; font-size:11px; color:var(--text-3); font-weight:500; letter-spacing:0;}
+.plan-row.header .h-title{font-family:var(--font-display); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; gap:10px;}
+.plan-row.header .h-total{font-family:var(--font-mono); font-size:11px; color:var(--text-3); font-weight:500; letter-spacing:0;}
 .plan-row.readonly{cursor:pointer;}
 .plan-row.dragging{opacity:.35;}
 .plan-row.drop-before{box-shadow: inset 0 2px 0 var(--accent-mark);}
@@ -50,8 +45,8 @@ __SHARED_CSS__
 .grip{color:var(--text-3); cursor:grab; display:flex; align-items:center; justify-content:center; height:100%; touch-action:none;}
 .grip svg{width:12px; height:16px; fill:currentColor;}
 .grip.off{visibility:hidden;}
-.c-time{font-family:'IBM Plex Mono'; font-size:11.5px; color:var(--text-3); font-variant-numeric:tabular-nums;}
-.c-len{font-family:'IBM Plex Mono'; font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--text-2);}
+.c-time{font-family:var(--font-mono); font-size:11.5px; color:var(--text-3); font-variant-numeric:tabular-nums;}
+.c-len{font-family:var(--font-mono); font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--text-2);}
 .c-title{padding:8px 0; min-width:0;}
 .c-title .t{font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:7px; min-width:0;}
 .c-title .t .txt{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -65,18 +60,25 @@ __SHARED_CSS__
 .add-in-section .btn{padding:3px 9px; font-size:11px; border-radius:7px; background:var(--surface);}
 .plan-foot{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border-top:1px solid var(--border); flex-wrap:wrap;}
 .plan-foot .total{font-size:13px; color:var(--text-2);}
-.plan-foot .total b{font-family:'IBM Plex Mono'; color:var(--text);}
+.plan-foot .total b{font-family:var(--font-mono); color:var(--text);}
 @media (max-width:640px){
-  .plan-head, .plan-row{grid-template-columns:22px 50px minmax(0,1fr) 38px; padding:0 10px; gap:8px;}
+  /* pe telefon: ora de început (utilă duminică dimineața) în locul mânerului de tragere,
+     care oricum nu merge cu degetul — mutarea rămâne din panou, cu ↑ ↓ */
+  .plan-head, .plan-row{grid-template-columns:42px 40px minmax(0,1fr) 30px; padding:0 12px; gap:8px;}
   .plan-head{letter-spacing:.04em;}
-  .c-time{display:none;}
-  .plan-head .h-time{display:none;}
+  .grip, .plan-head > span:first-child{display:none;}
+  .plan-row{min-height:54px;}
+  .c-time{font-size:11px;}
+  .c-len{font-size:12px;}
+  .edit-dot{left:3px; width:5px; height:5px;}
+  .add-in-section .btn{min-height:40px; min-width:44px; font-size:16px;}
+  .plan-row.header{min-height:48px;}
 }
 
 /* ---- resurse ---- */
 .res-list{display:flex; flex-direction:column; gap:8px;}
 .res-item{display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:10px; background:var(--surface-2); min-width:0;}
-.res-icon{flex:none; width:30px; height:30px; border-radius:8px; background:var(--surface); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:var(--accent-mark); font-family:'IBM Plex Mono';}
+.res-icon{flex:none; width:30px; height:30px; border-radius:8px; background:var(--surface); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:var(--accent-mark); font-family:var(--font-mono);}
 .res-body{min-width:0; flex:1;}
 .res-body a{font-size:13px; font-weight:700; color:var(--text); text-decoration:none; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .res-body a:hover{text-decoration:underline;}
@@ -111,8 +113,43 @@ __SHARED_CSS__
 .view-field{font-size:13.5px; line-height:1.5;}
 .view-field .lbl{font-size:11.5px; font-weight:700; color:var(--text-3); display:block; margin-bottom:2px;}
 .readonly-note{font-size:12px; color:var(--text-3); padding:10px 12px; background:var(--surface-2); border-radius:10px;}
+.drawer:not([hidden]){animation:drawer-in .2s ease-out;}
+.overlay:not([hidden]){animation:fade-in .2s ease-out;}
+@keyframes drawer-in{from{opacity:0; transform:translateX(28px);} to{opacity:1; transform:none;}}
+@keyframes fade-in{from{opacity:0;}}
 @media (max-width:640px){
-  .drawer{top:auto; left:0; width:100%; max-height:88vh; border-left:none; border-top:1px solid var(--border); border-radius:18px 18px 0 0;}
+  .drawer{top:auto; left:0; width:100%; max-height:92vh; border-left:none; border-top:1px solid var(--border); border-radius:22px 22px 0 0; padding-bottom:env(safe-area-inset-bottom);}
+  .drawer:not([hidden]){animation:sheet-up .26s cubic-bezier(.2,.8,.2,1);}
+  /* mânerul: trage în jos ca să închizi */
+  .drawer-head{position:relative; padding-top:24px; touch-action:none;}
+  .drawer-head::before{content:""; position:absolute; top:9px; left:50%; width:40px; height:5px; margin-left:-20px; border-radius:3px; background:var(--border);}
+  .drawer-foot #f-save{flex:1;}
+}
+
+/* progresul urcării de fișiere */
+#upload-panel{
+  position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:110;
+  width:min(440px, calc(100vw - 24px)); padding:12px 14px; display:flex; flex-direction:column; gap:9px;
+  background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow);
+}
+body.has-bottom-nav #upload-panel{bottom:calc(80px + env(safe-area-inset-bottom));}
+.up-row{display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; min-width:0;}
+.up-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.up-pct{font-family:var(--font-mono); font-size:12px; color:var(--text-2); flex:none;}
+.up-bar{height:6px; border-radius:3px; background:var(--surface-2); overflow:hidden;}
+.up-bar i{display:block; height:100%; width:0; background:var(--accent-mark); border-radius:3px; transition:width .15s;}
+
+/* telefon: programul primul, detaliile și resursele generale sub el */
+@media (max-width:760px){
+  .edit-wrap{display:flex; flex-direction:column;}
+  .edit-wrap .page-head{padding-top:16px;}
+  .edit-wrap .page-head h1{font-size:22px;}
+  .edit-wrap .plan{order:1; margin-top:16px;}
+  .edit-wrap .info-grid{order:2; margin-top:16px;}
+  .edit-wrap #updated{order:3;}
+  .edit-wrap .spacer-end{order:4;}
+  .head-actions{width:100%;}
+  .head-actions .btn{flex:1;}
 }
 </style>
 </head>
@@ -121,7 +158,7 @@ __SHARED_CSS__
 <div id="tooltip"></div>
 <div class="topbar" id="topbar-root"></div>
 
-<div class="wrap">
+<div class="wrap edit-wrap">
   <div class="page-head">
     <a href="/program" class="back-link">&larr; toate duminicile</a>
     <div class="head-row">
@@ -148,7 +185,7 @@ __SHARED_CSS__
   </div>
 
   <p class="muted" id="updated" style="margin-top:12px;"></p>
-  <div style="height:60px;"></div>
+  <div class="spacer-end" style="height:60px;"></div>
 </div>
 
 <div class="overlay" id="overlay" hidden></div>
@@ -239,8 +276,9 @@ __SHARED_JS__
     document.getElementById('head-actions').innerHTML = actions.join('');
     const del = document.getElementById('delete-sunday');
     if (del) del.addEventListener('click', async () => {
-      if (!confirm('Ștergi programul acestei duminici, cu toate resursele urcate? Nu se poate anula.')) return;
-      try { await api('DELETE', `/api/program/${DATE}`); location.href = '/program'; }
+      const ok = await confirmDialog('Programul acestei duminici se șterge cu toate resursele urcate. Nu se poate anula.', { title: 'Ștergi duminica?', ok: 'Șterge duminica', danger: true });
+      if (!ok) return;
+      try { await withBusy(del, () => api('DELETE', `/api/program/${DATE}`)); startNavProgress(); location.href = '/program'; }
       catch (err) { toast(err.message, true); }
     });
 
@@ -279,15 +317,14 @@ __SHARED_JS__
       e.preventDefault();
       const fd = new FormData(e.target);
       const btn = e.target.querySelector('[type=submit]');
-      btn.disabled = true;
       try {
-        setPlan(await api('PATCH', `/api/program/${DATE}`, {
+        const next = await withBusy(btn, () => api('PATCH', `/api/program/${DATE}`, {
           preacher_name: fd.get('preacher_name'), start_time: fd.get('start_time'),
           attendance: fd.get('attendance') === '' ? null : Number(fd.get('attendance')), notes: fd.get('notes'),
-        }), { details: true });
+        }));
+        setPlan(next, { details: true });
         toast('Detaliile au fost salvate.');
       } catch (err) { toast(err.message, true); }
-      btn.disabled = false;
     });
   }
 
@@ -328,15 +365,67 @@ __SHARED_JS__
 
   let pendingUploadTarget = null;
   const fileInput = document.getElementById('file-input');
+
+  // Același POST ca înainte (corp brut, fără multipart), dar prin XHR — fetch nu raportează
+  // progresul urcării, iar pe date mobile un fișier de 50 MB durează.
+  let currentUpload = null;
+  function uploadWithProgress(url, file, onProgress){
+    return new Promise((resolve, reject) => {
+      if (!navigator.onLine) { reject(new Error(OFFLINE_MSG)); return; }
+      const xhr = new XMLHttpRequest();
+      currentUpload = xhr;
+      xhr.open('POST', url);
+      xhr.setRequestHeader('content-type', file.type || 'application/octet-stream');
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+      xhr.onload = () => {
+        let data = null;
+        try { data = JSON.parse(xhr.responseText); } catch(e){}
+        if (xhr.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); reject(new Error('Sesiune expirată.')); return; }
+        if (xhr.status < 200 || xhr.status >= 300) { reject(new Error((data && data.error) || `Eroare ${xhr.status}`)); return; }
+        markChanged();
+        resolve(data);
+      };
+      xhr.onerror = () => reject(new Error(navigator.onLine ? NETWORK_MSG : OFFLINE_MSG));
+      xhr.onabort = () => { const err = new Error('Urcare anulată.'); err.aborted = true; reject(err); };
+      xhr.send(file);
+    });
+  }
+  function showUploadPanel(name, counter){
+    let panel = document.getElementById('upload-panel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'upload-panel';
+      panel.setAttribute('role', 'status');
+      panel.innerHTML = '<div class="up-row"><span class="up-name"></span><span class="up-pct">0%</span><button class="btn small" type="button" id="up-cancel">Anulează</button></div><div class="up-bar"><i></i></div>';
+      document.body.appendChild(panel);
+      panel.querySelector('#up-cancel').addEventListener('click', () => { if (currentUpload) currentUpload.abort(); });
+    }
+    panel.hidden = false;
+    panel.querySelector('.up-name').textContent = (counter ? counter + ' · ' : '') + 'Se urcă ' + name;
+    const set = (f) => {
+      const pct = Math.round(f * 100);
+      panel.querySelector('.up-pct').textContent = pct + '%';
+      panel.querySelector('.up-bar i').style.width = pct + '%';
+    };
+    set(0);
+    return { set, done: () => { panel.hidden = true; } };
+  }
   async function uploadFiles(files, itemId){
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       if (file.size > MAX_UPLOAD) { toast(`${file.name}: depășește 50 MB.`, true); continue; }
-      toast(`Se urcă ${file.name}…`);
+      const progress = showUploadPanel(file.name, files.length > 1 ? `${i + 1}/${files.length}` : '');
       try {
         const q = `item=${itemId === null ? '' : itemId}&name=${encodeURIComponent(file.name)}`;
-        setPlan(await api('POST', `/api/program/${DATE}/resurse?${q}`, file));
+        setPlan(await uploadWithProgress(`/api/program/${DATE}/resurse?${q}`, file, progress.set));
         toast(`${file.name} a fost urcat.`);
-      } catch (err) { toast(`${file.name}: ${err.message}`, true); }
+      } catch (err) {
+        progress.done();
+        if (err.aborted) { toast('Urcare anulată.'); break; } // anularea oprește și fișierele următoare
+        toast(`${file.name}: ${err.message}`, true);
+      }
+      progress.done();
+      currentUpload = null;
     }
   }
   fileInput.addEventListener('change', () => {
@@ -352,7 +441,9 @@ __SHARED_JS__
     if (up) { pendingUploadTarget = parseTarget(up.dataset.upload); fileInput.click(); return; }
     const del = e.target.closest('[data-del-res]');
     if (del) {
-      if (!confirm('Ștergi această resursă?')) return;
+      const res = plan.resources.find(r => r.id === Number(del.dataset.delRes));
+      const ok = await confirmDialog(res ? `„${res.name}" se șterge pentru toată lumea.` : 'Resursa se șterge pentru toată lumea.', { title: 'Ștergi resursa?', ok: 'Șterge', danger: true });
+      if (!ok) return;
       try { setPlan(await api('DELETE', `/api/resurse/${del.dataset.delRes}`)); toast('Resursa a fost ștearsă.'); }
       catch (err) { toast(err.message, true); }
     }
@@ -367,7 +458,9 @@ __SHARED_JS__
     e.preventDefault();
     const fd = new FormData(form);
     try {
-      setPlan(await api('POST', `/api/program/${DATE}/linkuri`, { item_id: parseTarget(form.dataset.link), name: fd.get('name'), url: fd.get('url') }));
+      const next = await withBusy(form.querySelector('[type=submit]'), () =>
+        api('POST', `/api/program/${DATE}/linkuri`, { item_id: parseTarget(form.dataset.link), name: fd.get('name'), url: fd.get('url') }));
+      setPlan(next);
       toast('Linkul a fost adăugat.');
     } catch (err) { toast(err.message, true); }
   });
@@ -545,8 +638,10 @@ __SHARED_JS__
     openId = null;
     drawer.hidden = true;
     overlay.hidden = true;
+    if (!document.querySelector('dialog.sheet[open]')) document.documentElement.classList.remove('sheet-open');
   }
   document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  enableSwipeDown(drawer.querySelector('.drawer-head'), drawer, closeDrawer);
   overlay.addEventListener('click', closeDrawer);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !drawer.hidden) closeDrawer(); });
 
@@ -612,7 +707,10 @@ __SHARED_JS__
     if ($('f-up')) $('f-up').addEventListener('click', () => moveBy(item.id, -1));
     if ($('f-down')) $('f-down').addEventListener('click', () => moveBy(item.id, 1));
     if ($('f-delete')) $('f-delete').addEventListener('click', async () => {
-      if (!confirm(item.kind === 'header' ? 'Ștergi această secțiune?' : 'Ștergi acest element? Resursele lui rămân la „Resurse generale".')) return;
+      const ok = await confirmDialog(item.kind === 'header'
+        ? 'Elementele ei nu se șterg — trec în secțiunea de deasupra.'
+        : 'Resursele lui rămân la „Resurse generale".', { title: item.kind === 'header' ? 'Ștergi secțiunea?' : 'Ștergi elementul?', ok: 'Șterge', danger: true });
+      if (!ok) return;
       try { closeDrawer(); setPlan(await api('DELETE', `/api/program/${DATE}/items/${item.id}`)); toast('Șters.'); }
       catch (err) { toast(err.message, true); }
     });
@@ -627,13 +725,15 @@ __SHARED_JS__
         if ($('f-key')) body.song_key = $('f-key').value;
         if ($('f-kind')) body.kind = $('f-kind').value;
       }
-      $('f-save').disabled = true;
-      try { setPlan(await api('PATCH', `/api/program/${DATE}/items/${item.id}`, body)); closeDrawer(); toast('Salvat.'); }
-      catch (err) { toast(err.message, true); if ($('f-save')) $('f-save').disabled = false; }
+      try {
+        const next = await withBusy($('f-save'), () => api('PATCH', `/api/program/${DATE}/items/${item.id}`, body));
+        setPlan(next); closeDrawer(); toast('Salvat.');
+      } catch (err) { toast(err.message, true); }
     });
 
     drawer.hidden = false;
     overlay.hidden = false;
+    document.documentElement.classList.add('sheet-open');
     if (!wasOpen) {
       const first = body.querySelector('input:not([type=hidden]), select, textarea');
       if (first && window.matchMedia('(min-width: 641px)').matches) first.focus();

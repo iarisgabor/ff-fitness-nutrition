@@ -2,13 +2,8 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<script>try{var t=localStorage.getItem('puls-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
 <title>Pulsul Duminicii — Analiză pe categorii</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+__SHARED_HEAD__
 <style>
 __SHARED_CSS__
 
@@ -21,14 +16,34 @@ __SHARED_CSS__
   display:flex; flex-direction:column; gap:16px; padding:22px 22px 20px;
   text-decoration:none; color:inherit; border-left:4px solid var(--r3);
 }
-.cat-card .c-label{font-family:'Sora'; font-weight:700; font-size:17px;}
+.cat-card .c-label{font-family:var(--font-display); font-weight:700; font-size:17px;}
 .cat-card .c-full{font-size:12.5px; color:var(--text-3); line-height:1.45; font-style:italic;}
 .cat-card .c-row{display:flex; align-items:center; justify-content:space-between; margin-top:auto;}
 .cat-card .c-n{font-size:12.5px; color:var(--text-2);}
-.cat-card .c-avg{font-family:'IBM Plex Mono'; font-weight:700; font-size:18px;}
+.cat-card .c-avg{font-family:var(--font-mono); font-weight:700; font-size:18px;}
 .cat-card:hover{border-left-color:var(--accent-mark); box-shadow:var(--shadow), 0 0 0 1px var(--accent-mark) inset;}
 
-.empty-state{padding:60px 0; text-align:center; color:var(--text-3);}
+.empty-state{padding:60px 0;}
+@media (max-width:760px){
+  .page-head{padding:22px 0 0;}
+  .page-head p{font-size:13.5px;}
+  .cats-grid{grid-template-columns:1fr; gap:8px; padding:20px 0 28px;}
+  .cat-card{display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:4px 14px; padding:14px 16px;}
+  .cat-card .c-row{flex-direction:column; align-items:flex-end; gap:1px; margin:0;}
+  .cat-card .c-avg{order:-1; font-size:18px;}
+  .cat-card .c-n{font-size:11.5px;}
+}
+@media (max-width:760px){
+  .cat-card .c-label{font-size:16px;}
+  .cat-card .c-full{font-size:12px; margin-top:2px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .section-block{margin:8px 0 36px;}
+  .heatmap-grid{grid-template-columns:88px repeat(7, 56px); gap:5px;}
+  .heatmap-cell{height:50px; font-size:12px;}
+  /* numele categoriilor rămân pe loc când matricea se derulează orizontal */
+  .heatmap-grid > div:first-child, .heatmap-label:not(.col){position:sticky; left:0; z-index:2; background:var(--surface);}
+  .heatmap-label.hl{background:color-mix(in srgb, var(--accent-mark) 14%, var(--surface));}
+  .corr-row{grid-template-columns:104px 1fr 46px; gap:8px;}
+}
 
 .section-block{margin:16px 0 60px;}
 .section-block h3{font-size:16px; font-weight:700; margin-bottom:2px;}
@@ -38,7 +53,7 @@ __SHARED_CSS__
 .heatmap-grid{display:grid; grid-template-columns: 140px repeat(7, minmax(64px,1fr)); gap:6px; width:100%;}
 .heatmap-cell{
   height:64px; border-radius:8px; display:flex; align-items:center; justify-content:center;
-  font-family:'IBM Plex Mono'; font-weight:700; font-size:13px; line-height:1; text-align:center; cursor:default;
+  font-family:var(--font-mono); font-weight:700; font-size:13px; line-height:1; text-align:center; cursor:default;
 }
 .heatmap-cell.diag, .heatmap-cell.empty{background:var(--surface-2); color:var(--text-3); font-weight:500;}
 .heatmap-label{display:flex; align-items:center; font-size:11.5px; font-weight:600; color:var(--text-2); padding-right:8px; line-height:1.25; overflow-wrap:break-word; word-break:break-word; min-width:0;}
@@ -63,7 +78,7 @@ __SHARED_CSS__
 .corr-track{position:relative; height:20px; background:var(--surface-2); border-radius:6px; overflow:hidden;}
 .corr-track::before{content:""; position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--border); z-index:1;}
 .corr-fill{position:absolute; top:2px; bottom:2px; border-radius:4px;}
-.corr-val{font-family:'IBM Plex Mono'; font-weight:600; font-size:13px; text-align:right;}
+.corr-val{font-family:var(--font-mono); font-weight:600; font-size:13px; text-align:right;}
 @media (max-width:600px){.corr-row{grid-template-columns:100px 1fr 48px; gap:8px;}}
 </style>
 </head>

@@ -39,6 +39,8 @@ https://ff-fitness-nutrition.vercel.app.
 | bot de Telegram, Google Calendar, Planning Center, agendă zilnică | **personal/telegram-assistant/** → §2 + `README.md` |
 | feedback biserică, Pulsul Duminicii, statistici duminică, slideshow pe categorie, rezumat AI feedback | **personal/pulsul-duminicii/** → §3 + `README.md` |
 | program duminică, plan întâlnire, slide-uri/PPT predică, conturi predicatori, BisericaLogos | **personal/pulsul-duminicii/** → §3 (`src/program.js`, `src/session.js`) |
+| Pulsul Duminicii ca aplicație pe telefon, PWA, instalare, offline, service worker, bara de jos | **personal/pulsul-duminicii/** → §3 (`public/sw.js`, `src/shared.txt` → `initNav`) |
+| APK / aplicația Android a Pulsului, Google Play, cheia de semnare, assetlinks | `personal/pulsul-duminicii/android/README.md` |
 | ii cusute de bunica, magazin de ii, scroll-film, broderie | **personal/ia-bunicii-mele/** → §4 + `README.md` |
 | ia desenată punct cu punct, silueta cămășii, altiță/încreț/râuri/poale | `personal/ia-bunicii-mele/js/pattern.js` |
 | filmul de la scroll, canvas, camera care urmărește acul | `personal/ia-bunicii-mele/js/film.js` |
@@ -165,8 +167,14 @@ Fișiere:
 - `src/session.js`, `src/accounts.js`, `src/login.html`, `src/admin-accounts.html` — conturi: `BisericaLogos` (parolă = secret `ADMIN_PASSWORD`) + predicatori în D1
 - `src/program.js`, `src/programTemplate.js`, `src/program-list.html`, `src/program-edit.html` — Program duminică (D1) cu resurse urcate (R2 privat)
 - `migrations/` — schema D1
+- `src/head.html` — `<head>` comun; `public/` — fonturi locale, iconițe, `manifest.webmanifest`, `sw.js` (service worker), `offline.html`, `.well-known/assetlinks.json`
+- `android/` — aplicația Android (Trusted Web Activity peste site), build în `.github/workflows/android-pulsul-duminicii.yml`; `tests/` — `npm test`
 
 Live la fiecare vizită, fără cron — „automatizarea" cerută (update lunea) e implicită.
+Din 2026-09-25 e și **aplicație instalabilă (PWA)**, mobile-first: bară de navigare jos pe
+telefon, service worker cu acces offline la paginile deja deschise (șterse la Ieșire), fișiere
+statice în `public/` servite prin `[assets]` — tot fără build step. Regulile 21–30 din
+`personal/pulsul-duminicii/CLAUDE.md`.
 Acces cu conturi (`AUTH_MODE = "accounts"`, din 2026-09-24): contul general vede Analiză +
 Program; un predicator vede doar statisticile lui (`/eu`) și programul duminicilor
 următoare, unde poate completa partea de predică și urca slide-uri. Setup D1/R2 + secret:
