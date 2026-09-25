@@ -147,6 +147,7 @@ function initNav(activeKey, topbarText){
       ${item('/program', activeKey==='program', 'Program duminică')}
       <div class="menu-sep"></div>
       ${item('/cont', activeKey==='account', 'Schimbă parola')}
+      <button type="button" class="menu-item menu-install" hidden>Instalează aplicația</button>
       ${item('/logout', false, 'Ieșire')}`;
   } else if (user) {
     tabs = tab('/', ANALYSIS_KEYS.includes(activeKey), 'Analiză', 'Analiză') + tab('/program', activeKey==='program', 'Program duminică', 'Program');
@@ -160,6 +161,7 @@ function initNav(activeKey, topbarText){
       <div class="menu-sep"></div>
       ${item('/program', activeKey==='program', 'Program duminică')}
       ${canLogout ? item('/admin/conturi', activeKey==='accounts', 'Conturi predicatori') : ''}
+      <button type="button" class="menu-item menu-install" hidden>Instalează aplicația</button>
       ${canLogout ? item('/logout', false, 'Ieșire') : ''}`;
   }
 
@@ -220,6 +222,11 @@ function initNav(activeKey, topbarText){
   const btn = document.getElementById('menu-btn');
   const panel = document.getElementById('menu-panel');
   if (!btn || !panel) return;
+  const installItem = panel.querySelector('.menu-install');
+  if (installItem) {
+    installItem.hidden = !(typeof canOfferInstall === 'function' && canOfferInstall());
+    installItem.addEventListener('click', () => { panel.classList.remove('open'); runInstall(); });
+  }
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     const open = panel.classList.toggle('open');
@@ -520,19 +527,34 @@ function credentialsDialog(title, rows, note){
 // ---------------------------------------------------------------- offline
 
 // Bandă sus cât timp nu e conexiune; modificările sunt oprite de api() cu un mesaj clar.
+// PULS_SAVED_AT e pus de service worker (public/sw.js) când pagina vine din copia salvată
+// pe dispozitiv, pentru că serverul n-a putut fi contactat.
+function savedAtLabel(){
+  if (typeof window.PULS_SAVED_AT !== 'string' || !window.PULS_SAVED_AT) return '';
+  const d = new Date(window.PULS_SAVED_AT);
+  if (isNaN(d)) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  const today = new Date().toDateString() === d.toDateString();
+  return (today ? 'azi' : `${d.getDate()} ${MONTHS_RO[d.getMonth()]}`) + ` la ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 function updateOnlineState(){
-  const offline = !navigator.onLine;
+  const saved = savedAtLabel();
+  const offline = !navigator.onLine || !!saved;
   document.documentElement.classList.toggle('is-offline', offline);
   let banner = document.getElementById('offline-banner');
   if (offline && !banner) {
     banner = document.createElement('div');
     banner.id = 'offline-banner';
     banner.setAttribute('role', 'status');
-    banner.textContent = 'Ești offline — vezi ultima versiune încărcată. Modificările nu se pot salva până revine conexiunea.';
     const top = document.getElementById('topbar-root');
     if (top && top.parentNode) top.after(banner); else document.body.prepend(banner);
   }
-  if (banner) banner.hidden = !offline;
+  if (banner) {
+    banner.textContent = saved
+      ? `Offline — versiunea salvată ${saved}. Modificările nu se pot salva până revine conexiunea.`
+      : 'Ești offline — vezi ultima versiune încărcată. Modificările nu se pot salva până revine conexiunea.';
+    banner.hidden = !offline;
+  }
 }
 window.addEventListener('online', updateOnlineState);
 window.addEventListener('offline', updateOnlineState);
@@ -574,3 +596,82 @@ function formatDuration(sec){
   if (h) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   return `${m}:${String(s).padStart(2,'0')}`;
 }
+
+// ---------------------------------------------------------------- aplicația instalată (PWA)
+//
+// Service worker-ul (public/sw.js) ține fonturile/iconițele și salvează paginile vizitate
+// pentru folosire fără semnal. Instalarea: pe Android/desktop, promptul browserului e
+// ținut pentru butonul nostru „Instalează aplicația"; pe iPhone nu există prompt, deci
+// arătăm pașii (Share → Adaugă pe ecranul principal).
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
+
+let installPrompt = null;
+function isIOS(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function canOfferInstall(){ return !isStandalone() && (installPrompt || isIOS()); }
+
+async function runInstall(){
+  if (installPrompt) {
+    const p = installPrompt;
+    installPrompt = null;
+    p.prompt();
+    try { await p.userChoice; } catch(e){}
+    hideInstallHint();
+    return;
+  }
+  if (isIOS()) showIosInstallHelp();
+}
+function showIosInstallHelp(){
+  const share = '<svg class="ios-share" viewBox="0 0 24 24" aria-label="Share"><path d="M12 3v12M8 7l4-4 4 4M5 11v8.5A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V11"/></svg>';
+  const dlg = openSheet(`
+    <ol class="ios-steps">
+      <li>Apasă butonul <b>Share</b> ${share} din bara Safari.</li>
+      <li>Derulează și alege <b>Adaugă pe ecranul principal</b>.</li>
+      <li>Apasă <b>Adaugă</b> — Pulsul apare lângă celelalte aplicații și se deschide pe tot ecranul.</li>
+    </ol>
+    <div class="dialog-actions"><button class="btn primary" type="button" data-ok>Am înțeles</button></div>`,
+    { title: 'Instalează pe iPhone', className: 'dialog' });
+  dlg.querySelector('[data-ok]').addEventListener('click', () => { remember('install-hint', 'no'); hideInstallHint(); closeSheet(dlg); });
+}
+
+// Rândul din panoul de cont (apelat de openAccountSheet).
+function fillInstallSlot(slot){
+  if (!slot || !canOfferInstall()) return;
+  slot.innerHTML = `<button class="sheet-row" type="button">${icon('install')}<span class="sr-label">${installPrompt ? 'Instalează aplicația' : 'Instalează pe iPhone'}</span><span class="chev" aria-hidden="true">›</span></button>`;
+  slot.firstElementChild.addEventListener('click', () => {
+    const dlg = slot.closest('dialog');
+    if (dlg) closeSheet(dlg);
+    setTimeout(runInstall, 200);
+  });
+}
+
+// Sugestia de instalare: o singură dată (până e închisă), doar pentru cine e logat.
+function showInstallHint(){
+  if (!canOfferInstall() || recall('install-hint') === 'no' || typeof PULS_USER === 'undefined' || !PULS_USER) return;
+  if (document.getElementById('install-hint')) return;
+  const el = document.createElement('div');
+  el.id = 'install-hint';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', 'Instalează aplicația');
+  el.innerHTML = `
+    <img src="/icons/icon-192.png" alt="" width="40" height="40">
+    <div class="ih-text"><b>Pulsul, ca aplicație</b><span>Pe ecranul principal, pe tot ecranul, și fără semnal.</span></div>
+    <button class="btn primary small" type="button" data-install>${installPrompt ? 'Instalează' : 'Cum?'}</button>
+    <button class="ih-close" type="button" aria-label="Nu acum">×</button>`;
+  document.body.appendChild(el);
+  el.querySelector('[data-install]').addEventListener('click', runInstall);
+  el.querySelector('.ih-close').addEventListener('click', () => { remember('install-hint', 'no'); hideInstallHint(); });
+}
+function hideInstallHint(){ const el = document.getElementById('install-hint'); if (el) el.remove(); }
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  document.querySelectorAll('.menu-install').forEach(b => { b.hidden = false; });
+  showInstallHint();
+});
+window.addEventListener('appinstalled', () => { installPrompt = null; hideInstallHint(); remember('install-hint', 'no'); });
+if (isIOS()) setTimeout(showInstallHint, 1500);

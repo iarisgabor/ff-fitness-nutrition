@@ -7,3 +7,11 @@
 # Numele fișierelor de font nu se schimbă niciodată -> cache „pe viață”.
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Service worker-ul se verifică la fiecare încărcare, ca o versiune nouă să ajungă imediat.
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
