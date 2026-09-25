@@ -310,7 +310,8 @@ function closeSheet(dlg, value){
   const done = () => {
     dlg.close();
     dlg.remove();
-    if (!document.querySelector('dialog.sheet[open]')) document.documentElement.classList.remove('sheet-open');
+    // derularea rămâne blocată cât mai e deschis alt panou (ex. confirmare peste panoul de editare)
+    if (!document.querySelector('dialog.sheet[open], .drawer:not([hidden])')) document.documentElement.classList.remove('sheet-open');
     if (dlg._onClose) dlg._onClose(value);
   };
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) done();
@@ -550,9 +551,11 @@ function updateOnlineState(){
     if (top && top.parentNode) top.after(banner); else document.body.prepend(banner);
   }
   if (banner) {
-    banner.textContent = saved
-      ? `Offline — versiunea salvată ${saved}. Modificările nu se pot salva până revine conexiunea.`
-      : 'Ești offline — vezi ultima versiune încărcată. Modificările nu se pot salva până revine conexiunea.';
+    banner.textContent = !saved
+      ? 'Ești offline — vezi ultima versiune încărcată. Modificările nu se pot salva până revine conexiunea.'
+      : window.PULS_SAVED_REASON === 'slow' && navigator.onLine
+        ? `Conexiune slabă — versiunea salvată ${saved}. Trage în jos sau reîncarcă pentru cea nouă.`
+        : `Offline — versiunea salvată ${saved}. Modificările nu se pot salva până revine conexiunea.`;
     banner.hidden = !offline;
   }
 }

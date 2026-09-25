@@ -66,7 +66,7 @@ __SHARED_CSS__
 .slide-card.from-prev{animation:slide-from-prev .22s ease-out;}
 @keyframes slide-from-next{from{opacity:.2; transform:translateX(28px);} to{opacity:1; transform:none;}}
 @keyframes slide-from-prev{from{opacity:.2; transform:translateX(-28px);} to{opacity:1; transform:none;}}
-.slide-nav .btn{max-width:46%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.slide-nav .btn{display:block; max-width:46%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:26px;} /* block: „…" merge doar pe text direct, nu în flex */
 
 @media (max-width:760px){
   .day-head{padding:18px 0 0; align-items:center; flex-wrap:nowrap;}

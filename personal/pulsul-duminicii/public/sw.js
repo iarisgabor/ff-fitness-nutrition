@@ -18,6 +18,9 @@ const STATIC_VERSION = 'v1';
 const STATIC_CACHE = `puls-static-${STATIC_VERSION}`;
 const PAGES_CACHE = 'puls-pages';
 const MAX_PAGES = 40;
+// Semnal slab (nu lipsă totală): după atâta așteptare, dacă pagina e salvată, se arată copia;
+// răspunsul serverului, când vine, se salvează pentru data viitoare.
+const NETWORK_TIMEOUT_MS = 6000;
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [
   OFFLINE_URL,
@@ -63,16 +66,28 @@ async function handleNavigation(event, req, url) {
   const path = url.pathname.replace(/\/+$/, '') || '/';
   if (path === '/logout' || path === '/login') await caches.delete(PAGES_CACHE);
 
-  try {
-    const res = await fetch(req);
+  let networkDone = false;
+  const network = fetch(req).then((res) => {
+    networkDone = true;
     // doar pagini primite direct (nu redirecționări) și care au voie să fie salvate
     if (res.ok && res.type === 'basic' && !NEVER_SAVE.test(path) && (res.headers.get('content-type') || '').includes('text/html')) {
       event.waitUntil(savePage(url, res.clone())); // salvarea continuă și după ce pagina a fost trimisă
     }
     return res;
+  }, (err) => { networkDone = true; throw err; });
+  const saved = NEVER_SAVE.test(path) ? Promise.resolve(null) : findSaved(url, path);
+  const slow = new Promise((resolve) => setTimeout(resolve, NETWORK_TIMEOUT_MS)).then(async () => {
+    if (networkDone) return network; // serverul a răspuns deja — nimic de făcut
+    const copy = await saved;
+    if (!copy || networkDone) return network; // nimic salvat: așteptăm mai departe serverul
+    event.waitUntil(network.catch(() => {}));
+    return markOffline(copy, 'slow');
+  });
+  try {
+    return await Promise.race([network, slow]);
   } catch (err) {
-    const saved = await findSaved(url, path);
-    if (saved) return markOffline(saved);
+    const copy = await saved;
+    if (copy) return markOffline(copy, 'offline');
     return (await caches.match(OFFLINE_URL)) || new Response('Ești offline.', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
   }
 }
@@ -92,17 +107,18 @@ function pageKey(url) {
   return url.origin + url.pathname + url.search;
 }
 
+// caches.match cu cacheName nu creează cache-ul dacă lipsește (după Ieșire trebuie să rămână șters).
 async function findSaved(url, path) {
-  const cache = await caches.open(PAGES_CACHE);
-  const hit = await cache.match(pageKey(url));
-  if (hit || path !== '/') return hit;
+  const opts = { cacheName: PAGES_CACHE };
+  const hit = await caches.match(pageKey(url), opts);
+  if (hit || path !== '/') return hit || null;
   // „/" (adresa de pornire a aplicației) e o redirecționare pentru predicatori → /eu
-  return (await cache.match(url.origin + '/eu')) || (await cache.match(url.origin + '/program'));
+  return (await caches.match(url.origin + '/eu', opts)) || (await caches.match(url.origin + '/program', opts)) || null;
 }
 
-// Pagina salvată primește o notă (ora salvării), din care shared.txt face banda offline.
-async function markOffline(res) {
+// Pagina salvată primește o notă (ora salvării + motivul), din care shared.txt face banda.
+async function markOffline(res, reason) {
   const savedAt = res.headers.get('x-puls-saved-at') || '';
-  const html = (await res.text()).replace('</head>', () => `<script>window.PULS_SAVED_AT=${JSON.stringify(savedAt)};</script></head>`);
+  const html = (await res.text()).replace('</head>', () => `<script>window.PULS_SAVED_AT=${JSON.stringify(savedAt)};window.PULS_SAVED_REASON=${JSON.stringify(reason)};</script></head>`);
   return new Response(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }
