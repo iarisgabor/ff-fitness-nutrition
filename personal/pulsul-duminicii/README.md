@@ -44,6 +44,7 @@ lipsește, aplică migrațiile noi, folosește R2 doar dacă e activat, face dep
 2. GitHub → repo → Settings → Secrets and variables → Actions → New repository secret:
    `CLOUDFLARE_API_TOKEN` = tokenul de mai sus.
 3. (Opțional) Cloudflare → R2 → activează, pentru urcarea de fișiere.
+   **Stare: R2 activat în cont (2026-09-25)** — bucket-ul `pulsul-resurse` e creat de workflow.
 
 **Parola contului general** nu e un secret de setat: `ADMIN_PASSWORD_HASH` din
 `wrangler.toml` e hash-ul PBKDF2 al unei parole aleatoare generate cu
