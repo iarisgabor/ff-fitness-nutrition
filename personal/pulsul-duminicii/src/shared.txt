@@ -87,12 +87,13 @@ function initThemeToggle(){
 // activeKey: 'home' | 'days' | 'day' | 'categories' | 'category' | 'preachers' | 'preacher'
 //            | 'program' | 'me' | 'accounts' | 'account'. topbarText: ex. "36 răspunsuri · …".
 // PULS_USER e definit de render.js chiar înaintea acestui fișier (null pe /login).
-const ANALYSIS_KEYS = ['home','days','day','categories','category','preachers','preacher'];
+const ANALYSIS_KEYS = ['home','days','day','categories','category','preachers','preacher','attendance'];
 const ICONS = {
   home: '<path d="M3.5 10.2 12 3.5l8.5 6.7v9.3a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>',
   days: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
   categories: '<path d="M5 20v-6M12 20V5M19 20v-10"/>',
   preachers: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+  attendance: '<path d="M3 17l5-6 4 4 6-8"/><circle cx="3" cy="17" r="1.1"/><circle cx="8" cy="11" r="1.1"/><circle cx="12" cy="15" r="1.1"/><circle cx="18" cy="7" r="1.1"/>',
   program: '<path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10"/><circle cx="5" cy="6.5" r="1.1"/><circle cx="5" cy="12" r="1.1"/><circle cx="5" cy="17.5" r="1.1"/>',
   me: '<path d="M2.5 12h4.5l2.8-7.5 4.4 15 2.8-7.5h4.5"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
@@ -117,6 +118,7 @@ function navDestinations(user){
   if (!user) return [];
   if (user.role === 'preacher') return [
     { key:'me', href:'/eu', label:'Statistici', match:['me'] },
+    { key:'attendance', href:'/prezenta', label:'Prezență', match:['attendance'] },
     { key:'program', href:'/program', label:'Program', match:['program'] },
   ];
   return [
@@ -124,6 +126,7 @@ function navDestinations(user){
     { key:'days', href:'/zile', label:'Duminici', long:'Răspunsuri pe zile', match:['days','day'] },
     { key:'categories', href:'/categorii', label:'Categorii', match:['categories','category'] },
     { key:'preachers', href:'/predicatori', label:'Predicatori', match:['preachers','preacher'] },
+    { key:'attendance', href:'/prezenta', label:'Prezență', match:['attendance'] },
     { key:'program', href:'/program', label:'Program', match:['program'] },
   ];
 }
@@ -140,10 +143,11 @@ function initNav(activeKey, topbarText){
 
   let tabs = '', menu = '';
   if (isPreacher) {
-    tabs = tab('/eu', activeKey==='me', 'Statisticile mele', 'Statistici') + tab('/program', activeKey==='program', 'Program duminică', 'Program');
+    tabs = tab('/eu', activeKey==='me', 'Statisticile mele', 'Statistici') + tab('/prezenta', activeKey==='attendance', 'Prezență', 'Prezență') + tab('/program', activeKey==='program', 'Program duminică', 'Program');
     menu = `
       <div class="menu-user">${esc(user.displayName)}<span>predicator</span></div>
       ${item('/eu', activeKey==='me', 'Statisticile mele')}
+      ${item('/prezenta', activeKey==='attendance', 'Prezență')}
       ${item('/program', activeKey==='program', 'Program duminică')}
       <div class="menu-sep"></div>
       ${item('/cont', activeKey==='account', 'Schimbă parola')}
@@ -158,6 +162,7 @@ function initNav(activeKey, topbarText){
       ${item('/zile', activeKey==='days'||activeKey==='day', 'Răspunsuri pe zile')}
       ${item('/categorii', activeKey==='categories'||activeKey==='category', 'Analiză pe categorii')}
       ${item('/predicatori', activeKey==='preachers'||activeKey==='preacher', 'Predicatori')}
+      ${item('/prezenta', activeKey==='attendance', 'Prezență')}
       <div class="menu-sep"></div>
       ${item('/program', activeKey==='program', 'Program duminică')}
       ${canLogout ? item('/admin/conturi', activeKey==='accounts', 'Conturi predicatori') : ''}
@@ -718,7 +723,7 @@ window.addEventListener('pageshow', (e) => {
 });
 
 // „Adâncimea" unei pagini: tab-urile (și paginile din meniu) sunt rădăcini, restul — după segmente.
-const NAV_ROOTS = ['/', '/eu', '/zile', '/categorii', '/predicatori', '/program', '/admin/conturi', '/cont', '/login'];
+const NAV_ROOTS = ['/', '/eu', '/zile', '/categorii', '/predicatori', '/prezenta', '/program', '/admin/conturi', '/cont', '/login'];
 function navDepth(url){
   const path = new URL(url, location.href).pathname.replace(/\/+$/, '') || '/';
   return NAV_ROOTS.includes(path) ? 1 : path.split('/').filter(Boolean).length;

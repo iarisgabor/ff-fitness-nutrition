@@ -50,8 +50,9 @@ export default async function apiApp(t, { B }) {
   const routes = [
     [admin, '/'], [admin, '/zile'], [admin, `/zile/${DAY_WITH_FEEDBACK}`], [admin, '/categorii'],
     [admin, '/categorii/q5'], [admin, '/predicatori'], [admin, '/predicatori/marius'],
-    [admin, '/program'], [admin, `/program/${MARIUS_SUNDAY}`], [admin, '/admin/conturi'],
+    [admin, '/program'], [admin, `/program/${MARIUS_SUNDAY}`], [admin, '/admin/conturi'], [admin, '/prezenta'],
     [marius, '/eu'], [marius, '/program'], [marius, `/program/${MARIUS_SUNDAY}`], [marius, `/zile/${MARIUS_PAST_DAY}`],
+    [marius, '/prezenta'],
   ];
   for (const [s, path] of routes) {
     const [api, page] = await Promise.all([getJson(s, path === '/' ? '' : path), pagePayload(s, path)]);

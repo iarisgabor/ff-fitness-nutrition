@@ -10,7 +10,7 @@ import { attemptLogin, createSession, destroySession, isSameOrigin, publicUser }
 import {
   buildHomePayload, buildDaysListPayload, buildDayPayload, buildCategoriesIndexPayload,
   buildCategoryDetailPayload, buildPreachersIndexPayload, buildPreacherDetailPayload, buildMePayload,
-  buildProgramListPayload, buildProgramEditPayload, buildAccountsPayload, preacherDates,
+  buildProgramListPayload, buildProgramEditPayload, buildAccountsPayload, buildAttendancePayload, preacherDates,
 } from './render.js';
 import { slugToDate } from './transform.js';
 
@@ -67,6 +67,8 @@ export async function handleAppApi(request, env, ctx, user, path) {
   if (programMatch) {
     return reply(await buildProgramEditPayload(env, ctx, user, programMatch[1]), 'Nu există program pentru această dată.');
   }
+  // Prezența nu e sensibilă — vizibilă pentru ambele roluri, la fel ca Programul.
+  if (sub === '/prezenta') return reply(await buildAttendancePayload(env, ctx));
 
   // ---- predicator ----
   if (sub === '/eu') {

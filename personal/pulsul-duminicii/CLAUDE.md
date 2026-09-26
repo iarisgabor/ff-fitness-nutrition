@@ -32,6 +32,7 @@ Designul e evoluat din raportul static făcut manual o singură dată:
 | `/predicatori` — index predicatori + comparație pe dimensiuni | `renderPreachersIndex()` | `src/predicatori.html` |
 | `/predicatori/:slug` — un predicator: notă la Predică, trend, comparație vs restul, prezență, duminici următoare, citate | `renderPreacherDetail()` | `src/predicator.html` |
 | `/eu` — același conținut, pentru predicatorul logat (`self: true`) | `renderMe()` | `src/predicator.html` |
+| `/prezenta` — parteneri/musafiri/procent, grafic + interval selectabil (ambele roluri) | `renderAttendance()` | `src/attendance.html` |
 | `/login`, `/logout`, `/cont` (predicatorul își schimbă parola) | `renderLogin()` | `src/login.html` |
 | `/program` — lista duminicilor (următoare + trecute) + „Duminică nouă" | `renderProgramList()` | `src/program-list.html` |
 | `/program/:data` — editorul unei duminici (rânduri, panou lateral, resurse) | `renderProgramEdit()` | `src/program-edit.html` |
@@ -62,7 +63,7 @@ slug de predicator = numele normalizat (`src/preachers.js:preacherSlug`, ex. „
 | **maparea coloană-Sheet → categorie** (Sheet de feedback) | `src/config.js` |
 | rânduri brute → răspunsuri + toate agregatele | `src/transform.js` |
 | **al DOILEA Sheet — „Calendar predicare"**: coloane → schedule, slug de nume | `src/preachers.js` (mapare în `config.js`, `PREACHER_COLUMNS`/`PREACHERS_SHEET_RANGE`) |
-| **al TREILEA Sheet — „Participare parteneri"**: prezența, fetch + cache + parsare | `src/attendance.js` (`ATTENDANCE_SHEET_RANGE` în `config.js`) |
+| **al TREILEA Sheet — „Participare parteneri"**: prezența, fetch + cache + parsare + serie cronologică | `src/attendance.js` (`ATTENDANCE_SHEET_RANGE` în `config.js`) |
 | orchestrare fetch→transform→randare + cache | `src/render.js` |
 | auth Google prin service account (JWT semnat cu `crypto.subtle`) — comun ambelor Sheet-uri | `src/sheets.js` |
 | rezumat AI per duminică | `src/aiSummary.js` |
@@ -171,7 +172,7 @@ de import ca text.
 19. **Prezența vine dintr-un al TREILEA Sheet** ("Participare parteneri", `ATTENDANCE_SHEET_ID`,
     `src/attendance.js`), nu se mai trece manual în Program duminică — câmpul e doar de citit
     acum (alăturat pe dată, `attendanceForSlug`). Sheet-ul are o coloană 0/1 per membru (ignorată);
-    citim doar coloanele agregate `Total parteneri`/`Musafiri`/`Total`, cu match EXACT pe header
+    citim doar coloanele agregate `Total parteneri`/`Procent`/`Musafiri`/`Total`, cu match EXACT pe header
     (nu `containsAny` ca la celelalte Sheet-uri — „Total" și „Total parteneri" conțin amândouă
     cuvântul „total"). Fetch-ul + cache-ul stau în `attendance.js`, NU în `render.js` ca la
     `getSchedule` — `program.js` (rutele de scriere ale Programului) au nevoie de prezență ca să
@@ -262,6 +263,20 @@ de import ca text.
 39. Workflow-ul de deploy **ignoră** `android-nativ/**` (o schimbare doar în aplicație nu redeploy-ează
     Worker-ul); invers, schimbările din `src/` care ating `/api/app` trebuie să ajungă live înainte
     ca un APK pentru producție să le folosească.
+40. **`/prezenta`** — analiză completă a prezenței (parteneri/musafiri/procent), cu grafic + selector
+    de interval identic ca mecanică cu `/categorii/:cheie` (presetup-uri 1/3/6/12/Tot/Personalizat,
+    filtrare 100% client-side pe `series`, fără fetch la schimbarea intervalului) — vezi
+    `attendanceSeries()` din `attendance.js` (analog `categoryWeeklySeries`, dar fără histogramă,
+    prezența e un număr de persoane, nu un rating 1-5). Un toggle separat de metrică
+    (Total/Parteneri/Musafiri/Procent) alege ce linie desenează graficul; KPI-urile (medii + delta
+    față de perioada anterioară) rămân independente de metrica aleasă. Pagină vizibilă pentru
+    **ambele roluri** (nu doar admin ca restul „Analiză") — cifre agregate, nimic sensibil.
+    `renderAttendance`/`buildAttendancePayload` NU depind de `getComputedPayload` (Sheet-ul de
+    feedback) — la fel ca `/predicatori`, funcționează chiar dacă acela e jos. **Rămâne fără ecran
+    în aplicația nativă** (`android-nativ/`) — există `/api/app/prezenta` (parity, testat în
+    `tests/api-app.mjs`), dar nu și un ecran Kotlin/Compose care să-l consume; cine adaugă unul
+    trebuie să reia manual logica de interval din `attendance.html` (vezi regula 38 despre
+    duplicarea calculelor client în `domain/*.kt`).
 
 ## Deploy
 

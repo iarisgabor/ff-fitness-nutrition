@@ -33,19 +33,24 @@ export const SCHEDULE = [
 export const DAY_WITH_FEEDBACK = LAST_SUNDAY;           // /zile/:slug — predică Beni Oz
 export const MARIUS_SUNDAY = UPCOMING[1];               // duminica lui Marius, cu program creat
 export const OTHER_UPCOMING = UPCOMING[2];              // program creat, dar nevizitat în testul PWA
-// programe create de run.mjs: [data, predicator, prezență]
+// programe create de run.mjs: [data, predicator]
 export const PROGRAMS = [
-  [LAST_SUNDAY, 'Beni Oz', 84],
-  [UPCOMING[0], 'Laviniu', null],
-  [MARIUS_SUNDAY, 'Marius', null],
-  [OTHER_UPCOMING, 'Beni I', null],
+  [LAST_SUNDAY, 'Beni Oz'],
+  [UPCOMING[0], 'Laviniu'],
+  [MARIUS_SUNDAY, 'Marius'],
+  [OTHER_UPCOMING, 'Beni I'],
 ];
 
 // Al treilea Sheet ("Participare parteneri") — prezența nu mai vine din PATCH pe Program
 // (vezi CLAUDE.md, regula 19), ci din `attendance_sheet` în KV, la fel ca `preacher_schedule`.
-export const ATTENDANCE = PROGRAMS
-  .filter(([, , attendance]) => attendance != null)
-  .map(([date, , attendance]) => ({ date: toDMY(date), members: attendance - 12, guests: 12, total: attendance }));
+// Independentă de PROGRAMS (Sheet-ul se completează pentru fiecare duminică, nu doar
+// pentru cele cu Program creat) — 8 duminici trecute, ca /prezenta să aibă ce desena.
+export const ATTENDANCE = Array.from({ length: 8 }, (_, i) => {
+  const w = 7 - i; // 7..0 săptămâni în urmă de la LAST_SUNDAY -> cronologic ascendent
+  const members = 58 + (w * 3) % 18;
+  const guests = 6 + (w % 6);
+  return { date: toDMY(addDays(LAST_SUNDAY, -7 * w)), members, guests, total: members + guests, percent: Math.round(members / 80 * 100) };
+});
 
 // ---- răspunsurile la formular: 28 de duminici, până la LAST_SUNDAY inclusiv
 let seed = 7;

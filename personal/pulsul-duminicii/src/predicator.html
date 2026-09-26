@@ -97,7 +97,8 @@ a.link-row:hover{border-color:color-mix(in srgb, var(--accent-mark) 50%, var(--b
 
   <div class="section-block" id="attendance-wrap">
     <h3>Prezența</h3>
-    <p class="section-sub">Numărul de participanți, trecut după fiecare întâlnire în Program duminică.</p>
+    <p class="section-sub">Parteneri și musafiri, citit automat din Sheet-ul de prezență.</p>
+    <a href="/prezenta" class="chip name" style="margin-bottom:14px;">Evoluția pe toată biserica →</a>
     <div class="card pad" id="attendance-card"></div>
   </div>
 
@@ -161,7 +162,7 @@ __SHARED_JS__
     { tag: 'Duminici cu feedback', val: String(sundayCount), sub: 'suprapuse cu calendarul de predicare' },
     (() => {
       const a = PAYLOAD.attendance || {};
-      if (a.theirAvg == null) return { tag: 'Prezență medie', val: '–', sub: 'necompletată încă în Program duminică' };
+      if (a.theirAvg == null) return { tag: 'Prezență medie', val: '–', sub: 'nicio dată în Sheet-ul de prezență pentru duminicile lui' };
       const d = a.restAvg != null ? a.theirAvg - a.restAvg : null;
       return {
         tag: 'Prezență medie', val: String(Math.round(a.theirAvg)),
@@ -271,7 +272,7 @@ __SHARED_JS__
     const a = PAYLOAD.attendance || {};
     const card = document.getElementById('attendance-card');
     if (a.theirAvg == null) {
-      card.innerHTML = `<p class="section-sub" style="margin:0;">Încă nu e trecută prezența la nicio duminică în care ${SELF ? 'ai predicat' : 'a predicat'}. Se completează din Program duminică, după fiecare întâlnire.</p>`;
+      card.innerHTML = `<p class="section-sub" style="margin:0;">Niciun rând din Sheet-ul de prezență pentru duminicile în care ${SELF ? 'ai predicat' : 'a predicat'}.</p>`;
       return;
     }
     const max = Math.max(a.theirAvg || 0, a.restAvg || 0, ...a.perSunday.map(p => p.attendance)) || 1;
@@ -283,6 +284,10 @@ __SHARED_JS__
     html += bar(`Media duminicilor ${his}`, a.theirAvg, 'accent2');
     if (a.restAvg != null) html += bar('Media celorlalte', a.restAvg);
     html += '</div>';
+    const detailBits = [];
+    if (a.theirPercentAvg != null) detailBits.push(`${a.theirPercentAvg.toFixed(0)}% dintre parteneri, în medie`);
+    if (a.theirGuestsAvg != null) detailBits.push(`~${Math.round(a.theirGuestsAvg)} musafiri, în medie`);
+    if (detailBits.length) html += `<p class="section-sub" style="margin:12px 0 0;">${detailBits.join(' · ')}.</p>`;
     if (a.perSunday.length) {
       html += '<div class="att-bars" style="margin-top:18px; padding-top:16px; border-top:1px solid var(--border);">' +
         a.perSunday.slice().reverse().map(p => bar(p.date.split('-').reverse().join('.'), p.attendance, 'accent2')).join('') + '</div>';

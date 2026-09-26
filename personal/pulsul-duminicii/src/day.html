@@ -191,6 +191,13 @@ __SHARED_JS__
   ];
   if (best) stats.push({ tag: 'Cel mai bine', val: best.label, sub: `medie ${best.avg.toFixed(2)}` });
   if (worst && worst.key !== best?.key) stats.push({ tag: 'De urmărit', val: worst.label, sub: `medie ${worst.avg.toFixed(2)}` });
+  if (PAYLOAD.attendance) {
+    const a = PAYLOAD.attendance;
+    const bits = [];
+    if (a.percent != null) bits.push(`${a.percent}% dintre parteneri`);
+    if (a.guests != null) bits.push(`${a.guests} musafiri`);
+    stats.push({ tag: 'Prezență', val: `${a.total} persoane`, sub: bits.join(' · ') });
+  }
   statsWrap.innerHTML = stats.map(s => `
     <div class="card kpi">
       <div class="tag">${esc(s.tag)}</div>

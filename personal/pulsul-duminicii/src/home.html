@@ -178,6 +178,13 @@ __SHARED_CSS__
       </div>
       <div class="go">Răspunsuri pe zile &rarr;</div>
     </a>
+    <a href="/prezenta" class="card days-cta" id="attendance-teaser" style="margin-top:14px;" hidden>
+      <div>
+        <h3>Câți am fost, duminică de duminică?</h3>
+        <p id="attendance-teaser-sub"></p>
+      </div>
+      <div class="go">Evoluția prezenței &rarr;</div>
+    </a>
   </section>
 
   <section id="quotes">
@@ -226,6 +233,16 @@ __SHARED_JS__
     kpiWrap.appendChild(el);
   });
   document.getElementById('hero-score').textContent = DATA.overallAvg.toFixed(2);
+
+  const attSummary = META.attendanceSummary;
+  if (attSummary) {
+    const teaser = document.getElementById('attendance-teaser');
+    teaser.hidden = false;
+    const bits = [`medie ${Math.round(attSummary.avgTotal)} persoane`];
+    if (attSummary.avgPercent != null) bits.push(`${attSummary.avgPercent.toFixed(0)}% dintre parteneri`);
+    document.getElementById('attendance-teaser-sub').textContent =
+      `${bits.join(' · ')}, pe ${attSummary.count} ${attSummary.count === 1 ? 'duminică' : 'duminici'}.`;
+  }
 
   const kpiGrid = document.getElementById('kpi-grid');
   (META.overviewCards || []).forEach(c => {

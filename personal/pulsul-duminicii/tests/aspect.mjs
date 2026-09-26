@@ -6,8 +6,8 @@ import { loggedIn, PHONE, DESKTOP } from './lib.mjs';
 import { ADMIN, MARIUS, MARIUS_SUNDAY, DAY_WITH_FEEDBACK } from './fixtures.mjs';
 
 const PAGES = {
-  admin: ['/', '/zile', `/zile/${DAY_WITH_FEEDBACK}`, '/categorii', '/categorii/q5', '/predicatori', '/predicatori/marius', '/program', `/program/${MARIUS_SUNDAY}`, '/admin/conturi'],
-  marius: ['/eu', '/program', `/program/${MARIUS_SUNDAY}`, '/cont'],
+  admin: ['/', '/zile', `/zile/${DAY_WITH_FEEDBACK}`, '/categorii', '/categorii/q5', '/predicatori', '/predicatori/marius', '/prezenta', '/program', `/program/${MARIUS_SUNDAY}`, '/admin/conturi'],
+  marius: ['/eu', '/prezenta', '/program', `/program/${MARIUS_SUNDAY}`, '/cont'],
 };
 
 export default async function aspect(t, { B, browser, shots }) {

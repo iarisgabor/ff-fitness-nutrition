@@ -4,10 +4,13 @@
 // editabil de admin — vezi CLAUDE.md).
 //
 // Sheet-ul are o coloană per membru (0/1, prezent sau nu) — nu ne interesează
-// individual, citim doar coloanele agregate: Data, Total parteneri, Musafiri, Total.
-// Match EXACT pe header (nu containsAny ca la celelalte Sheet-uri): "Total" și
+// individual, citim doar coloanele agregate: Data, Total parteneri, Procent, Musafiri,
+// Total. Match EXACT pe header (nu containsAny ca la celelalte Sheet-uri): "Total" și
 // "Total parteneri" conțin amândouă cuvântul "total", iar o potrivire pe cuvânt-cheie
 // ar lua-o pe prima găsită (greșit) în loc de coloana chiar numită "Total".
+// "Procent" = din câți parteneri ai bisericii au fost prezenți (musafirii nu intră la
+// numitor) — vine deja calculat din Sheet, nu-l recalculăm noi (nu știm numărul total
+// de parteneri independent de acest Sheet).
 //
 // Fetch-ul + cache-ul stau AICI, nu în render.js ca la getSchedule — program.js
 // (rutele de scriere ale Programului) au nevoie de prezență ca să răspundă cu date
@@ -27,6 +30,7 @@ export function buildAttendanceColumnMap(headerRow) {
   return {
     dateCol: findExact('data') ?? 1,
     membersCol: findExact('total parteneri'),
+    percentCol: findExact('procent'),
     guestsCol: findExact('musafiri'),
     totalCol: findExact('total'),
   };
@@ -47,17 +51,39 @@ function toInt(raw) {
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
+// "73%" / "73,5 %" -> 73 / 73.5 — coloana Procent e text formatat, nu număr brut.
+function toPercent(raw) {
+  const cleaned = String(raw ?? '').trim().replace('%', '').replace(',', '.');
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? Math.round(n * 10) / 10 : null;
+}
+
 export function rowsToAttendance(rows, columnMap) {
   return rows
     .map((row) => ({
       date: toInternalDate(row[columnMap.dateCol]),
       members: columnMap.membersCol != null ? toInt(row[columnMap.membersCol]) : null,
+      percent: columnMap.percentCol != null ? toPercent(row[columnMap.percentCol]) : null,
       guests: columnMap.guestsCol != null ? toInt(row[columnMap.guestsCol]) : null,
       total: columnMap.totalCol != null ? toInt(row[columnMap.totalCol]) : null,
     }))
     // O dată neparsabilă sau fără total nu poate fi folosită — restul rândului
     // (checkbox-urile per membru) nu ne interesează, așa că nu blocăm pe ele.
     .filter((r) => r.date && r.total != null);
+}
+
+// Rândurile brute, într-o serie cronologică ASCENDENTĂ cu `slug` — analog
+// categoryWeeklySeries din transform.js, dar fără histogramă (prezența e un număr de
+// persoane, nu un rating 1-5). Folosit de pagina /prezenta și de rezumatele de acasă.
+export function attendanceSeries(rows) {
+  return rows
+    .slice()
+    .sort((a, b) => {
+      const [da, ma, ya] = a.date.split('.').map(Number);
+      const [db, mb, yb] = b.date.split('.').map(Number);
+      return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
+    })
+    .map((r) => ({ ...r, slug: dateToSlug(r.date) }));
 }
 
 const ATTENDANCE_KEY = 'attendance_sheet';

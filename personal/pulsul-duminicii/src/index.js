@@ -3,7 +3,7 @@ import { attemptLogin, createSession, destroySession, sessionCookie, clearSessio
 import {
   renderHome, renderDaysList, renderDay, renderCategoriesIndex, renderCategoryDetail,
   renderPreachersIndex, renderPreacherDetail, renderMe, renderLogin, renderProgramList,
-  renderProgramEdit, renderAccounts, preacherDates, refreshPayloadCache,
+  renderProgramEdit, renderAccounts, renderAttendance, preacherDates, refreshPayloadCache,
 } from './render.js';
 import { handleProgramApi, serveResource } from './program.js';
 import { handleAccountsApi } from './accounts.js';
@@ -120,6 +120,11 @@ export default {
       if (programMatch) {
         const body = await renderProgramEdit(env, ctx, user, programMatch[1]);
         return body === null ? text('Nu există program pentru această dată.', 404) : html(body);
+      }
+      // Prezența nu e sensibilă (doar cifre agregate) — vizibilă pentru ambele roluri,
+      // la fel ca Programul, nu doar pentru admin ca restul „Analiză".
+      if (path === '/prezenta') {
+        return html(await renderAttendance(env, ctx, user));
       }
 
       // ---- predicator ----

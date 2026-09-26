@@ -9,6 +9,7 @@ import LOGIN_TEMPLATE from './login.html';
 import PROGRAM_LIST_TEMPLATE from './program-list.html';
 import PROGRAM_EDIT_TEMPLATE from './program-edit.html';
 import ACCOUNTS_TEMPLATE from './admin-accounts.html';
+import ATTENDANCE_TEMPLATE from './attendance.html';
 import SHARED_HEAD from './head.html';
 import SHARED_CSS from './shared.css';
 import SHARED_JS from './shared.txt';
@@ -21,7 +22,7 @@ import { getCachedAiSummary, generateAndCacheAiSummary } from './aiSummary.js';
 import { RANGE_PRESETS, weeksForPreset, getCachedTrendSummary, generateAndCacheTrendSummary } from './aiTrendSummary.js';
 import { SHEET_RANGE, PREACHERS_SHEET_RANGE, DIMENSIONS } from './config.js';
 import { buildPreacherColumnMap, rowsToSchedule, preacherSlug } from './preachers.js';
-import { getAttendance, attendanceForSlug } from './attendance.js';
+import { getAttendance, attendanceForSlug, attendanceSeries } from './attendance.js';
 import { listSundays, planPayload, todayRo } from './program.js';
 import { listAccounts } from './accounts.js';
 import { publicUser } from './session.js';
@@ -228,7 +229,25 @@ export async function buildHomePayload(env, ctx) {
     overviewCards.push({ tag: 'Vârstă dominantă', val: topAge.label, sub: `${topAge.n} din ${totalAge} răspunsuri (${Math.round((topAge.n / totalAge) * 100)}%)` });
   }
 
-  return { DATA: data, meta: { ...meta, heroKpis, overviewCards } };
+  // Prezența — Sheet separat de feedback (attendance.js), nu depinde de getComputedPayload.
+  const { rows: attendanceRows } = await getAttendance(env, ctx);
+  let attendanceSummary = null;
+  if (attendanceRows.length) {
+    const avgTotal = average(attendanceRows.map((a) => a.total));
+    const avgPercent = average(attendanceRows.map((a) => a.percent));
+    const avgGuests = average(attendanceRows.map((a) => a.guests));
+    overviewCards.push({
+      tag: 'Prezență medie',
+      val: `${Math.round(avgTotal)} persoane`,
+      sub: [
+        avgPercent != null ? `${avgPercent.toFixed(0)}% dintre parteneri` : null,
+        avgGuests != null ? `~${Math.round(avgGuests)} musafiri` : null,
+      ].filter(Boolean).join(' · ') || `pe ${attendanceRows.length} duminici`,
+    });
+    attendanceSummary = { avgTotal, avgPercent, avgGuests, count: attendanceRows.length };
+  }
+
+  return { DATA: data, meta: { ...meta, heroKpis, overviewCards, attendanceSummary } };
 }
 
 // ---- pagina /zile ----
@@ -275,6 +294,12 @@ export async function buildDayPayload(env, ctx, slug, user) {
   const scheduleEntry = schedule.find((s) => s.date === date);
   const preacher = scheduleEntry ? { name: scheduleEntry.speaker, slug: preacherSlug(scheduleEntry.speaker) } : null;
 
+  const { rows: attendanceRows } = await getAttendance(env, ctx);
+  const attendanceRow = attendanceForSlug(attendanceRows, slug);
+  const attendance = attendanceRow
+    ? { total: attendanceRow.total, members: attendanceRow.members, guests: attendanceRow.guests, percent: attendanceRow.percent }
+    : null;
+
   const meta = baseMeta(responses, stale || scheduleStale);
   delete meta._dates;
   // Predicatorul vede doar duminicile lui — fără săgeți spre ziua de dinainte/după.
@@ -283,7 +308,7 @@ export async function buildDayPayload(env, ctx, slug, user) {
   meta.overallAvg = data.overallAvg;
 
   const dimLabels = DIMENSIONS.map((d) => ({ key: d.key, label: d.label, full: d.full }));
-  return { date, items, dimLabels, aiSummary, preacher, meta };
+  return { date, items, dimLabels, aiSummary, preacher, attendance, meta };
 }
 
 // ---- pagina /categorii ----
@@ -333,6 +358,27 @@ export async function buildCategoryDetailPayload(env, ctx, key) {
   delete meta._dates;
 
   return { key, label: dim.label, full: dim.full, series, allKeys, trendSummaries, meta };
+}
+
+// ---- pagina /prezenta ----
+//
+// Sursă separată de getComputedPayload (Sheet-ul de feedback) — /prezenta nu trebuie
+// să depindă de acesta, la fel cum /predicatori nu depinde strict de Calendar predicare.
+
+export async function renderAttendance(env, ctx, user) {
+  return fillPage(ATTENDANCE_TEMPLATE, user, await buildAttendancePayload(env, ctx));
+}
+
+export async function buildAttendancePayload(env, ctx) {
+  const { rows, stale, error } = await getAttendance(env, ctx);
+  const series = attendanceSeries(rows);
+  const meta = {
+    stale, error,
+    totalSundays: series.length,
+    dateRangeLabel: series.length ? `${formatDateLabel(series[0].date)}–${formatDateLabel(series[series.length - 1].date)}` : '',
+    generatedAtLabel: new Date().toISOString(),
+  };
+  return { series, meta };
 }
 
 // ---- pagina /predicatori ----
@@ -436,7 +482,12 @@ async function buildPreacherStats(env, ctx, name) {
     theirAvg: average(theirAttendance.map((a) => a.total)),
     restAvg: average(restAttendance.map((a) => a.total)),
     allAvg: average(attendanceRows.map((a) => a.total)),
-    perSunday: theirAttendance.map((a) => ({ date: dateToSlug(a.date), attendance: a.total })),
+    theirGuestsAvg: average(theirAttendance.map((a) => a.guests)),
+    theirPercentAvg: average(theirAttendance.map((a) => a.percent)),
+    restPercentAvg: average(restAttendance.map((a) => a.percent)),
+    perSunday: theirAttendance.map((a) => ({
+      date: dateToSlug(a.date), attendance: a.total, members: a.members, guests: a.guests, percent: a.percent,
+    })),
   };
 
   // Duminicile următoare: din Program (dacă e deja creat) + din calendar (dacă nu).
