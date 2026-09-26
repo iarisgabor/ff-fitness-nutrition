@@ -82,6 +82,15 @@ async function sha256Hex(text) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Vezi comentariul din aiSummary.js — Claude scapă ocazional câte un tag HTML sau
+// marcaj markdown; pe site esc() îl arată apoi literal ("<span class=...>") în loc
+// să-l execute, iar în aplicația nativă Compose Text afișează același text literal
+// la fel de urât. Aplicat și la citirea din cache (getCachedTrendSummary), ca să
+// igienizeze retroactiv textele deja cache-uite înainte de acest fix.
+function stripFormatting(text) {
+  return String(text || '').replace(/<[^>]*>/g, '').replace(/\*\*/g, '').replace(/__/g, '').trim();
+}
+
 async function kvKeyFor(dimKey, rangeKey, weeks) {
   const hash = await sha256Hex(JSON.stringify(weeks.map((w) => ({ date: w.date, n: w.n, avg: w.avg }))));
   return `trend_summary:${dimKey}:${rangeKey}:${hash}`;
@@ -121,7 +130,7 @@ async function summarizeWithClaude(env, dim, preset, weeks, series, globalAvg) {
     body: JSON.stringify({
       model: 'claude-haiku-4-5',
       max_tokens: 300,
-      system: 'Ești un asistent care analizează evoluția în timp a unei categorii din feedback-ul de duminică al unei biserici, pentru echipa de conducere. Ai la dispoziție doar cifre agregate (medii, evoluție lunară, cel mai bun/slab moment) — NU ai acces la comentariile text ale respondenților. Scrie în română, un singur paragraf scurt (2-3 propoziții), concret: spune clar dacă tendința e crescătoare, descrescătoare sau stabilă, și menționează un moment notabil dacă există. Nu specula cauze pe care nu le poți deduce din cifre. Nu folosi marcaje de listă, introduceri sau concluzii generice. Răspunde DOAR cu paragraful.',
+      system: 'Ești un asistent care analizează evoluția în timp a unei categorii din feedback-ul de duminică al unei biserici, pentru echipa de conducere. Ai la dispoziție doar cifre agregate (medii, evoluție lunară, cel mai bun/slab moment) — NU ai acces la comentariile text ale respondenților. Scrie în română, un singur paragraf scurt (2-3 propoziții), concret: spune clar dacă tendința e crescătoare, descrescătoare sau stabilă, și menționează un moment notabil dacă există. Nu specula cauze pe care nu le poți deduce din cifre. Nu folosi marcaje de listă, introduceri sau concluzii generice, text simplu — fără HTML, fără markdown, fără tag-uri de niciun fel (fără <span>, <b>, **, etc.). Răspunde DOAR cu paragraful.',
       messages: [{ role: 'user', content: lines.join('\n') }],
     }),
   });
@@ -129,14 +138,15 @@ async function summarizeWithClaude(env, dim, preset, weeks, series, globalAvg) {
     throw new Error(`Anthropic API error (${resp.status}): ${await resp.text()}`);
   }
   const data = await resp.json();
-  return (data.content || []).map((b) => b.text || '').join('\n').trim();
+  return stripFormatting((data.content || []).map((b) => b.text || '').join('\n'));
 }
 
 // Rapid — un singur KV.get, niciun apel către Claude. Sigur de folosit sincron în render.
 export async function getCachedTrendSummary(env, dimKey, rangeKey, weeks) {
   if (!env.ANTHROPIC_API_KEY || !env.PULSUL_KV) return null;
   const kvKey = await kvKeyFor(dimKey, rangeKey, weeks);
-  return env.PULSUL_KV.get(kvKey);
+  const cached = await env.PULSUL_KV.get(kvKey);
+  return cached ? stripFormatting(cached) : null;
 }
 
 // Lent (apel real către Claude) — NU se așteaptă în calea de randare, se pornește prin

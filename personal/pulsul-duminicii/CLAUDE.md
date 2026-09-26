@@ -298,6 +298,16 @@ de import ca text.
     acest feature (`predicator.html`, apoi `home.html`). Soluția: scoate link-ul din paragraf,
     pune-l ca `<a class="chip name">` pe rândul lui — `@media (pointer:coarse){ a.chip{min-height:40px…} }`
     din `shared.css` îl trece automat testul.
+44. **Rezumatele AI sunt igienizate de tag-uri HTML/markdown la două momente**: la generare
+    (`summarizeWithClaude`, ambele fișiere `ai*.js`) ȘI la citirea din cache
+    (`getCachedAiSummary`/`getCachedTrendSummary`) — Claude respectă aproape mereu „text simplu"
+    cerut în prompt, dar nu garantat. Pe site, un `<span class="...">` scăpat era corect `esc()`-uit
+    (deci nu rula niciodată ca HTML), dar apărea vizibil, literal, ca text urât; în aplicația
+    nativă, unde `aiSummary` ajunge prin `/api/app/zile/:date` (regula 36), Compose Text arăta
+    exact același text literal. Fixul la sursă (`stripFormatting()`) repară ambele suprafețe
+    deodată. Igienizarea la citire din cache există special ca să curețe retroactiv rezumate deja
+    cache-uite dinainte de acest fix — cache-ul AI e permanent (regula 3), deci un rezumat vechi
+    generat greșit pentru o duminică trecută nu s-ar fi corectat singur altfel.
 
 ## Deploy
 

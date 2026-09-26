@@ -16,6 +16,20 @@ async function sha256Hex(text) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Claude respectă aproape mereu "text simplu", dar nu garantat — din când în când
+// scapă câte un tag HTML sau un marcaj markdown în rezumat. Site-ul și aplicația
+// nativă citesc amândouă acest text din același payload (buildDayPayload din
+// render.js): pe site esc()-ul îl scapă corect înainte de a-l pune în DOM (deci nu
+// rulează niciodată ca HTML), dar apare vizibil, literal, ca text urât
+// ("<span class=...>"); în aplicație, Compose Text afișează orice caracter primit,
+// deci același tag literal apare la fel de urât acolo. Îl curățăm aici — o singură
+// dată, la sursă — ca să repare ambele suprafețe deodată. Aplicat și la citirea din
+// cache (getCachedAiSummary), nu doar la generare, ca să igienizeze retroactiv
+// rezumatele deja cache-uite înainte de acest fix.
+function stripFormatting(text) {
+  return String(text || '').replace(/<[^>]*>/g, '').replace(/\*\*/g, '').replace(/__/g, '').trim();
+}
+
 function collectOpenTextByCategory(items) {
   const byCategory = {};
   for (const dim of DIMENSIONS) {
@@ -40,7 +54,7 @@ async function summarizeWithClaude(env, byCategory) {
     body: JSON.stringify({
       model: 'claude-haiku-4-5',
       max_tokens: 400,
-      system: 'Ești un asistent care rezumă feedback-ul unei biserici după întâlnirea de duminică, pentru echipa de conducere. Scrie în română, 3-5 puncte scurte (max o propoziție fiecare), concrete, fără introduceri sau concluzii. Răspunde DOAR cu punctele, câte unul pe linie, fără marcaje de listă (fără "-" sau numere).',
+      system: 'Ești un asistent care rezumă feedback-ul unei biserici după întâlnirea de duminică, pentru echipa de conducere. Scrie în română, 3-5 puncte scurte (max o propoziție fiecare), concrete, fără introduceri sau concluzii. Răspunde DOAR cu punctele, câte unul pe linie, fără marcaje de listă (fără "-" sau numere), text simplu — fără HTML, fără markdown, fără tag-uri de niciun fel (fără <span>, <b>, **, etc.).',
       messages: [{ role: 'user', content: `Răspunsurile deschise ale acestei duminici, grupate pe categorie:\n\n${prompt}` }],
     }),
   });
@@ -49,7 +63,7 @@ async function summarizeWithClaude(env, byCategory) {
   }
   const data = await resp.json();
   const text = (data.content || []).map((b) => b.text || '').join('\n');
-  return text.split('\n').map((l) => l.trim()).filter(Boolean);
+  return text.split('\n').map((l) => stripFormatting(l)).filter(Boolean);
 }
 
 async function keyFor(date, items) {
@@ -65,7 +79,8 @@ export async function getCachedAiSummary(env, date, items) {
   if (!env.ANTHROPIC_API_KEY || !env.PULSUL_KV) return null;
   const k = await keyFor(date, items);
   if (!k) return null;
-  return env.PULSUL_KV.get(k.kvKey, 'json');
+  const cached = await env.PULSUL_KV.get(k.kvKey, 'json');
+  return cached ? cached.map(stripFormatting).filter(Boolean) : null;
 }
 
 // Lent (apel real către Claude) — NU se așteaptă în calea de randare. Se pornește
