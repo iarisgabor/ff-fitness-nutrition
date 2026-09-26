@@ -46,10 +46,13 @@ mkdirSync(STATE, { recursive: true });
 wrangler('d1', 'migrations', 'apply', 'DB', '--local', '--persist-to', STATE);
 const payloadFile = join(STATE, 'payload.json');
 const scheduleFile = join(STATE, 'schedule.json');
+const attendanceFile = join(STATE, 'attendance.json');
 writeFileSync(payloadFile, JSON.stringify(F.buildPayload()));
 writeFileSync(scheduleFile, JSON.stringify(F.SCHEDULE));
+writeFileSync(attendanceFile, JSON.stringify(F.ATTENDANCE));
 wrangler('kv', 'key', 'put', '--binding', 'PULSUL_KV', '--local', '--persist-to', STATE, 'sheet_payload', '--path', payloadFile);
 wrangler('kv', 'key', 'put', '--binding', 'PULSUL_KV', '--local', '--persist-to', STATE, 'preacher_schedule', '--path', scheduleFile);
+wrangler('kv', 'key', 'put', '--binding', 'PULSUL_KV', '--local', '--persist-to', STATE, 'attendance_sheet', '--path', attendanceFile);
 
 // ---- 2. serverul — parola de test și AI oprit suprascriu orice ai în .dev.vars
 const server = spawn('npx', [
@@ -89,9 +92,8 @@ async function seedViaApi() {
     if (!r.ok) throw new Error(`${method} ${path} → ${r.status} ${await r.text()}`);
   };
   await api('POST', '/api/conturi', { username: F.MARIUS.username, preacher_name: F.MARIUS.preacher, display_name: F.MARIUS.preacher, password: F.MARIUS.password });
-  for (const [date, preacher, attendance] of F.PROGRAMS) {
+  for (const [date, preacher] of F.PROGRAMS) {
     await api('POST', '/api/program', { date, preacher_name: preacher, from: 'template' });
-    if (attendance != null) await api('PATCH', `/api/program/${date}`, { attendance });
   }
 }
 

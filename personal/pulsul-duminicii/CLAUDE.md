@@ -62,6 +62,7 @@ slug de predicator = numele normalizat (`src/preachers.js:preacherSlug`, ex. „
 | **maparea coloană-Sheet → categorie** (Sheet de feedback) | `src/config.js` |
 | rânduri brute → răspunsuri + toate agregatele | `src/transform.js` |
 | **al DOILEA Sheet — „Calendar predicare"**: coloane → schedule, slug de nume | `src/preachers.js` (mapare în `config.js`, `PREACHER_COLUMNS`/`PREACHERS_SHEET_RANGE`) |
+| **al TREILEA Sheet — „Participare parteneri"**: prezența, fetch + cache + parsare | `src/attendance.js` (`ATTENDANCE_SHEET_RANGE` în `config.js`) |
 | orchestrare fetch→transform→randare + cache | `src/render.js` |
 | auth Google prin service account (JWT semnat cu `crypto.subtle`) — comun ambelor Sheet-uri | `src/sheets.js` |
 | rezumat AI per duminică | `src/aiSummary.js` |
@@ -167,8 +168,17 @@ de import ca text.
     ruleze cod pe domeniul nostru); plus `content-security-policy: sandbox` și `nosniff` la
     descărcare. Max 50 MB, urcare ca body brut (nu multipart) ca să curgă direct în R2.
     Fără R2 configurat, urcarea răspunde 503 și merg doar linkurile.
-19. **Prezența se trece manual** în Program duminică (câmp doar pentru admin) — nu vine din
-    Sheet. Statisticile predicatorului compară media duminicilor lui cu a celorlalte.
+19. **Prezența vine dintr-un al TREILEA Sheet** ("Participare parteneri", `ATTENDANCE_SHEET_ID`,
+    `src/attendance.js`), nu se mai trece manual în Program duminică — câmpul e doar de citit
+    acum (alăturat pe dată, `attendanceForSlug`). Sheet-ul are o coloană 0/1 per membru (ignorată);
+    citim doar coloanele agregate `Total parteneri`/`Musafiri`/`Total`, cu match EXACT pe header
+    (nu `containsAny` ca la celelalte Sheet-uri — „Total" și „Total parteneri" conțin amândouă
+    cuvântul „total"). Fetch-ul + cache-ul stau în `attendance.js`, NU în `render.js` ca la
+    `getSchedule` — `program.js` (rutele de scriere ale Programului) au nevoie de prezență ca să
+    răspundă cu date proaspete după fiecare salvare, și un import din `render.js` ar crea un ciclu.
+    Statisticile predicatorului se alătură pe dată cu „Calendar predicare" (ca la `responses`),
+    nu mai pe `preacher_name` din D1. Coloana `sundays.attendance` din D1 rămâne în schemă
+    (istoric), dar nu se mai scrie — fail-soft ca `getSchedule` dacă Sheet-ul nu e accesibil.
 20. **Șablonul duminicii noi e `src/programTemplate.js`**, copiat după planul standard din
     Planning Center. „Copie după o duminică" copiază rândurile (nu resursele) și mută pe
     predicatorul nou elementele care erau pe numele celui vechi.
@@ -283,7 +293,9 @@ npx wrangler tail
 `[vars]` în `wrangler.toml`: `AUTH_MODE` (`none` | `password` | `access`),
 `GOOGLE_SHEET_ID` (`1NIRVF-Dfxbu3BweApf9eWhMW80ZLeXw6RGPAVAQieic` — deținut de
 `butmarius@gmail.com`; service account-ul trebuie adăugat Viewer de cineva cu drept de
-editare pe el). KV: `PULSUL_KV`.
+editare pe el), `PREACHERS_SHEET_ID` (Calendar predicare) și `ATTENDANCE_SHEET_ID`
+(Participare parteneri — `1c4L4Bw0z4S2hao9UOb24GkjUwESuzJwQLiHPm95p-bE`), fiecare cu propriul
+proprietar și acces Viewer de dat separat. KV: `PULSUL_KV`.
 
 D1: `DB` (baza `pulsul-duminicii`, migrații în `migrations/`). R2: `RESURSE` (bucket
 `pulsul-resurse`).

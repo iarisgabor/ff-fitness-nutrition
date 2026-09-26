@@ -21,7 +21,8 @@ import { getCachedAiSummary, generateAndCacheAiSummary } from './aiSummary.js';
 import { RANGE_PRESETS, weeksForPreset, getCachedTrendSummary, generateAndCacheTrendSummary } from './aiTrendSummary.js';
 import { SHEET_RANGE, PREACHERS_SHEET_RANGE, DIMENSIONS } from './config.js';
 import { buildPreacherColumnMap, rowsToSchedule, preacherSlug } from './preachers.js';
-import { listSundays, planPayload, attendanceRows, todayRo } from './program.js';
+import { getAttendance, attendanceForSlug } from './attendance.js';
+import { listSundays, planPayload, todayRo } from './program.js';
 import { listAccounts } from './accounts.js';
 import { publicUser } from './session.js';
 
@@ -426,15 +427,16 @@ async function buildPreacherStats(env, ctx, name) {
   const quotes = pickQuotes(theirResponses).q5 || [];
   const sundayCount = new Set(theirResponses.map((r) => r.date)).size;
 
-  // Prezența — trecută manual în Program duminică (D1), nu vine din Sheet.
-  const attendance = await attendanceRows(env);
-  const theirAttendance = attendance.filter((a) => samePreacher(a.preacher_name, name));
-  const restAttendance = attendance.filter((a) => !samePreacher(a.preacher_name, name));
+  // Prezența — al TREILEA Sheet (attendance.js), alăturat pe dată cu Calendarul
+  // predicare, la fel ca responses mai sus (`dates`).
+  const { rows: attendanceRows } = await getAttendance(env, ctx);
+  const theirAttendance = attendanceRows.filter((a) => dates.has(a.date));
+  const restAttendance = attendanceRows.filter((a) => !dates.has(a.date));
   const attendanceStats = {
-    theirAvg: average(theirAttendance.map((a) => a.attendance)),
-    restAvg: average(restAttendance.map((a) => a.attendance)),
-    allAvg: average(attendance.map((a) => a.attendance)),
-    perSunday: theirAttendance.map((a) => ({ date: a.date, attendance: a.attendance })),
+    theirAvg: average(theirAttendance.map((a) => a.total)),
+    restAvg: average(restAttendance.map((a) => a.total)),
+    allAvg: average(attendanceRows.map((a) => a.total)),
+    perSunday: theirAttendance.map((a) => ({ date: dateToSlug(a.date), attendance: a.total })),
   };
 
   // Duminicile următoare: din Program (dacă e deja creat) + din calendar (dacă nu).
@@ -509,14 +511,17 @@ export async function renderProgramList(env, ctx, user) {
 export async function buildProgramListPayload(env, ctx, user) {
   const today = todayRo();
   const isAdmin = user.role === 'admin';
-  const [sundays, { schedule }] = await Promise.all([listSundays(env), getSchedule(env, ctx)]);
+  const [sundays, { schedule }, { rows: attendanceRows }] = await Promise.all([
+    listSundays(env), getSchedule(env, ctx), getAttendance(env, ctx),
+  ]);
   const mine = (name) => user.role === 'preacher' && samePreacher(name, user.preacherName);
 
   const visible = sundays
     .filter((s) => isAdmin || s.date >= today || mine(s.preacher_name))
     .map((s) => ({
       date: s.date, preacher_name: s.preacher_name, start_time: s.start_time,
-      attendance: s.attendance, total_sec: s.total_sec, resource_count: s.resource_count,
+      attendance: attendanceForSlug(attendanceRows, s.date)?.total ?? null,
+      total_sec: s.total_sec, resource_count: s.resource_count,
       isPast: s.date < today, mine: mine(s.preacher_name),
     }));
 

@@ -140,8 +140,8 @@ __SHARED_JS__
     if (s.total_sec) bits.push(`durată ${formatDuration(s.total_sec)}`);
     const side = [];
     if (s.resource_count) side.push(`📎 ${s.resource_count}`);
-    if (s.isPast && s.attendance != null) side.push(`${s.attendance} prezenți`);
-    else if (s.isPast && isAdmin) side.push('prezență necompletată');
+    if (s.attendance != null) side.push(`${s.attendance} prezenți`);
+    else if (s.isPast && isAdmin) side.push('prezență fără date în Sheet');
     return `
       <a class="card sunday-row" href="/program/${s.date}">
         ${dateBlock(s.date)}

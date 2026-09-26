@@ -233,6 +233,15 @@ __SHARED_JS__
     return (b / 1024 / 1024).toFixed(1).replace('.0','') + ' MB';
   }
   function extOf(name){ return (String(name).split('.').pop() || '').slice(0,4).toUpperCase(); }
+  // Prezența vine dintr-un Sheet completat separat (nu se mai trece manual aici) —
+  // vezi attendance.js. `plan.isPast` decide doar mesajul când nu există rând pentru dată.
+  function attendanceText(s, isPast){
+    if (s.attendance == null) return isPast ? 'necompletată în Sheet pentru această dată' : 'apare după completarea Sheet-ului';
+    const parts = [];
+    if (s.attendance_members != null) parts.push(`${s.attendance_members} parteneri`);
+    if (s.attendance_guests != null) parts.push(`${s.attendance_guests} musafiri`);
+    return parts.length ? `${s.attendance} (${parts.join(' + ')}) · din Sheet` : `${s.attendance} · din Sheet`;
+  }
   const resourcesFor = (itemId) => plan.resources.filter(r => r.item_id === itemId);
   const itemById = (id) => plan.items.find(i => i.id === id);
   const totalSec = () => plan.items.filter(i => i.kind !== 'header').reduce((s, i) => s + i.length_sec, 0);
@@ -267,7 +276,7 @@ __SHARED_JS__
       `durată ${formatDuration(t)}`,
     ];
     if (plan.perms.ownSunday) chips.push('predici tu');
-    if (plan.isPast && s.attendance != null) chips.push(`${s.attendance} prezenți`);
+    if (s.attendance != null) chips.push(`${s.attendance} prezenți`);
     document.getElementById('head-meta').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
 
     const actions = [];
@@ -307,7 +316,7 @@ __SHARED_JS__
         <div class="settings-grid">
           <label class="field p-name"><span>Predicator</span><input class="input" name="preacher_name" list="preachers-dl" value="${esc(s.preacher_name)}" autocomplete="off"></label>
           <label class="field"><span>Început</span><input class="input" type="time" name="start_time" value="${esc(s.start_time)}"></label>
-          <label class="field"><span>Prezență</span><input class="input" type="number" min="0" step="1" name="attendance" value="${s.attendance ?? ''}" placeholder="${plan.isPast ? 'nr. persoane' : 'după întâlnire'}"></label>
+          <div class="field"><span>Prezență</span><div class="input" style="color:var(--text-2); display:flex; align-items:center;">${attendanceText(s, plan.isPast)}</div></div>
           <label class="field wide"><span>Notițe generale</span><textarea class="input" name="notes" rows="2" placeholder="ex. echipa de tehnic, ce se schimbă față de obicei…">${esc(s.notes)}</textarea></label>
         </div>
         <datalist id="preachers-dl">${PAYLOAD.preachers.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
@@ -319,8 +328,7 @@ __SHARED_JS__
       const btn = e.target.querySelector('[type=submit]');
       try {
         const next = await withBusy(btn, () => api('PATCH', `/api/program/${DATE}`, {
-          preacher_name: fd.get('preacher_name'), start_time: fd.get('start_time'),
-          attendance: fd.get('attendance') === '' ? null : Number(fd.get('attendance')), notes: fd.get('notes'),
+          preacher_name: fd.get('preacher_name'), start_time: fd.get('start_time'), notes: fd.get('notes'),
         }));
         setPlan(next, { details: true });
         toast('Detaliile au fost salvate.');

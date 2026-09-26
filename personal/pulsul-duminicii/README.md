@@ -99,8 +99,8 @@ După deploy:
 3. **Program duminică** → „+ Duminică nouă" (sau „Creează" pe o duminică din calendar).
    Predicatorul se completează singur din calendar; programul pornește de la șablonul
    standard (`src/programTemplate.js`) sau ca o copie a unei duminici anterioare.
-4. După fiecare întâlnire, trece **Prezența** în detaliile duminicii — apare în
-   statisticile predicatorului.
+4. **Prezența** apare automat în detaliile duminicii, din Sheet-ul „Participare
+   parteneri" (nu se mai trece manual) — vezi pasul 9 mai jos pentru acces.
 
 Dacă R2 nu e încă activat, poți face deploy fără el doar comentând blocul `[[r2_buckets]]`
 din `wrangler.toml`: site-ul merge, iar la resurse se pot adăuga doar linkuri (Drive,
@@ -139,6 +139,12 @@ Viewer pe un singur Sheet e suficient și mai simplu de întreținut.
    de editare pe el. `PREACHERS_SHEET_ID` e deja completat în `wrangler.toml`. Fără acest
    pas, `/predicatori` rămâne funcțional dar gol, cu un mesaj explicativ (vezi CLAUDE.md,
    regula 15) — restul site-ului nu e afectat.
+9. **Repetă pasul 6, dar pentru al TREILEA Sheet** — „Participare parteneri"
+   ([id `1c4L4Bw0z4S2hao9UOb24GkjUwESuzJwQLiHPm95p-bE`](https://docs.google.com/spreadsheets/d/1c4L4Bw0z4S2hao9UOb24GkjUwESuzJwQLiHPm95p-bE/edit)),
+   completat separat, cu prezența (parteneri + musafiri) la fiecare duminică — înlocuiește
+   vechiul câmp de prezență, editabil manual în Program duminică. `ATTENDANCE_SHEET_ID` e
+   deja completat în `wrangler.toml`. Fără acest pas, prezența apare goală ("necompletată
+   în Sheet") — restul site-ului nu e afectat (fail-soft, ca la „Calendar predicare").
 
 `src/config.js` a fost deja verificat contra headerului real al Sheet-ului (tab-ul
 se numește „Răspunsuri la formular 1", `SHEET_RANGE` e deja setat corect) — nu ar

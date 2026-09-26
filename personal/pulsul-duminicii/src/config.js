@@ -85,3 +85,10 @@ export const PREACHER_COLUMNS = {
   date: { keywords: ['data'] },
   speaker: { keywords: ['speaker', 'predicator'] },
 };
+
+// Mapare pentru al TREILEA Sheet — "Participare parteneri": prezența (parteneri +
+// musafiri) la fiecare duminică, id propriu în ATTENDANCE_SHEET_ID (wrangler.toml).
+// Range generos (CZ ~ 104 coloane) — Sheet-ul are o coloană per membru, în plus
+// creștere pe măsură ce se adaugă parteneri noi. Coloanele agregate de care ne
+// interesează (Data, Total parteneri, Musafiri, Total) se identifică în attendance.js.
+export const ATTENDANCE_SHEET_RANGE = 'A1:CZ';

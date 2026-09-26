@@ -8,6 +8,7 @@
 import { DEFAULT_PROGRAM, PREACHER_PLACEHOLDER } from './programTemplate.js';
 import { preacherSlug } from './preachers.js';
 import { normalizeText } from './transform.js';
+import { getAttendance, attendanceForSlug } from './attendance.js';
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 // Fără html/svg/js — un fișier servit de pe domeniul nostru nu are voie să poată rula cod.
@@ -134,10 +135,13 @@ export async function planPayload(env, user, date) {
   const raw = await loadRaw(env, date);
   if (!raw || !canViewSunday(user, raw.sunday)) return null;
   const { sunday, items, resources } = raw;
+  const { rows: attendanceRows } = await getAttendance(env);
+  const att = attendanceForSlug(attendanceRows, sunday.date);
   return {
     sunday: {
       date: sunday.date, preacher_name: sunday.preacher_name, start_time: sunday.start_time,
-      attendance: sunday.attendance, notes: sunday.notes,
+      attendance: att?.total ?? null, attendance_members: att?.members ?? null, attendance_guests: att?.guests ?? null,
+      notes: sunday.notes,
       updated_at: sunday.updated_at, updated_by: sunday.updated_by,
     },
     items: items.map((item) => ({
@@ -162,15 +166,6 @@ export async function planPayload(env, user, date) {
     },
     isPast: sunday.date < todayRo(),
   };
-}
-
-// Prezența trecută manual, pe dată — folosită de statisticile predicatorilor.
-export async function attendanceRows(env) {
-  if (!env.DB) return [];
-  const { results } = await env.DB.prepare(
-    'SELECT date, preacher_name, attendance FROM sundays WHERE attendance IS NOT NULL ORDER BY date'
-  ).all();
-  return results;
 }
 
 // ---------------------------------------------------------------- scriere
@@ -227,22 +222,13 @@ async function updateSunday(env, user, raw, body) {
   const startTime = body.start_time !== undefined
     ? (/^\d{2}:\d{2}$/.test(body.start_time) ? body.start_time : s.start_time)
     : s.start_time;
-  let attendance = s.attendance;
-  if (body.attendance !== undefined) {
-    if (body.attendance === null || body.attendance === '') attendance = null;
-    else {
-      const n = Number(body.attendance);
-      if (!Number.isInteger(n) || n < 0 || n > 100000) return fail(400, 'Prezența trebuie să fie un număr întreg.');
-      attendance = n;
-    }
-  }
   const notes = body.notes !== undefined ? str(body.notes, 4000) : s.notes;
 
   // Dacă se schimbă predicatorul, elementele trecute pe numele vechiului predicator
   // (Predică, Cina Domnului) trec pe numele celui nou.
   const stmts = [
-    env.DB.prepare('UPDATE sundays SET preacher_name = ?, start_time = ?, attendance = ?, notes = ? WHERE id = ?')
-      .bind(preacher, startTime, attendance, notes, s.id),
+    env.DB.prepare('UPDATE sundays SET preacher_name = ?, start_time = ?, notes = ? WHERE id = ?')
+      .bind(preacher, startTime, notes, s.id),
   ];
   if (preacher !== s.preacher_name && s.preacher_name) {
     for (const item of raw.items) {

@@ -41,6 +41,12 @@ export const PROGRAMS = [
   [OTHER_UPCOMING, 'Beni I', null],
 ];
 
+// Al treilea Sheet ("Participare parteneri") — prezența nu mai vine din PATCH pe Program
+// (vezi CLAUDE.md, regula 19), ci din `attendance_sheet` în KV, la fel ca `preacher_schedule`.
+export const ATTENDANCE = PROGRAMS
+  .filter(([, , attendance]) => attendance != null)
+  .map(([date, , attendance]) => ({ date: toDMY(date), members: attendance - 12, guests: 12, total: attendance }));
+
 // ---- răspunsurile la formular: 28 de duminici, până la LAST_SUNDAY inclusiv
 let seed = 7;
 const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;

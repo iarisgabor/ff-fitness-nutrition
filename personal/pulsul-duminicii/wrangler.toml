@@ -35,6 +35,9 @@ GOOGLE_SHEET_ID = "1NIRVF-Dfxbu3BweApf9eWhMW80ZLeXw6RGPAVAQieic"
 # "Calendar predicare" — cine predică în fiecare duminică, Sheet SEPARAT de cel
 # de mai sus. Service account-ul trebuie adăugat Viewer și pe acesta (vezi README).
 PREACHERS_SHEET_ID = "1LVHzHB4z_dGm5v9xsnp_i2NotgUVGnBdmzpv3XsWpN0"
+# "Participare parteneri" — prezența (parteneri + musafiri) la fiecare duminică, al
+# TREILEA Sheet, tot separat. Service account-ul trebuie adăugat Viewer și pe acesta.
+ATTENDANCE_SHEET_ID = "1c4L4Bw0z4S2hao9UOb24GkjUwESuzJwQLiHPm95p-bE"
 
 # Rulează întâi:
 #   wrangler kv namespace create PULSUL_KV
