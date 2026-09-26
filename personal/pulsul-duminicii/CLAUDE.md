@@ -272,11 +272,14 @@ de import ca text.
     față de perioada anterioară) rămân independente de metrica aleasă. Pagină vizibilă pentru
     **ambele roluri** (nu doar admin ca restul „Analiză") — cifre agregate, nimic sensibil.
     `renderAttendance`/`buildAttendancePayload` NU depind de `getComputedPayload` (Sheet-ul de
-    feedback) — la fel ca `/predicatori`, funcționează chiar dacă acela e jos. **Rămâne fără ecran
-    în aplicația nativă** (`android-nativ/`) — există `/api/app/prezenta` (parity, testat în
-    `tests/api-app.mjs`), dar nu și un ecran Kotlin/Compose care să-l consume; cine adaugă unul
-    trebuie să reia manual logica de interval din `attendance.html` (vezi regula 38 despre
-    duplicarea calculelor client în `domain/*.kt`).
+    feedback) — la fel ca `/predicatori`, funcționează chiar dacă acela e jos. **Are ecran și în
+    aplicația nativă** (`AttendanceScreen.kt`, tab „Prezență" pentru ambele roluri, la fel ca pe
+    site) — logica de interval e reimplementată în `domain/AttendanceRange.kt` (NU reutilizează
+    `CategoryRange`: cifrele sunt persoane/procente, nu note 1-5, la fel cum nici site-ul nu
+    partajează `renderTrend()` între `category.html` și `attendance.html` — vezi regula 38 despre
+    duplicarea calculelor client în `domain/*.kt`). `LineChart` din `ui/charts/Charts.kt` a primit
+    parametrii opționali `yDomain`/`refLabel` ca să poată desena și alte cifre decât note 1-5, fără
+    să schimbe comportamentul implicit folosit de `CategoryScreen`/`PreacherScreen`.
 41. **Prezența mai apare în trei locuri, pe lângă `/prezenta`**: în `/zile` (fiecare cartonaș de
     duminică arată totalul, `buildDaysListPayload` alătură pe `slug`), în `/zile/:slug` (cifra
     completă — parteneri/musafiri/procent — în `day-stats`) și pe **Acasă** (`/`), unde admin-ul

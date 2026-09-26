@@ -3,7 +3,8 @@
 Aplicație scrisă în **Kotlin + Jetpack Compose**, separată de TWA-ul din `../android/` (acela doar
 deschide site-ul). Aceleași ecrane, aceleași roluri și aceleași date ca site-ul, desenate nativ:
 bun venit, login, Acasă, Duminici (slideshow / toate deodată), Categorii (matrice de corelații,
-intervale), Predicatori, „Statisticile mele", Program duminică (editor, fișiere, linkuri), conturi.
+intervale), Predicatori, Prezență (parteneri/musafiri/procent, grafic + interval), „Statisticile
+mele", Program duminică (editor, fișiere, linkuri), conturi.
 
 | | |
 |---|---|

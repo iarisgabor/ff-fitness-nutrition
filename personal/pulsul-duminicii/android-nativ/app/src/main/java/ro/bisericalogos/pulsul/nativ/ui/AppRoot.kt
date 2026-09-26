@@ -66,6 +66,7 @@ import ro.bisericalogos.pulsul.nativ.ui.components.destinations
 import ro.bisericalogos.pulsul.nativ.ui.components.dismissTipsOnTouch
 import ro.bisericalogos.pulsul.nativ.ui.components.puls
 import ro.bisericalogos.pulsul.nativ.ui.screens.AccountsScreen
+import ro.bisericalogos.pulsul.nativ.ui.screens.AttendanceScreen
 import ro.bisericalogos.pulsul.nativ.ui.screens.CategoriesScreen
 import ro.bisericalogos.pulsul.nativ.ui.screens.CategoryScreen
 import ro.bisericalogos.pulsul.nativ.ui.screens.DayScreen
@@ -160,6 +161,7 @@ fun AppRoot() {
                         composable(Routes.PREACHERS) { PreachersScreen() }
                         composable(Routes.PREACHER) { PreacherScreen(it.arguments?.getString("slug").orEmpty()) }
                         composable(Routes.ME) { PreacherScreen(null) }
+                        composable(Routes.ATTENDANCE) { AttendanceScreen() }
                         composable(Routes.PROGRAM) { ProgramListScreen() }
                         composable(Routes.PROGRAM_EDIT) { ProgramEditScreen(it.arguments?.getString("date").orEmpty()) }
                         composable(Routes.ACCOUNTS) { AccountsScreen() }

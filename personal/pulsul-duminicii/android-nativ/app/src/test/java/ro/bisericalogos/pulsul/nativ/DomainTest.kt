@@ -4,10 +4,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import ro.bisericalogos.pulsul.nativ.data.Answer
+import ro.bisericalogos.pulsul.nativ.data.AttendanceWeek
 import ro.bisericalogos.pulsul.nativ.data.DimLabel
 import ro.bisericalogos.pulsul.nativ.data.Response
 import ro.bisericalogos.pulsul.nativ.data.Week
 import ro.bisericalogos.pulsul.nativ.data.dashless
+import ro.bisericalogos.pulsul.nativ.domain.AttendanceRange
 import ro.bisericalogos.pulsul.nativ.domain.CategoryRange
 import ro.bisericalogos.pulsul.nativ.domain.catsWithData
 import ro.bisericalogos.pulsul.nativ.domain.clock
@@ -134,5 +136,49 @@ class DomainTest {
     @Test fun deviatiaStandard() {
         assertEquals(1.0, CategoryRange.weekStdDev(listOf(0, 0, 1, 0, 1), 4.0), 1e-9)
         assertEquals(0.0, CategoryRange.weekStdDev(listOf(0, 0, 0, 0, 0), 0.0), 1e-9)
+    }
+
+    // ---- /prezenta — AttendanceRange (port din applyRange()/currentBounds() din attendance.html)
+
+    private fun att(d: String, total: Int, members: Int? = null, guests: Int? = null, percent: Double? = null) =
+        AttendanceWeek(d, d.split(".").reversed().joinToString("-"), members, percent, guests, total)
+
+    @Test fun prezentaIntervalGolSiTot() {
+        val series = listOf(att("06.09.2026", 40, 30, 10, 75.0), att("13.09.2026", 50, 35, 15, 87.5), att("20.09.2026", 45, 32, 13, 80.0))
+        val all = AttendanceRange.compute(series, "all", null, null, ms(2026, 9, 25))!!
+        assertEquals(3, all.weeks.size)
+        assertEquals("13.09.2026", all.best.date) // total=50, cel mai mare din interval
+        assertNull(all.prevAvg)
+        // interval personalizat fără nicio duminică
+        assertNull(AttendanceRange.compute(series, "custom", "2025-01-01", "2025-02-01", ms(2026, 9, 25)))
+    }
+
+    @Test fun prezentaMedieSiPerioadaAnterioara() {
+        val series = listOf(
+            att("09.08.2026", 30, 20, 10), att("16.08.2026", 30, 20, 10),
+            att("30.08.2026", 50, 40, 10), att("06.09.2026", 50, 40, 10), att("20.09.2026", 50, 40, 10),
+        )
+        // acum = 25 sep 2026 → intervalul începe pe 25 aug; perioada anterioară: 25 iul - 24 aug
+        val r = AttendanceRange.compute(series, "1", null, null, ms(2026, 9, 25))!!
+        assertEquals(listOf("30.08.2026", "06.09.2026", "20.09.2026"), r.weeks.map { it.date })
+        assertEquals(50.0, r.avg.total!!, 1e-9)
+        assertEquals(30.0, r.prevAvg!!.total!!, 1e-9)
+        assertEquals("30.08.2026", r.best.date) // primul cu total maxim (50) din interval
+    }
+
+    @Test fun prezentaLunaDepasitaCaInJs() {
+        // 31 mai minus 3 luni = 3 martie în JS (setMonth), nu 28 februarie — la fel ca la categorii
+        val series = listOf(att("01.03.2026", 40), att("08.03.2026", 44))
+        val r = AttendanceRange.compute(series, "3", null, null, ms(2026, 5, 31))!!
+        assertEquals(listOf("08.03.2026"), r.weeks.map { it.date })
+    }
+
+    @Test fun prezentaCuColoaneLipsa() {
+        // membri/musafiri/procent pot lipsi (rând vechi, coloană încă necompletată) — media îi
+        // ignoră, nu-i tratează ca 0 (vezi avgOf în AttendanceRange, la fel ca avgOf() din site).
+        val series = listOf(att("06.09.2026", 40, members = null, guests = 10, percent = null), att("13.09.2026", 50, members = 35, guests = 15, percent = 87.5))
+        val r = AttendanceRange.compute(series, "all", null, null)!!
+        assertEquals(35.0, r.avg.members!!, 1e-9)
+        assertEquals(87.5, r.avg.percent!!, 1e-9)
     }
 }

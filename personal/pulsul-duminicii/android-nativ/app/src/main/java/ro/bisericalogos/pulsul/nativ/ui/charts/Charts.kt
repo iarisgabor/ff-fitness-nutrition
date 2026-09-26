@@ -92,6 +92,11 @@ fun LineChart(
     area: Boolean = false,
     glow: Boolean = true,
     padL: Float = 34f, padR: Float = 20f, padT: Float = 24f, padB: Float = 30f,
+    // Implicit: scala 1-5 rotunjită la jumătăți (notele de pe categorie/predicator). Alte cifre
+    // (ex. prezența, un număr de persoane sau un procent 0-100) își dau propriul domeniu — vezi
+    // renderTrend() din attendance.html, care calculează yMin/yMax diferit față de category.html.
+    yDomain: Pair<Double, Double>? = null,
+    refLabel: String? = null,
 ) {
     val c = puls
     val tips = LocalTips.current
@@ -120,8 +125,7 @@ fun LineChart(
         val plotW = W - pl - pr; val plotH = H - pt - pb
         val values = points.map { it.value }
         val scaleVals = if (includeRefInScale && refValue != null) values + refValue else values
-        val yMin = maxOf(1.0, floor(scaleVals.min() * 2) / 2 - 0.4)
-        val yMax = minOf(5.0, ceil(scaleVals.max() * 2) / 2 + 0.2)
+        val (yMin, yMax) = yDomain ?: (maxOf(1.0, floor(scaleVals.min() * 2) / 2 - 0.4) to minOf(5.0, ceil(scaleVals.max() * 2) / 2 + 0.2))
         fun y(v: Double) = (pt + (1 - (v - yMin) / (yMax - yMin)) * plotH).toFloat()
         val xs = xPositions(points.size, W, pl, pr)
 
@@ -140,7 +144,7 @@ fun LineChart(
             // dacă ultimul punct are etichetă și stă lângă linie, „medie" trece sub linie
             val last = points.last()
             val clash = last.valueLabel != null && abs(y(last.value) - ry) < 26.dp.toPx()
-            drawTextRight(measurer, "medie ${fixed(refValue)}", W - pr - (if (clash) 22.dp.toPx() else 0f), if (clash) ry + 16.dp.toPx() else ry - 6.dp.toPx(), refStyle)
+            drawTextRight(measurer, refLabel ?: "medie ${fixed(refValue)}", W - pr - (if (clash) 22.dp.toPx() else 0f), if (clash) ry + 16.dp.toPx() else ry - 6.dp.toPx(), refStyle)
         }
         drawLine(c.border, Offset(pl, pt + plotH), Offset(W - pr, pt + plotH), 1.dp.toPx())
 

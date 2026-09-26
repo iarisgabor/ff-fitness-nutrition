@@ -15,12 +15,13 @@ object Routes {
     const val PREACHERS = "preachers"
     const val PREACHER = "preacher/{slug}"
     const val ME = "me"
+    const val ATTENDANCE = "attendance"
     const val PROGRAM = "program"
     const val PROGRAM_EDIT = "program/{date}"
     const val ACCOUNTS = "accounts"
     const val PASSWORD = "password"
 
-    val TABS = setOf(HOME, DAYS, CATEGORIES, PREACHERS, ME, PROGRAM)
+    val TABS = setOf(HOME, DAYS, CATEGORIES, PREACHERS, ME, ATTENDANCE, PROGRAM)
 
     fun day(slug: String) = "day/$slug"
     fun category(key: String) = "category/$key"
@@ -34,6 +35,7 @@ object Routes {
         CATEGORIES, CATEGORY -> "categories"
         PREACHERS, PREACHER -> "preachers"
         ME -> "me"
+        ATTENDANCE -> "attendance"
         PROGRAM, PROGRAM_EDIT -> "program"
         else -> null
     }

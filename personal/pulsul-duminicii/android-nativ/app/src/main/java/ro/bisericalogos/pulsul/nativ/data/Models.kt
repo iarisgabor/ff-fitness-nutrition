@@ -253,6 +253,30 @@ data class Plan(
 
 @Serializable data class ProgramEditPayload(val plan: Plan, val preachers: List<String> = emptyList(), val hasFeedback: Boolean = false)
 
+// ---- Prezență (/prezenta) — al treilea Sheet, separat de getComputedPayload
+
+@Serializable
+data class AttendanceWeek(
+    val date: String,
+    val slug: String = "",
+    val members: Int? = null,
+    val percent: Double? = null,
+    val guests: Int? = null,
+    val total: Int = 0,
+)
+
+@Serializable
+data class AttendanceMeta(
+    val stale: Boolean = false,
+    val error: String? = null,
+    val totalSundays: Int = 0,
+    val dateRangeLabel: String = "",
+    val generatedAtLabel: String = "",
+)
+
+@Serializable
+data class AttendancePayload(val series: List<AttendanceWeek> = emptyList(), val meta: AttendanceMeta = AttendanceMeta())
+
 @Serializable data class Account(val id: Long, val username: String, val display_name: String, val preacher_name: String, val created_at: String? = null)
 @Serializable data class AccountsReply(val accounts: List<Account> = emptyList())
 

@@ -120,12 +120,17 @@ data class Dest(val key: String, val route: String, val label: String)
 
 fun destinations(user: User?): List<Dest> = when {
     user == null -> emptyList()
-    user.isPreacher -> listOf(Dest("me", "me", "Statistici"), Dest("program", "program", "Program"))
+    user.isPreacher -> listOf(
+        Dest("me", "me", "Statistici"),
+        Dest("attendance", "attendance", "Prezență"),
+        Dest("program", "program", "Program"),
+    )
     else -> listOf(
         Dest("home", "home", "Acasă"),
         Dest("days", "days", "Duminici"),
         Dest("categories", "categories", "Categorii"),
         Dest("preachers", "preachers", "Predicatori"),
+        Dest("attendance", "attendance", "Prezență"),
         Dest("program", "program", "Program"),
     )
 }
