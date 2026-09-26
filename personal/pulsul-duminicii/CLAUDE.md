@@ -277,6 +277,27 @@ de import ca text.
     `tests/api-app.mjs`), dar nu și un ecran Kotlin/Compose care să-l consume; cine adaugă unul
     trebuie să reia manual logica de interval din `attendance.html` (vezi regula 38 despre
     duplicarea calculelor client în `domain/*.kt`).
+41. **Prezența mai apare în trei locuri, pe lângă `/prezenta`**: în `/zile` (fiecare cartonaș de
+    duminică arată totalul, `buildDaysListPayload` alătură pe `slug`), în `/zile/:slug` (cifra
+    completă — parteneri/musafiri/procent — în `day-stats`) și pe **Acasă** (`/`), unde admin-ul
+    vede și un grafic propriu, nu doar un rezumat. Toate patru citesc `getAttendance()` separat —
+    nu există un singur loc central care „injectează" prezența peste tot, fiecare `build…Payload`
+    o cere explicit.
+42. **Acasă (`/`) are acum indicatori de tendință, nu doar medii statice**: cardul „Tendință
+    generală" compară ultima lună cu media compozită completă vs luna dinaintea ei (din
+    `data.months`, aceeași sursă ca graficul „Evoluție în timp" de mai jos); cardul „Prezență
+    medie" compară ultimele `min(4, n/2)` duminici cu cele `min(4, n/2)` dinainte (fereastră fixă
+    de puncte, nu calendaristică — mai robust cu date rare/neregulate decât o comparație pe luni).
+    Secțiunea „Prezență" (grafic propriu, sub „Evoluție în timp") **rămâne ascunsă** (`hidden`)
+    dacă nu sunt cel puțin 2 puncte în `attendanceTrend.chart` — vezi `drawAttendanceTrend()`.
+    Cardurile din `kpi-grid` (`home.html`) NU mai scapă (`esc()`) câmpul `sub` — pot conține
+    `<span class="delta up|down">`, la fel ca paginile de categorie/predicator; niciun `sub` de-acolo
+    nu vine din text liber introdus de cineva (doar labeluri fixe + cifre), deci e sigur.
+43. **Orice link nou într-un `<p class="section-note">` sau text similar de 12-13px pică testul
+    de „ținte mici" pe telefon** (`tests/aspect.mjs`, prag 40px) — s-a întâmplat de două ori la
+    acest feature (`predicator.html`, apoi `home.html`). Soluția: scoate link-ul din paragraf,
+    pune-l ca `<a class="chip name">` pe rândul lui — `@media (pointer:coarse){ a.chip{min-height:40px…} }`
+    din `shared.css` îl trece automat testul.
 
 ## Deploy
 

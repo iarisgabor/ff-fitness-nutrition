@@ -21,6 +21,7 @@ __SHARED_CSS__
 .day-card .d-sub{font-size:12px; color:var(--text-3);}
 .day-card .d-row{display:flex; align-items:center; justify-content:space-between; margin-top:auto;}
 .day-card .d-count{font-size:12.5px; color:var(--text-2);}
+.day-card .d-att{font-size:11.5px; color:var(--text-3); margin-top:1px;}
 .day-card .d-avg{font-family:var(--font-mono); font-weight:700; font-size:18px;}
 .day-card:hover{border-left-color:var(--accent-mark); box-shadow:var(--shadow), 0 0 0 1px var(--accent-mark) inset;}
 
@@ -97,7 +98,10 @@ __SHARED_JS__
         <div class="d-sub">${yyyy}</div>
       </div>
       <div class="d-row">
-        <div class="d-count">${d.count} ${d.count===1?'răspuns':'răspunsuri'}</div>
+        <div>
+          <div class="d-count">${d.count} ${d.count===1?'răspuns':'răspunsuri'}</div>
+          ${d.attendance != null ? `<div class="d-att">${d.attendance} prezenți</div>` : ''}
+        </div>
         <div class="d-avg" style="color:${avgColor}">${d.avg ? d.avg.toFixed(2) : '–'}</div>
       </div>
     `;

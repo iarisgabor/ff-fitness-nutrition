@@ -160,6 +160,19 @@ __SHARED_CSS__
     </div>
   </section>
 
+  <section id="attendance-trend" hidden>
+    <div class="section-head">
+      <h2>Prezență</h2>
+      <p class="section-note">Ultimele duminici — parteneri și musafiri, citit din Sheet-ul de prezență.</p>
+    </div>
+    <div class="card trend-card">
+      <h3>Prezență totală</h3>
+      <div class="trend-sub" id="att-trend-sub"></div>
+      <svg id="att-trend-svg" viewBox="0 0 560 190" style="width:100%; height:190px;"></svg>
+      <a href="/prezenta" class="chip name" style="margin-top:14px;">Toate detaliile, cu interval selectabil &rarr;</a>
+    </div>
+  </section>
+
   <section id="ages">
     <div class="section-head">
       <h2>Cine ne-a scris</h2>
@@ -177,13 +190,6 @@ __SHARED_CSS__
         <p>Deschide fiecare duminică pe rând — slideshow pe categorie sau toate răspunsurile deodată.</p>
       </div>
       <div class="go">Răspunsuri pe zile &rarr;</div>
-    </a>
-    <a href="/prezenta" class="card days-cta" id="attendance-teaser" style="margin-top:14px;" hidden>
-      <div>
-        <h3>Câți am fost, duminică de duminică?</h3>
-        <p id="attendance-teaser-sub"></p>
-      </div>
-      <div class="go">Evoluția prezenței &rarr;</div>
     </a>
   </section>
 
@@ -234,16 +240,6 @@ __SHARED_JS__
   });
   document.getElementById('hero-score').textContent = DATA.overallAvg.toFixed(2);
 
-  const attSummary = META.attendanceSummary;
-  if (attSummary) {
-    const teaser = document.getElementById('attendance-teaser');
-    teaser.hidden = false;
-    const bits = [`medie ${Math.round(attSummary.avgTotal)} persoane`];
-    if (attSummary.avgPercent != null) bits.push(`${attSummary.avgPercent.toFixed(0)}% dintre parteneri`);
-    document.getElementById('attendance-teaser-sub').textContent =
-      `${bits.join(' · ')}, pe ${attSummary.count} ${attSummary.count === 1 ? 'duminică' : 'duminici'}.`;
-  }
-
   const kpiGrid = document.getElementById('kpi-grid');
   (META.overviewCards || []).forEach(c => {
     const el = document.createElement('div');
@@ -251,7 +247,7 @@ __SHARED_JS__
     el.innerHTML = `
       <div class="tag">${c.dot?`<span class="dot" style="background:${c.dot}"></span>`:''}${esc(c.tag)}</div>
       <div class="val" ${c.big?'style="font-size:20px;"':''}>${esc(c.val)}</div>
-      <div class="sub">${esc(c.sub)}</div>
+      <div class="sub">${c.sub}</div>
     `;
     kpiGrid.appendChild(el);
   });
@@ -360,6 +356,68 @@ __SHARED_JS__
   }
   drawTrend();
   onWidthChange(svg, drawTrend);
+
+  // ---- prezență: aceeași formă de grafic (linie + arie), scară dinamică (nu 1-5) ----
+  const attTrend = META.attendanceTrend;
+  if (attTrend && attTrend.chart && attTrend.chart.length >= 2) {
+    document.getElementById('attendance-trend').hidden = false;
+    const deltaTxt = attTrend.delta != null
+      ? `<span class="delta ${attTrend.delta>=0?'up':'down'}">${attTrend.delta>=0?'+':''}${Math.round(attTrend.delta)}</span> față de cele ${attTrend.windowSize} de dinainte`
+      : `ultimele ${attTrend.chart.length} duminici`;
+    document.getElementById('att-trend-sub').innerHTML = deltaTxt;
+    const attSvg = document.getElementById('att-trend-svg');
+    function drawAttendanceTrend(){
+      const pts0 = attTrend.chart;
+      const W = chartWidth(attSvg, 560), H = 190, padL = 34, padR = 20, padT = 24, padB = 30;
+      attSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const vals = pts0.map(p => p.total);
+      const yMin = Math.max(0, Math.floor(Math.min(...vals) * 0.9));
+      let yMax = Math.ceil(Math.max(...vals) * 1.1);
+      if (yMax <= yMin) yMax = yMin + 1;
+      const pts = pts0.map((p,i) => {
+        const x = padL + (i/(pts0.length-1)) * plotW;
+        const y = padT + (1 - (p.total - yMin)/(yMax - yMin)) * plotH;
+        return {x,y,...p};
+      });
+      const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+      const avgY = padT + (1 - (avg - yMin)/(yMax - yMin)) * plotH;
+      const pathD = pts.map((p,i)=> (i===0?'M':'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
+      const areaD = pathD + ` L ${pts[pts.length-1].x.toFixed(1)} ${padT+plotH} L ${pts[0].x.toFixed(1)} ${padT+plotH} Z`;
+      let svgHTML = `
+        <defs>
+          <filter id="attLineGlowHome" x="-30%" y="-60%" width="160%" height="220%">
+            <feGaussianBlur stdDeviation="2.4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <linearGradient id="attAreaFillHome" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--accent-mark)" stop-opacity="0.16"/>
+            <stop offset="100%" stop-color="var(--accent-mark)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${W-padR}" y2="${avgY.toFixed(1)}" stroke="var(--text-3)" stroke-width="1" opacity="0.35"/>
+        <text x="${W-padR}" y="${(avgY-6).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--text-3)" font-family="var(--font-mono)">medie ${Math.round(avg)}</text>
+        <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
+        <path d="${areaD}" fill="url(#attAreaFillHome)"/>
+        <path d="${pathD}" fill="none" stroke="var(--accent-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#attLineGlowHome)"/>
+      `;
+      pts.forEach((p,i)=>{
+        const isLast = i === pts.length-1;
+        svgHTML += `<circle class="pt" data-i="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isLast?6:4.5}" fill="var(--accent-mark)" stroke="var(--surface)" stroke-width="2"/>`;
+        svgHTML += `<text x="${p.x.toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text-3)" font-family="var(--font-body)">${p.short}</text>`;
+        if(isLast){
+          svgHTML += `<text x="${p.x.toFixed(1)}" y="${(p.y-14).toFixed(1)}" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="var(--font-mono)">${p.total}</text>`;
+        }
+      });
+      attSvg.innerHTML = svgHTML;
+      attSvg.querySelectorAll('.pt').forEach(circle => {
+        const p = pts[+circle.dataset.i];
+        bindTip(circle, () => `<b>${p.short}</b>${p.total} persoane${p.percent!=null?` · ${p.percent}% parteneri`:''}`);
+      });
+    }
+    drawAttendanceTrend();
+    onWidthChange(attSvg, drawAttendanceTrend);
+  }
 
   const volWrap = document.getElementById('vol-bars');
   const maxN = Math.max(1, ...DATA.months.map(m=>m.n));

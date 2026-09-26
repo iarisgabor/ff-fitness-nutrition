@@ -229,25 +229,59 @@ export async function buildHomePayload(env, ctx) {
     overviewCards.push({ tag: 'Vârstă dominantă', val: topAge.label, sub: `${topAge.n} din ${totalAge} răspunsuri (${Math.round((topAge.n / totalAge) * 100)}%)` });
   }
 
+  // Tendință generală: ultima lună cu răspunsuri vs cea dinaintea ei, pe media compozită
+  // lunară (aceeași sursă ca graficul „Evoluție în timp" de mai jos).
+  const months = data.months || [];
+  if (months.length >= 2) {
+    const last = months[months.length - 1];
+    const prev = months[months.length - 2];
+    const delta = last.avg - prev.avg;
+    overviewCards.push({
+      tag: 'Tendință generală',
+      val: last.avg.toFixed(2),
+      sub: `<span class="delta ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '+' : ''}${delta.toFixed(2)}</span> față de ${prev.short} (acum ${last.short})`,
+    });
+  }
+
   // Prezența — Sheet separat de feedback (attendance.js), nu depinde de getComputedPayload.
   const { rows: attendanceRows } = await getAttendance(env, ctx);
   let attendanceSummary = null;
+  let attendanceTrend = null;
   if (attendanceRows.length) {
     const avgTotal = average(attendanceRows.map((a) => a.total));
     const avgPercent = average(attendanceRows.map((a) => a.percent));
     const avgGuests = average(attendanceRows.map((a) => a.guests));
+    attendanceSummary = { avgTotal, avgPercent, avgGuests, count: attendanceRows.length };
+
+    // Creștere/scădere: ultimele câteva duminici vs cele dinaintea lor, în fereastre egale
+    // (max 4 — aprox. o lună), ca să existe mereu o comparație „recent vs înainte".
+    const series = attendanceSeries(attendanceRows);
+    const windowSize = Math.min(4, Math.floor(series.length / 2));
+    if (windowSize >= 1) {
+      const recent = series.slice(-windowSize);
+      const previous = series.slice(-2 * windowSize, -windowSize);
+      const recentAvg = average(recent.map((w) => w.total));
+      const prevAvg = previous.length ? average(previous.map((w) => w.total)) : null;
+      attendanceTrend = {
+        windowSize,
+        delta: prevAvg != null ? recentAvg - prevAvg : null,
+        chart: series.slice(-12).map((w) => ({ slug: w.slug, total: w.total, percent: w.percent, short: w.date.split('.').slice(0, 2).join('.') })),
+      };
+    }
+
     overviewCards.push({
       tag: 'Prezență medie',
       val: `${Math.round(avgTotal)} persoane`,
-      sub: [
-        avgPercent != null ? `${avgPercent.toFixed(0)}% dintre parteneri` : null,
-        avgGuests != null ? `~${Math.round(avgGuests)} musafiri` : null,
-      ].filter(Boolean).join(' · ') || `pe ${attendanceRows.length} duminici`,
+      sub: attendanceTrend && attendanceTrend.delta != null
+        ? `<span class="delta ${attendanceTrend.delta >= 0 ? 'up' : 'down'}">${attendanceTrend.delta >= 0 ? '+' : ''}${Math.round(attendanceTrend.delta)}</span> față de ${attendanceTrend.windowSize} duminici înainte`
+        : [
+            avgPercent != null ? `${avgPercent.toFixed(0)}% dintre parteneri` : null,
+            avgGuests != null ? `~${Math.round(avgGuests)} musafiri` : null,
+          ].filter(Boolean).join(' · ') || `pe ${attendanceRows.length} duminici`,
     });
-    attendanceSummary = { avgTotal, avgPercent, avgGuests, count: attendanceRows.length };
   }
 
-  return { DATA: data, meta: { ...meta, heroKpis, overviewCards, attendanceSummary } };
+  return { DATA: data, meta: { ...meta, heroKpis, overviewCards, attendanceSummary, attendanceTrend } };
 }
 
 // ---- pagina /zile ----
@@ -260,7 +294,10 @@ export async function buildDaysListPayload(env, ctx) {
   const { responses, stale } = await getComputedPayload(env, ctx);
   const meta = baseMeta(responses, stale);
   delete meta._dates;
-  const days = summarizeByDate(responses);
+  const { rows: attendanceRows } = await getAttendance(env, ctx);
+  const days = summarizeByDate(responses).map((d) => ({
+    ...d, attendance: attendanceForSlug(attendanceRows, d.slug)?.total ?? null,
+  }));
   return { days, meta };
 }
 
